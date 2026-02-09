@@ -3,7 +3,6 @@ package com.esprit.keycloak.config;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
-import java.util.Map;
 
 @Component
 @ConfigurationProperties(prefix = "keycloak")
@@ -70,8 +69,17 @@ public class KeycloakProperties {
     public static class Admin {
         private String realm = "master";
         private String clientId = "admin-cli";
+        private String clientSecret = "";
         private String username = "admin";
         private String password = "admin";
+
+        public String getClientSecret() {
+            return clientSecret;
+        }
+
+        public void setClientSecret(String clientSecret) {
+            this.clientSecret = clientSecret != null ? clientSecret : "";
+        }
 
         public String getRealm() {
             return realm;

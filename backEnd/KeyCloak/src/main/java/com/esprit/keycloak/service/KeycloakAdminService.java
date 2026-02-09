@@ -1,5 +1,6 @@
 package com.esprit.keycloak.service;
 
+import com.esprit.keycloak.client.UserServiceClient;
 import com.esprit.keycloak.config.KeycloakProperties;
 import com.esprit.keycloak.dto.RegisterRequest;
 import jakarta.ws.rs.core.Response;
@@ -28,19 +29,23 @@ import java.util.List;
 public class KeycloakAdminService {
 
     private final KeycloakProperties keycloakProperties;
+    private final UserServiceClient userServiceClient;
 
     /**
      * Create a Keycloak admin client for the master realm (to obtain token and call Admin API).
      */
     public Keycloak createAdminKeycloak() {
         KeycloakProperties.Admin admin = keycloakProperties.getAdmin();
-        return KeycloakBuilder.builder()
+        KeycloakBuilder builder = KeycloakBuilder.builder()
             .serverUrl(keycloakProperties.getAuthServerUrl())
             .realm(admin.getRealm())
             .username(admin.getUsername())
             .password(admin.getPassword())
-            .clientId(admin.getClientId())
-            .build();
+            .clientId(admin.getClientId());
+        if (admin.getClientSecret() != null && !admin.getClientSecret().isBlank()) {
+            builder.clientSecret(admin.getClientSecret());
+        }
+        return builder.build();
     }
 
     /**
@@ -87,6 +92,18 @@ public class KeycloakAdminService {
                 String userId = path.substring(path.lastIndexOf('/') + 1);
                 assignRealmRole(keycloak, realm, userId, roleName);
                 log.info("Created Keycloak user {} with role {}", request.getEmail(), roleName);
+
+                try {
+                    userServiceClient.createUser(request);
+                } catch (Exception e) {
+                    try {
+                        realmResource.users().get(userId).remove();
+                        log.warn("Rolled back Keycloak user {} after User service failure", request.getEmail());
+                    } catch (Exception rollbackEx) {
+                        log.error("Failed to rollback Keycloak user {}: {}", request.getEmail(), rollbackEx.getMessage());
+                    }
+                    throw e;
+                }
                 return userId;
             }
         }
