@@ -53,18 +53,52 @@ All protected endpoints expect a valid Keycloak JWT in the `Authorization: Beare
    keycloak.auth-server-url=http://localhost:8180
    ```
 
+## Keycloak configuration for the User entity
+
+The **Gestion User** microservice’s `User` entity (id, email, firstName, lastName, role, phone, avatarUrl, isActive, createdAt, updatedAt) is accommodated as follows:
+
+| User field     | Keycloak / auth service |
+|----------------|-------------------------|
+| **email**      | Set on user in Keycloak (and as username). |
+| **firstName, lastName** | Set on user in Keycloak. |
+| **role**       | Realm roles **CLIENT**, **FREELANCER**, **ADMIN** (create them in **Realm roles**; they are assigned on registration). |
+| **isActive**   | Keycloak “Enabled” flag (`user.setEnabled(true)` on register). |
+| **passwordHash** | Keycloak stores the password; the User service does not need to store it when Keycloak is the IdP (or can store a placeholder). |
+| **phone**      | Not standard in Keycloak. Stored as a **user attribute** if provided (see below). |
+| **avatarUrl**  | Not standard in Keycloak. Stored as a **user attribute** if provided (see below). |
+| **createdAt / updatedAt** | Keycloak provides `createdTimestamp`; the User service can use that or maintain its own. |
+
+### Optional: custom attributes (phone, avatarUrl)
+
+- Keycloak allows arbitrary **user attributes**. You do not need to “create” them in the UI; they appear under **Users → &lt;user&gt; → Attributes** once set via the Admin API (or manually in the console).
+- This auth service can be extended to accept optional `phone` and `avatarUrl` in the registration request and set them on the Keycloak user via the Admin API.
+- If you need **phone** or **avatarUrl** in the **access token** or **userinfo** response:
+  - In Keycloak: **Client scopes** → choose the scope used by `smart-freelance-backend` (e.g. optional scope or default) → **Add mapper** → **By configuration** → **User Attribute**.
+  - Create mappers that map the user attributes `phone` and `avatarUrl` to token claims (e.g. `phone`, `avatar_url`).
+
+No other Keycloak configuration is required for the basic User entity; realm, realm roles, and client setup above are sufficient.
+
 ## Configuration
 
 | Property | Description | Default |
 |----------|-------------|---------|
 | `server.port` | Auth service port | `8081` |
-| `keycloak.auth-server-url` | Keycloak server URL | `http://localhost:8080` |
+| `keycloak.auth-server-url` | **Keycloak** server URL (not this service’s port) | `http://localhost:8421` |
 | `keycloak.realm` | Realm name | `smart-freelance` |
 | `keycloak.resource` | Client ID | `smart-freelance-backend` |
 | `keycloak.credentials.secret` | Client secret (or `KEYCLOAK_CLIENT_SECRET`) | - |
+| `keycloak.admin.client-secret` | Admin client secret if `admin-cli` has Client authentication ON (or `KEYCLOAK_ADMIN_CLIENT_SECRET`) | - |
 | `keycloak.admin.username` | Admin console username | `admin` |
 | `keycloak.admin.password` | Admin console password (or `KEYCLOAK_ADMIN_PASSWORD`) | `admin` |
 | `eureka.client.service-url.defaultZone` | Eureka URL | `http://localhost:8420/eureka` |
+
+### Troubleshooting: Registration returns 401 Unauthorized
+
+This means the auth service could not obtain an admin token from Keycloak. Check:
+
+1. **`keycloak.auth-server-url`** must point to the **Keycloak** server (e.g. `http://localhost:8080` or `http://localhost:8421`), **not** to this auth service (e.g. not `http://localhost:8079`). Ensure Keycloak is running on that URL.
+2. **Admin credentials:** `keycloak.admin.username` and `keycloak.admin.password` must match the admin user you created when first starting Keycloak (the one you use to log in to the Admin Console).
+3. **admin-cli client secret:** In Keycloak, open realm **master** → **Clients** → **admin-cli**. If **Client authentication** is **ON**, copy the secret from the **Credentials** tab and set `keycloak.admin.client-secret` (or env `KEYCLOAK_ADMIN_CLIENT_SECRET`). If **Client authentication** is **OFF**, you do not need a client secret.
 
 ## Running the Auth Service
 
