@@ -19,7 +19,14 @@ public class OfferApplicationResponse {
     private Long clientId;
     private String message;
     private BigDecimal proposedBudget;
+    private String portfolioUrl;
+    private String attachmentUrl;
+    private Integer estimatedDuration;
     private ApplicationStatus status;
+    private String rejectionReason;
+    private Boolean isRead;
     private LocalDateTime appliedAt;
     private LocalDateTime respondedAt;
+    private LocalDateTime acceptedAt;
+    private Boolean canBeModified;
 }
