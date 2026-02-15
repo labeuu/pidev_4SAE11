@@ -2,14 +2,18 @@ package org.example.offer.controller;
 
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.example.offer.dto.request.OfferFilterRequest;
 import org.example.offer.dto.request.OfferRequest;
 import org.example.offer.dto.response.OfferResponse;
+import org.example.offer.dto.response.OfferStatsResponse;
 import org.example.offer.entity.OfferStatus;
 import org.example.offer.service.OfferService;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 @RestController
@@ -21,7 +25,8 @@ public class OfferController {
     private final OfferService offerService;
 
     /**
-     * POST /api/offers - Créer une nouvelle offre (Post New Project)
+     * CREATE - Créer une nouvelle offre
+     * POST /api/offers
      */
     @PostMapping
     public ResponseEntity<OfferResponse> createOffer(@Valid @RequestBody OfferRequest request) {
@@ -30,43 +35,83 @@ public class OfferController {
     }
 
     /**
-     * GET /api/offers - Récupérer toutes les offres disponibles
-     */
-    @GetMapping
-    public ResponseEntity<List<OfferResponse>> getAllAvailableOffers() {
-        List<OfferResponse> offers = offerService.getAvailableOffers();
-        return ResponseEntity.ok(offers);
-    }
-
-    /**
-     * GET /api/offers/{id} - Récupérer une offre par ID
+     * READ - Récupérer une offre par ID
+     * GET /api/offers/{id}
      */
     @GetMapping("/{id}")
     public ResponseEntity<OfferResponse> getOfferById(@PathVariable Long id) {
-        OfferResponse offer = offerService.getOfferById(id);
-        return ResponseEntity.ok(offer);
+        OfferResponse response = offerService.getOfferById(id);
+        return ResponseEntity.ok(response);
     }
 
     /**
-     * GET /api/offers/freelancer/{freelancerId} - Récupérer les offres d'un freelancer
+     * READ - Récupérer toutes les offres actives (avec pagination)
+     * GET /api/offers?page=0&size=10
+     */
+    @GetMapping
+    public ResponseEntity<Page<OfferResponse>> getActiveOffers(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<OfferResponse> response = offerService.getActiveOffers(page, size);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * READ - Récupérer les offres d'un freelancer
+     * GET /api/offers/freelancer/{freelancerId}
      */
     @GetMapping("/freelancer/{freelancerId}")
     public ResponseEntity<List<OfferResponse>> getOffersByFreelancer(@PathVariable Long freelancerId) {
-        List<OfferResponse> offers = offerService.getOffersByFreelancerId(freelancerId);
-        return ResponseEntity.ok(offers);
+        List<OfferResponse> response = offerService.getOffersByFreelancer(freelancerId);
+        return ResponseEntity.ok(response);
     }
 
     /**
-     * GET /api/offers/domain/{domain} - Rechercher par domaine
+     * READ - Récupérer les offres featured
+     * GET /api/offers/featured
      */
-    @GetMapping("/domain/{domain}")
-    public ResponseEntity<List<OfferResponse>> searchByDomain(@PathVariable String domain) {
-        List<OfferResponse> offers = offerService.searchOffersByDomain(domain);
-        return ResponseEntity.ok(offers);
+    @GetMapping("/featured")
+    public ResponseEntity<List<OfferResponse>> getFeaturedOffers() {
+        List<OfferResponse> response = offerService.getFeaturedOffers();
+        return ResponseEntity.ok(response);
     }
 
     /**
-     * PUT /api/offers/{id} - Mettre à jour une offre
+     * READ - Récupérer les offres les mieux notées
+     * GET /api/offers/top-rated?minRating=4.0&page=0&size=10
+     */
+    @GetMapping("/top-rated")
+    public ResponseEntity<Page<OfferResponse>> getTopRatedOffers(
+            @RequestParam(defaultValue = "4.0") BigDecimal minRating,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "10") int size) {
+        Page<OfferResponse> response = offerService.getTopRatedOffers(minRating, page, size);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * READ - Recherche avancée avec filtres
+     * POST /api/offers/search
+     */
+    @PostMapping("/search")
+    public ResponseEntity<Page<OfferResponse>> searchOffers(@RequestBody OfferFilterRequest filter) {
+        Page<OfferResponse> response = offerService.searchOffers(filter);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * READ - Statistiques d'un freelancer
+     * GET /api/offers/stats/freelancer/{freelancerId}
+     */
+    @GetMapping("/stats/freelancer/{freelancerId}")
+    public ResponseEntity<OfferStatsResponse> getFreelancerStats(@PathVariable Long freelancerId) {
+        OfferStatsResponse response = offerService.getFreelancerStats(freelancerId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * UPDATE - Mettre à jour une offre
+     * PUT /api/offers/{id}
      */
     @PutMapping("/{id}")
     public ResponseEntity<OfferResponse> updateOffer(
@@ -77,22 +122,52 @@ public class OfferController {
     }
 
     /**
-     * PATCH /api/offers/{id}/status - Changer le statut d'une offre
+     * UPDATE - Publier une offre
+     * PATCH /api/offers/{id}/publish?freelancerId=123
      */
-    @PatchMapping("/{id}/status")
-    public ResponseEntity<OfferResponse> changeOfferStatus(
+    @PatchMapping("/{id}/publish")
+    public ResponseEntity<OfferResponse> publishOffer(
             @PathVariable Long id,
-            @RequestParam OfferStatus status) {
-        OfferResponse response = offerService.changeOfferStatus(id, status);
+            @RequestParam Long freelancerId) {
+        OfferResponse response = offerService.publishOffer(id, freelancerId);
         return ResponseEntity.ok(response);
     }
 
     /**
-     * DELETE /api/offers/{id} - Supprimer une offre
+     * UPDATE - Changer le statut d'une offre
+     * PATCH /api/offers/{id}/status?status=ACCEPTED&freelancerId=123
+     */
+    @PatchMapping("/{id}/status")
+    public ResponseEntity<OfferResponse> changeOfferStatus(
+            @PathVariable Long id,
+            @RequestParam OfferStatus status,
+            @RequestParam Long freelancerId) {
+        OfferResponse response = offerService.changeOfferStatus(id, status, freelancerId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * UPDATE - Mettre à jour les scores
+     * PATCH /api/offers/{id}/scores?rating=4.5&communicationScore=4.8
+     */
+    @PatchMapping("/{id}/scores")
+    public ResponseEntity<OfferResponse> updateScores(
+            @PathVariable Long id,
+            @RequestParam(required = false) BigDecimal rating,
+            @RequestParam(required = false) BigDecimal communicationScore) {
+        OfferResponse response = offerService.updateScores(id, rating, communicationScore);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * DELETE - Supprimer une offre
+     * DELETE /api/offers/{id}?freelancerId=123
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteOffer(@PathVariable Long id) {
-        offerService.deleteOffer(id);
+    public ResponseEntity<Void> deleteOffer(
+            @PathVariable Long id,
+            @RequestParam Long freelancerId) {
+        offerService.deleteOffer(id, freelancerId);
         return ResponseEntity.noContent().build();
     }
 }

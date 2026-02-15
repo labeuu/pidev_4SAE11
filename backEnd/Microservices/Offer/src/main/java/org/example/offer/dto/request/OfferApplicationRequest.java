@@ -1,9 +1,6 @@
 package org.example.offer.dto.request;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -22,10 +19,17 @@ public class OfferApplicationRequest {
     private Long clientId;
 
     @NotBlank(message = "Message is required")
-    @Size(min = 20, message = "Message must be at least 20 characters")
+    @Size(min = 20, max = 2000, message = "Message must be between 20 and 2000 characters")
     private String message;
 
     @NotNull(message = "Proposed budget is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Budget must be greater than 0")
+    @DecimalMin(value = "0.01", message = "Budget must be greater than 0")
     private BigDecimal proposedBudget;
+
+    private String portfolioUrl;
+
+    private String attachmentUrl;
+
+    @Min(value = 1, message = "Estimated duration must be at least 1 day")
+    private Integer estimatedDuration;
 }

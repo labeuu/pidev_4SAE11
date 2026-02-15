@@ -1,9 +1,6 @@
 package org.example.offer.dto.request;
 
-import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
-import jakarta.validation.constraints.NotNull;
-import jakarta.validation.constraints.Size;
+import jakarta.validation.constraints.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -20,24 +17,42 @@ public class OfferRequest {
     private Long freelancerId;
 
     @NotBlank(message = "Title is required")
-    @Size(min = 5, max = 255, message = "Title must be between 5 and 255 characters")
+    @Size(min = 5, max = 255)
     private String title;
 
     @NotBlank(message = "Domain is required")
     private String domain;
 
     @NotBlank(message = "Description is required")
-    @Size(min = 20, message = "Description must be at least 20 characters")
+    @Size(min = 20, max = 5000)
     private String description;
 
     @NotNull(message = "Price is required")
-    @DecimalMin(value = "0.0", inclusive = false, message = "Price must be greater than 0")
+    @DecimalMin(value = "0.01")
     private BigDecimal price;
 
     @NotBlank(message = "Duration type is required")
+    @Pattern(regexp = "hourly|fixed|monthly")
     private String durationType;
 
     private LocalDate deadline;
 
     private String category;
+
+    @DecimalMin(value = "0.0")
+    @DecimalMax(value = "5.0")
+    private BigDecimal rating;
+
+    @DecimalMin(value = "0.0")
+    @DecimalMax(value = "5.0")
+    private BigDecimal communicationScore;
+
+    private String tags;
+
+    private String imageUrl;
+
+    private Boolean isFeatured;
+
+    // ✅ Utiliser l'ID au lieu de l'objet complet
+    private Long projectStatusId;
 }

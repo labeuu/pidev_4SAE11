@@ -1,16 +1,22 @@
 package org.example.offer.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.example.offer.dto.request.OfferApplicationRequest;
 import org.example.offer.dto.response.OfferApplicationResponse;
 import org.example.offer.entity.ApplicationStatus;
 import org.example.offer.entity.Offer;
 import org.example.offer.entity.OfferApplication;
+import org.example.offer.entity.OfferStatus;
 import org.example.offer.exception.BadRequestException;
 import org.example.offer.exception.ResourceNotFoundException;
 import org.example.offer.repository.OfferApplicationRepository;
 import org.example.offer.repository.OfferRepository;
 import org.modelmapper.ModelMapper;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,6 +27,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 @Transactional
+@Slf4j
 public class OfferApplicationService {
 
     private final OfferApplicationRepository applicationRepository;
@@ -28,54 +35,74 @@ public class OfferApplicationService {
     private final ModelMapper modelMapper;
 
     /**
-     * Postuler à une offre (Apply to Project)
+     * CREATE - Postuler à une offre
      */
     public OfferApplicationResponse applyToOffer(OfferApplicationRequest request) {
+        log.info("Client {} applying to offer {}", request.getClientId(), request.getOfferId());
+
         // Vérifier que l'offre existe
         Offer offer = offerRepository.findById(request.getOfferId())
                 .orElseThrow(() -> new ResourceNotFoundException("Offer not found with id: " + request.getOfferId()));
 
-        // Vérifier que l'offre est disponible
-        if (!offer.getStatus().name().equals("AVAILABLE")) {
-            throw new BadRequestException("This offer is not available for applications");
-        }
+        // Validation métier
+        validateApplication(offer, request.getClientId());
 
         // Créer la candidature
-        OfferApplication application = new OfferApplication();
+        OfferApplication application = modelMapper.map(request, OfferApplication.class);
         application.setOffer(offer);
-        application.setClientId(request.getClientId());
-        application.setMessage(request.getMessage());
-        application.setProposedBudget(request.getProposedBudget());
         application.setStatus(ApplicationStatus.PENDING);
 
         OfferApplication savedApplication = applicationRepository.save(application);
+        log.info("Application created successfully with ID: {}", savedApplication.getId());
+
         return mapToResponse(savedApplication);
     }
 
     /**
-     * Récupérer toutes les candidatures pour une offre
+     * READ - Récupérer une candidature par ID
      */
-    public List<OfferApplicationResponse> getApplicationsByOfferId(Long offerId) {
-        return applicationRepository.findByOfferId(offerId)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    public OfferApplicationResponse getApplicationById(Long id) {
+        log.info("Fetching application with ID: {}", id);
+
+        OfferApplication application = applicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+
+        return mapToResponse(application);
     }
 
     /**
-     * Récupérer toutes les candidatures d'un client
+     * READ - Récupérer toutes les candidatures d'une offre
      */
-    public List<OfferApplicationResponse> getApplicationsByClientId(Long clientId) {
-        return applicationRepository.findByClientId(clientId)
-                .stream()
-                .map(this::mapToResponse)
-                .collect(Collectors.toList());
+    public Page<OfferApplicationResponse> getApplicationsByOffer(Long offerId, int page, int size) {
+        log.info("Fetching applications for offer: {}", offerId);
+
+        // Vérifier que l'offre existe
+        if (!offerRepository.existsById(offerId)) {
+            throw new ResourceNotFoundException("Offer not found with id: " + offerId);
+        }
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "appliedAt"));
+        return applicationRepository.findByOfferId(offerId, pageable)
+                .map(this::mapToResponse);
     }
 
     /**
-     * Récupérer les candidatures en attente (Pending)
+     * READ - Récupérer toutes les candidatures d'un client
+     */
+    public Page<OfferApplicationResponse> getApplicationsByClient(Long clientId, int page, int size) {
+        log.info("Fetching applications for client: {}", clientId);
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "appliedAt"));
+        return applicationRepository.findByClientId(clientId, pageable)
+                .map(this::mapToResponse);
+    }
+
+    /**
+     * READ - Récupérer les candidatures en attente
      */
     public List<OfferApplicationResponse> getPendingApplications() {
+        log.info("Fetching all pending applications");
+
         return applicationRepository.findByStatus(ApplicationStatus.PENDING)
                 .stream()
                 .map(this::mapToResponse)
@@ -83,50 +110,269 @@ public class OfferApplicationService {
     }
 
     /**
-     * Accepter une candidature
+     * READ - Récupérer les candidatures non lues d'un freelancer
      */
-    public OfferApplicationResponse acceptApplication(Long applicationId) {
-        OfferApplication application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + applicationId));
+    public List<OfferApplicationResponse> getUnreadApplicationsByFreelancer(Long freelancerId) {
+        log.info("Fetching unread applications for freelancer: {}", freelancerId);
 
-        application.setStatus(ApplicationStatus.ACCEPTED);
-        application.setRespondedAt(LocalDateTime.now());
-
-        OfferApplication updatedApplication = applicationRepository.save(application);
-        return mapToResponse(updatedApplication);
+        return applicationRepository.findUnreadApplicationsByFreelancer(freelancerId)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     /**
-     * Rejeter une candidature
+     * READ - Récupérer les candidatures d'une offre par statut
      */
-    public OfferApplicationResponse rejectApplication(Long applicationId) {
-        OfferApplication application = applicationRepository.findById(applicationId)
-                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + applicationId));
+    public List<OfferApplicationResponse> getApplicationsByOfferAndStatus(Long offerId, ApplicationStatus status) {
+        log.info("Fetching applications for offer {} with status {}", offerId, status);
 
-        application.setStatus(ApplicationStatus.REJECTED);
-        application.setRespondedAt(LocalDateTime.now());
-
-        OfferApplication updatedApplication = applicationRepository.save(application);
-        return mapToResponse(updatedApplication);
+        return applicationRepository.findByOfferIdAndStatus(offerId, status)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
     }
 
     /**
-     * Supprimer une candidature
+     * READ - Compter les candidatures en attente pour une offre
      */
-    public void deleteApplication(Long applicationId) {
-        if (!applicationRepository.existsById(applicationId)) {
-            throw new ResourceNotFoundException("Application not found with id: " + applicationId);
+    public Long countPendingApplications(Long offerId) {
+        log.info("Counting pending applications for offer: {}", offerId);
+        return applicationRepository.countPendingApplications(offerId);
+    }
+
+    /**
+     * UPDATE - Accepter une candidature
+     */
+    public OfferApplicationResponse acceptApplication(Long id, Long freelancerId) {
+        log.info("Accepting application with ID: {}", id);
+
+        OfferApplication application = applicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+
+        // Validation : seul le propriétaire de l'offre peut accepter
+        if (!application.getOffer().getFreelancerId().equals(freelancerId)) {
+            throw new BadRequestException("You are not authorized to accept this application");
         }
-        applicationRepository.deleteById(applicationId);
+
+        // Validation : la candidature doit être en attente
+        if (application.getStatus() != ApplicationStatus.PENDING) {
+            throw new BadRequestException("Only pending applications can be accepted");
+        }
+
+        // Accepter la candidature
+        application.accept();
+
+        // Optionnel : Changer le statut de l'offre
+        Offer offer = application.getOffer();
+        if (offer.getOfferStatus() == OfferStatus.AVAILABLE) {
+            offer.setOfferStatus(OfferStatus.IN_PROGRESS);
+            offerRepository.save(offer);
+        }
+
+        OfferApplication updatedApplication = applicationRepository.save(application);
+        log.info("Application accepted successfully: {}", id);
+
+        return mapToResponse(updatedApplication);
     }
 
     /**
-     * Mapper OfferApplication -> OfferApplicationResponse
+     * UPDATE - Rejeter une candidature
      */
+    public OfferApplicationResponse rejectApplication(Long id, Long freelancerId, String reason) {
+        log.info("Rejecting application with ID: {}", id);
+
+        OfferApplication application = applicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+
+        // Validation : seul le propriétaire de l'offre peut rejeter
+        if (!application.getOffer().getFreelancerId().equals(freelancerId)) {
+            throw new BadRequestException("You are not authorized to reject this application");
+        }
+
+        // Validation : la candidature doit être en attente
+        if (application.getStatus() != ApplicationStatus.PENDING) {
+            throw new BadRequestException("Only pending applications can be rejected");
+        }
+
+        // Rejeter la candidature
+        application.reject(reason);
+
+        OfferApplication updatedApplication = applicationRepository.save(application);
+        log.info("Application rejected successfully: {}", id);
+
+        return mapToResponse(updatedApplication);
+    }
+
+    /**
+     * UPDATE - Mettre en liste courte (shortlist)
+     */
+    public OfferApplicationResponse shortlistApplication(Long id, Long freelancerId) {
+        log.info("Shortlisting application with ID: {}", id);
+
+        OfferApplication application = applicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+
+        // Validation : seul le propriétaire de l'offre peut shortlister
+        if (!application.getOffer().getFreelancerId().equals(freelancerId)) {
+            throw new BadRequestException("You are not authorized to shortlist this application");
+        }
+
+        // Validation : la candidature doit être en attente
+        if (application.getStatus() != ApplicationStatus.PENDING) {
+            throw new BadRequestException("Only pending applications can be shortlisted");
+        }
+
+        application.setStatus(ApplicationStatus.SHORTLISTED);
+
+        OfferApplication updatedApplication = applicationRepository.save(application);
+        log.info("Application shortlisted successfully: {}", id);
+
+        return mapToResponse(updatedApplication);
+    }
+
+    /**
+     * UPDATE - Marquer comme lu
+     */
+    public OfferApplicationResponse markAsRead(Long id, Long freelancerId) {
+        log.info("Marking application {} as read", id);
+
+        OfferApplication application = applicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+
+        // Validation : seul le propriétaire de l'offre peut marquer comme lu
+        if (!application.getOffer().getFreelancerId().equals(freelancerId)) {
+            throw new BadRequestException("You are not authorized to mark this application as read");
+        }
+
+        application.markAsRead();
+
+        OfferApplication updatedApplication = applicationRepository.save(application);
+        log.info("Application marked as read: {}", id);
+
+        return mapToResponse(updatedApplication);
+    }
+
+    /**
+     * UPDATE - Retirer une candidature (par le client)
+     */
+    public OfferApplicationResponse withdrawApplication(Long id, Long clientId) {
+        log.info("Client {} withdrawing application {}", clientId, id);
+
+        OfferApplication application = applicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+
+        // Validation : seul le client propriétaire peut retirer
+        if (!application.getClientId().equals(clientId)) {
+            throw new BadRequestException("You are not authorized to withdraw this application");
+        }
+
+        // Validation : on peut seulement retirer une candidature en attente ou shortlistée
+        if (application.getStatus() != ApplicationStatus.PENDING &&
+                application.getStatus() != ApplicationStatus.SHORTLISTED) {
+            throw new BadRequestException("Only pending or shortlisted applications can be withdrawn");
+        }
+
+        application.setStatus(ApplicationStatus.WITHDRAWN);
+
+        OfferApplication updatedApplication = applicationRepository.save(application);
+        log.info("Application withdrawn successfully: {}", id);
+
+        return mapToResponse(updatedApplication);
+    }
+
+    /**
+     * UPDATE - Modifier une candidature
+     */
+    public OfferApplicationResponse updateApplication(Long id, OfferApplicationRequest request) {
+        log.info("Updating application with ID: {}", id);
+
+        OfferApplication application = applicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+
+        // Validation : seul le client propriétaire peut modifier
+        if (!application.getClientId().equals(request.getClientId())) {
+            throw new BadRequestException("You are not authorized to update this application");
+        }
+
+        // Validation : on peut seulement modifier une candidature en attente
+        if (!application.canBeModified()) {
+            throw new BadRequestException("Only pending applications can be modified");
+        }
+
+        // Mise à jour des champs
+        application.setMessage(request.getMessage());
+        application.setProposedBudget(request.getProposedBudget());
+        application.setPortfolioUrl(request.getPortfolioUrl());
+        application.setAttachmentUrl(request.getAttachmentUrl());
+        application.setEstimatedDuration(request.getEstimatedDuration());
+
+        OfferApplication updatedApplication = applicationRepository.save(application);
+        log.info("Application updated successfully: {}", id);
+
+        return mapToResponse(updatedApplication);
+    }
+
+    /**
+     * DELETE - Supprimer une candidature
+     */
+    public void deleteApplication(Long id, Long clientId) {
+        log.info("Deleting application with ID: {}", id);
+
+        OfferApplication application = applicationRepository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Application not found with id: " + id));
+
+        // Validation : seul le client propriétaire peut supprimer
+        if (!application.getClientId().equals(clientId)) {
+            throw new BadRequestException("You are not authorized to delete this application");
+        }
+
+        // Validation : on peut seulement supprimer une candidature en attente ou rejetée
+        if (application.getStatus() == ApplicationStatus.ACCEPTED) {
+            throw new BadRequestException("Cannot delete an accepted application");
+        }
+
+        applicationRepository.delete(application);
+        log.info("Application deleted successfully: {}", id);
+    }
+
+    /**
+     * Récupérer les candidatures récentes (dernières 24h)
+     */
+    public List<OfferApplicationResponse> getRecentApplications() {
+        log.info("Fetching recent applications (last 24 hours)");
+
+        LocalDateTime yesterday = LocalDateTime.now().minusDays(1);
+        return applicationRepository.findRecentApplications(yesterday)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
+    // ========== Méthodes privées de validation ==========
+
+    private void validateApplication(Offer offer, Long clientId) {
+        // L'offre doit accepter des candidatures
+        if (!offer.canReceiveApplications()) {
+            throw new BadRequestException("This offer is not accepting applications");
+        }
+
+        // Le client ne peut pas postuler à sa propre offre
+        if (offer.getFreelancerId().equals(clientId)) {
+            throw new BadRequestException("You cannot apply to your own offer");
+        }
+
+        // Vérifier si le client a déjà postulé
+        if (applicationRepository.existsByOfferIdAndClientId(offer.getId(), clientId)) {
+            throw new BadRequestException("You have already applied to this offer");
+        }
+    }
+
     private OfferApplicationResponse mapToResponse(OfferApplication application) {
         OfferApplicationResponse response = modelMapper.map(application, OfferApplicationResponse.class);
         response.setOfferId(application.getOffer().getId());
         response.setOfferTitle(application.getOffer().getTitle());
+        response.setCanBeModified(application.canBeModified());
         return response;
     }
 }
