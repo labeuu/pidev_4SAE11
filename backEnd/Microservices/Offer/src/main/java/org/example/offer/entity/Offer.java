@@ -108,11 +108,11 @@ public class Offer {
     @OneToMany(mappedBy = "offer", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<OfferApplication> applications = new ArrayList<>();
 
-    @OneToMany(mappedBy = "offer", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<ProjectApplication> projectApplications = new ArrayList<>();
+    // ProjectApplication belongs to the Project microservice - no JPA relation across services.
+    // Use the Project API if you need applications linked to this offer.
 
-    @OneToMany(mappedBy = "offer", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Review> reviews = new ArrayList<>();
+    // Review belongs to the Review microservice - no JPA relation across services.
+    // Use the Review API (e.g. by offerId if exposed) to get reviews for this offer.
 
     @PrePersist
     protected void onCreate() {

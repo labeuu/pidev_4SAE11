@@ -33,6 +33,9 @@ public interface OfferApplicationRepository extends JpaRepository<OfferApplicati
     @Query("SELECT a FROM OfferApplication a WHERE a.offer.freelancerId = :freelancerId AND a.status = :status")
     List<OfferApplication> findByFreelancerIdAndStatus(@Param("freelancerId") Long freelancerId, @Param("status") ApplicationStatus status);
 
+    @Query("SELECT COUNT(a) FROM OfferApplication a WHERE a.offer.freelancerId = :freelancerId")
+    Long countByOffer_FreelancerId(@Param("freelancerId") Long freelancerId);
+
     @Query("SELECT a FROM OfferApplication a WHERE a.offer.freelancerId = :freelancerId AND a.isRead = false ORDER BY a.appliedAt DESC")
     List<OfferApplication> findUnreadApplicationsByFreelancer(@Param("freelancerId") Long freelancerId);
 

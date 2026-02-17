@@ -3,7 +3,6 @@ package org.example.offer.dto.response;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
-import org.example.offer.dto.external.ProjectStatusDTO;
 import org.example.offer.entity.OfferStatus;
 
 import java.math.BigDecimal;
@@ -41,8 +40,8 @@ public class OfferResponse {
     private Integer applicationsCount;
     private Long pendingApplicationsCount;
 
-    // ✅ ProjectStatus récupéré via Feign (optionnel)
-    private ProjectStatusDTO projectStatus;
+    /** ID du statut projet (optionnel, référence externe au microservice Project) */
+    private Long projectStatusId;
 
     private Boolean canReceiveApplications;
     private Boolean isValid;

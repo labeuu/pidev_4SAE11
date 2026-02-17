@@ -13,13 +13,14 @@ import org.springframework.stereotype.Repository;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 
 @Repository
 public interface OfferRepository extends JpaRepository<Offer, Long>, JpaSpecificationExecutor<Offer> {
 
     // ========== Recherches de base ==========
     List<Offer> findByFreelancerId(Long freelancerId);
+
+    Long countByFreelancerId(Long freelancerId);
 
     List<Offer> findByOfferStatus(OfferStatus status);
 
@@ -74,11 +75,14 @@ public interface OfferRepository extends JpaRepository<Offer, Long>, JpaSpecific
     @Query("SELECT COUNT(o) FROM Offer o WHERE o.createdAt >= :startDate AND o.createdAt <= :endDate")
     Long countOffersCreatedBetween(@Param("startDate") LocalDateTime startDate, @Param("endDate") LocalDateTime endDate);
 
-    // ========== Recherches avec ProjectStatus ==========
+    @Query("SELECT COUNT(o) FROM Offer o WHERE o.freelancerId = :freelancerId AND o.createdAt >= :start AND o.createdAt <= :end")
+    Long countByFreelancerIdAndCreatedAtBetween(@Param("freelancerId") Long freelancerId, @Param("start") LocalDateTime start, @Param("end") LocalDateTime end);
 
-    @Query("SELECT o FROM Offer o WHERE o.projectStatus.code = :statusCode")
-    List<Offer> findByProjectStatusCode(@Param("statusCode") String statusCode);
+    @Query("SELECT COALESCE(SUM(o.viewsCount), 0) FROM Offer o WHERE o.freelancerId = :freelancerId")
+    Long sumViewsByFreelancerId(@Param("freelancerId") Long freelancerId);
 
-    @Query("SELECT o FROM Offer o WHERE o.projectStatus.id = :statusId AND o.isActive = true")
-    Page<Offer> findActiveOffersByProjectStatus(@Param("statusId") Long statusId, Pageable pageable);
+    // ========== Recherches par projectStatusId (référence externe au microservice Project) ==========
+
+    @Query("SELECT o FROM Offer o WHERE o.projectStatusId = :statusId AND o.isActive = true")
+    Page<Offer> findActiveOffersByProjectStatusId(@Param("statusId") Long statusId, Pageable pageable);
 }

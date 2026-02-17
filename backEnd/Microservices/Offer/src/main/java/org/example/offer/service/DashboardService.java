@@ -26,7 +26,7 @@ public class DashboardService {
 
         // Active Contracts (offres acceptées)
         Integer activeContracts = offerRepository
-                .findByFreelancerIdAndStatus(freelancerId, OfferStatus.ACCEPTED)
+                .findByFreelancerIdAndOfferStatus(freelancerId, OfferStatus.ACCEPTED)
                 .size();
         stats.setActiveContracts(activeContracts);
 
@@ -36,7 +36,7 @@ public class DashboardService {
                 .findByFreelancerId(freelancerId)
                 .stream()
                 .filter(offer -> offer.getCreatedAt().isAfter(oneWeekAgo))
-                .filter(offer -> offer.getStatus() == OfferStatus.ACCEPTED)
+                .filter(offer -> offer.getOfferStatus() == OfferStatus.ACCEPTED)
                 .count();
         stats.setActiveContractsThisWeek((int) activeThisWeek);
 
@@ -46,7 +46,7 @@ public class DashboardService {
                 .findByFreelancerId(freelancerId)
                 .stream()
                 .filter(offer -> offer.getCreatedAt().isAfter(thirtyDaysAgo))
-                .filter(offer -> offer.getStatus() == OfferStatus.ACCEPTED)
+                .filter(offer -> offer.getOfferStatus() == OfferStatus.ACCEPTED)
                 .map(offer -> offer.getPrice() != null ? offer.getPrice() : BigDecimal.ZERO)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         stats.setTotalSpentLast30Days(totalSpent);
@@ -67,7 +67,7 @@ public class DashboardService {
 
         // Active Offers
         Integer activeOffers = offerRepository
-                .findByFreelancerIdAndStatus(freelancerId, OfferStatus.AVAILABLE)
+                .findByFreelancerIdAndOfferStatus(freelancerId, OfferStatus.AVAILABLE)
                 .size();
         stats.setActiveOffers(activeOffers);
 
