@@ -99,27 +99,10 @@
     }
   }
 
-  // ── Description ──────────────────────────────────────────────
-  .description {
-    margin-top: $spacing-lg;
-
-    p {
-      margin-top: $spacing-xs;
-      line-height: $line-height-relaxed;
-    }
-  }
-
-  // ── Skills ───────────────────────────────────────────────────
-  .skills {
-    margin-top: $spacing-lg;
-
-    strong {
-      display: block;
-      margin-bottom: $spacing-sm;
-      color: $neutral-900;
-      font-size: $font-size-sm;
-      font-weight: $font-weight-semibold;
-    }
+/* Responsive */
+@media (max-width: 768px) {
+  .project-details {
+    padding: 20px;
   }
 
   .skills-list {
@@ -224,5 +207,92 @@
       .btn-edit,
       .btn-review { justify-content: center; }
     }
+  }
+}
+
+
+
+.applications-section {
+  margin-top: 3rem;
+  border-top: 2px solid #e2e8f0;
+  padding-top: 2rem;
+
+  h2 {
+    font-size: 1.5rem;
+    margin-bottom: 1.5rem;
+    color: #1e293b;
+  }
+
+  .application-card {
+    border: 1px solid #cbd5e1;
+    border-radius: 12px;
+    padding: 1rem 1.5rem;
+    margin-bottom: 1.2rem;
+    background: #f9fafb;
+
+    p {
+      margin: 0.4rem 0;
+    }
+
+    .application-actions {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.8rem;
+
+      button {
+        padding: 0.5rem 1rem;
+        border-radius: 8px;
+        font-weight: 500;
+        cursor: pointer;
+        border: none;
+        transition: all 0.2s ease;
+      }
+
+      .btn-accept {
+        background: #10b981;
+        color: white;
+      }
+
+      .btn-accept:hover:not(:disabled) {
+        background: #059669;
+      }
+
+      .btn-reject {
+        background: #ef4444;
+        color: white;
+      }
+
+      .btn-reject:hover:not(:disabled) {
+        background: #b91c1c;
+      }
+
+      button:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+
+    span.pending {
+      color: #facc15;
+      font-weight: 600;
+    }
+    span.accepted {
+      color: #10b981;
+      font-weight: 600;
+    }
+    span.rejected {
+      color: #ef4444;
+      font-weight: 600;
+    }
+  }
+
+  .loading {
+    color: #1e40af;
+    font-weight: 500;
+  }
+
+  .no-applications {
+    color: #475569;
+    font-style: italic;
   }
 }
