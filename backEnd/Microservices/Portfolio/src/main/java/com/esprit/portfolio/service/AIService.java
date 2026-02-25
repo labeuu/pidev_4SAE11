@@ -59,7 +59,7 @@ public class AIService {
                 "The output must be a raw JSON array of objects (no markdown, no code blocks). " +
                 "Each object must have these fields: " +
                 "'questionText' (string), " +
-                "'options' (comma separated string of options, e.g. 'A. option1, B. option2'), " +
+                "'options' (four options in the form of string separated by '###', e.g. 'Option A. option1### Option B. option2### Option C. option3### Option D. option4'), " +
                 "'correctOption' (string, e.g. 'Option A'), " +
                 "'points' (integer, default 1).", skillName);
 

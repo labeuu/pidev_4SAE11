@@ -125,22 +125,32 @@
       <h3>➕ Add New Skill</h3>
       <div class="form-body">
         <div class="form-group">
-          <label for="skillName">Skill Name</label>
+          <label for="skillName">Skill Name <span class="req">*</span></label>
           <input
             id="skillName"
             [(ngModel)]="newSkillName"
             placeholder="e.g. Java, React, Python"
+            [class.input-invalid]="skillFormErrors['name']"
+            (ngModelChange)="skillFormErrors['name'] = ''"
             (keyup.enter)="newSkillDomain ? addSkill() : null"
+            maxlength="50"
           />
+          <span class="field-err-msg" *ngIf="skillFormErrors['name']">{{ skillFormErrors['name'] }}</span>
+          <span class="field-hint" *ngIf="!skillFormErrors['name']">Letters, numbers, spaces and . + # - / ( ) — max 50 chars</span>
         </div>
         <div class="form-group">
-          <label for="skillDomain">Domain</label>
+          <label for="skillDomain">Domain <span class="req">*</span></label>
           <input
             id="skillDomain"
             [(ngModel)]="newSkillDomain"
             placeholder="e.g. Backend, Frontend, DevOps"
+            [class.input-invalid]="skillFormErrors['domain']"
+            (ngModelChange)="skillFormErrors['domain'] = ''"
             (keyup.enter)="newSkillName ? addSkill() : null"
+            maxlength="30"
           />
+          <span class="field-err-msg" *ngIf="skillFormErrors['domain']">{{ skillFormErrors['domain'] }}</span>
+          <span class="field-hint" *ngIf="!skillFormErrors['domain']">e.g. Backend, Frontend, DevOps — max 30 chars</span>
         </div>
       </div>
       <div class="modal-actions">
@@ -181,7 +191,7 @@
 
           <div class="options">
             <label
-              *ngFor="let option of currentTest.questions[currentQuestionIndex].options.split(',')"
+              *ngFor="let option of currentTest.questions[currentQuestionIndex].options.split('###')"
               [class.correct]="isAnswerSubmitted && option.trim() === currentTest.questions[currentQuestionIndex].correctOption"
               [class.wrong]="isAnswerSubmitted && option.trim() === selectedOption && option.trim() !== currentTest.questions[currentQuestionIndex].correctOption"
             >
@@ -231,7 +241,7 @@
         <h3>🎉 Test Complete!</h3>
         <div class="score-display" [class.passed]="testResult.passed" [class.failed]="!testResult.passed">
           <div class="score-circle">
-            {{ testResult.score }}%
+            {{ 100 * testResult.score / (currentTest?.questions?.length || 1) }}%
           </div>
           <p class="status-text">{{ testResult.passed ? '✓ PASSED' : '✗ FAILED' }}</p>
         </div>
@@ -284,7 +294,7 @@
             </div>
           </div>
           <div class="history-item-right">
-            <div class="history-score">{{ evaluation.score }}%</div>
+            <div class="history-score">{{ 100 * evaluation.score / 5 }}%</div>
             <span class="history-badge" [class.passed]="evaluation.passed" [class.failed]="!evaluation.passed">
               {{ evaluation.passed ? 'PASSED' : 'FAILED' }}
             </span>

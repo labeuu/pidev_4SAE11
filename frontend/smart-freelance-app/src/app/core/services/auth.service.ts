@@ -15,10 +15,13 @@ const INACTIVITY_MS = 15 * 60 * 1000;
 function toUserFriendlyAuthError(raw: string): string {
   const s = raw.toLowerCase();
   if (s.includes('connection refused') || s.includes('econnrefused')) {
-    return 'Authentication server is unavailable. Please ensure Keycloak is running on port 8421.';
+    return 'Authentication server is unavailable. Please ensure Keycloak is running.';
   }
   if (s.includes('user with email already exists')) {
     return 'An account with this email already exists. Try signing in or use another email.';
+  }
+  if (s.includes('keycloak rejected admin') || s.includes('keycloak admin')) {
+    return 'Signup is misconfigured on the server (Keycloak admin credentials). Contact the administrator or check the Keycloak auth service configuration.';
   }
   return raw.length > 120 ? raw.slice(0, 120) + '…' : raw;
 }
@@ -75,9 +78,9 @@ export class AuthService {
     private http: HttpClient,
     private router: Router
   ) {
-    // If we have a token but no user ID, try to fetch it
+    // Defer profile fetch to avoid circular dependency (auth interceptor injects AuthService)
     if (this.tokenSignal() && !this.userIdSignal()) {
-      this.fetchUserProfile().subscribe();
+      setTimeout(() => this.fetchUserProfile().subscribe(), 0);
     }
     // Resume timers if already logged in (e.g. page refresh)
     if (this.tokenSignal()) {

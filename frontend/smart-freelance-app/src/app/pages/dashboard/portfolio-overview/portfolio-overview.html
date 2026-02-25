@@ -82,8 +82,12 @@
             [(ngModel)]="currentExperience.title"
             placeholder=" "
             id="title"
+            maxlength="100"
+            [class.input-invalid]="formErrors['title']"
+            (ngModelChange)="formErrors['title'] = ''"
           >
-          <label for="title">Job Title / Role</label>
+          <label for="title">Job Title / Role <span class="req">*</span></label>
+          <span class="field-err-msg" *ngIf="formErrors['title']">{{ formErrors['title'] }}</span>
         </div>
 
         <!-- Company/Client -->
@@ -92,8 +96,12 @@
             [(ngModel)]="currentExperience.companyOrClientName"
             placeholder=" "
             id="company"
+            maxlength="100"
+            [class.input-invalid]="formErrors['company']"
+            (ngModelChange)="formErrors['company'] = ''"
           >
-          <label for="company">Company / Client Name</label>
+          <label for="company">Company / Client Name <span class="req">*</span></label>
+          <span class="field-err-msg" *ngIf="formErrors['company']">{{ formErrors['company'] }}</span>
         </div>
 
         <!-- Type, Start Date, End Date -->
@@ -111,19 +119,25 @@
               [(ngModel)]="currentExperience.startDate"
               id="startDate"
               min="1900-01-01"
-              max="2099-12-31"
+              [max]="todayIso"
+              [class.input-invalid]="formErrors['startDate']"
+              (ngModelChange)="formErrors['startDate'] = ''"
             >
-            <label for="startDate">Start Date</label>
+            <label for="startDate">Start Date <span class="req">*</span></label>
+            <span class="field-err-msg" *ngIf="formErrors['startDate']">{{ formErrors['startDate'] }}</span>
           </div>
           <div class="form-group">
             <input
               type="date"
               [(ngModel)]="currentExperience.endDate"
               id="endDate"
-              min="1900-01-01"
+              [min]="currentExperience.startDate || '1900-01-01'"
               max="2099-12-31"
+              [class.input-invalid]="formErrors['endDate']"
+              (ngModelChange)="formErrors['endDate'] = ''"
             >
-            <label for="endDate">End Date</label>
+            <label for="endDate">End Date <span class="optional">(optional)</span></label>
+            <span class="field-err-msg" *ngIf="formErrors['endDate']">{{ formErrors['endDate'] }}</span>
           </div>
         </div>
 
@@ -134,11 +148,15 @@
             placeholder=" "
             id="description"
             maxlength="500"
+            [class.input-invalid]="formErrors['description']"
+            (ngModelChange)="formErrors['description'] = ''"
           ></textarea>
-          <label for="description">Description</label>
+          <label for="description">Description <span class="req">*</span></label>
           <div class="char-count">
             {{ currentExperience.description.length || 0 }} / 500
+            <span *ngIf="(currentExperience.description.length || 0) < 20" class="char-min">(min 20)</span>
           </div>
+          <span class="field-err-msg" *ngIf="formErrors['description']">{{ formErrors['description'] }}</span>
         </div>
 
         <!-- Key Tasks -->

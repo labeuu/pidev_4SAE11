@@ -433,6 +433,34 @@
           font-size: $font-size-sm;
           color: $neutral-600;
         }
+
+        &.input-invalid {
+          border-color: $error-500 !important;
+          background: $error-50 !important;
+
+          &:focus {
+            box-shadow: 0 0 0 3px rgba($error-500, 0.12);
+          }
+        }
+      }
+
+      .field-err-msg {
+        display: block;
+        font-size: $font-size-xs;
+        color: $error-600;
+        margin-top: $spacing-xs;
+
+        &::before { content: '⚠ '; }
+      }
+
+      label {
+        .req  { color: $error-500; margin-left: 2px; }
+        .optional { color: $neutral-400; font-size: $font-size-xs; font-weight: $font-weight-normal; }
+      }
+
+      .char-min {
+        color: $error-500;
+        font-size: $font-size-xs;
       }
 
       input[type="date"] ~ label {

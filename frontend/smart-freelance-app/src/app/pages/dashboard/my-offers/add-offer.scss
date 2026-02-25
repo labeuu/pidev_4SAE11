@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 .add-offer-page {
   position: relative;
   min-height: 100%;
@@ -37,8 +38,23 @@
     color: #0f172a;
     text-decoration: underline;
   }
+=======
+@import '../../../../styles/variables';
 
+.offer-form-page {
+  max-width: 640px;
+  padding: $spacing-3xl $spacing-lg;
+  margin: 0 auto;
+  font-family: $font-family;
+>>>>>>> 3d77214c3395a206df006b98c337604ca8cfb723
+
+  @include breakpoint(md) {
+    padding: $spacing-3xl $spacing-2xl;
+  }
+
+  // ── Header ─────────────────────────────────────────────────────
   .page-title {
+<<<<<<< HEAD
     font-size: clamp(1.5rem, 4vw, 2rem);
     font-weight: 700;
     color: #0f172a;
@@ -276,6 +292,154 @@
       margin-top: 0.35rem;
       font-size: 0.8125rem;
       color: #dc2626;
+=======
+    margin: 0 0 $spacing-xs;
+    font-size: $font-size-3xl;
+    font-weight: $font-weight-extrabold;
+    background: $gradient-primary;
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+
+  .subtitle {
+    color: $neutral-500;
+    margin-bottom: $spacing-xl;
+    font-size: $font-size-sm;
+  }
+
+  // ── Error Banner ───────────────────────────────────────────────
+  .error-banner {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+    padding: $spacing-md $spacing-lg;
+    margin-bottom: $spacing-lg;
+    background: $error-50;
+    border: 1.5px solid rgba($error-500, 0.25);
+    border-radius: $radius-xl;
+    color: $error-700;
+    font-size: $font-size-sm;
+
+    &::before { content: '⚠ '; }
+  }
+
+  // ── Form ────────────────────────────────────────────────────────
+  .offer-form {
+    background: $white;
+    border-radius: $radius-xl;
+    border: 1.5px solid $neutral-200;
+    padding: $spacing-xl;
+
+    .field {
+      margin-bottom: $spacing-lg;
+
+      label {
+        display: block;
+        margin-bottom: $spacing-xs;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-semibold;
+        color: $neutral-700;
+
+        .required { color: $error-500; }
+      }
+
+      input,
+      textarea,
+      select {
+        width: 100%;
+        padding: $spacing-sm $spacing-md;
+        font-size: $font-size-sm;
+        font-family: $font-family;
+        border: 1.5px solid $neutral-300;
+        border-radius: $radius-lg;
+        box-sizing: border-box;
+        background: $white;
+        color: $neutral-900;
+        transition: $transition-fast;
+
+        &:focus {
+          outline: none;
+          border-color: $primary-500;
+          box-shadow: 0 0 0 3px rgba($primary-500, 0.12);
+        }
+
+        &::placeholder { color: $neutral-400; }
+      }
+
+      textarea {
+        resize: vertical;
+        min-height: 120px;
+      }
+
+      select {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right $spacing-md center;
+        padding-right: $spacing-2xl;
+      }
+
+      .field-error {
+        display: block;
+        margin-top: $spacing-xs;
+        font-size: $font-size-xs;
+        color: $error-600;
+
+        &::before { content: '⚠ '; }
+      }
+    }
+
+    .field-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: $spacing-md;
+
+      @media (max-width: $breakpoint-sm) {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .form-actions {
+      display: flex;
+      gap: $spacing-md;
+      margin-top: $spacing-xl;
+      padding-top: $spacing-lg;
+      border-top: 1.5px solid $neutral-100;
+      justify-content: flex-end;
+
+      .btn-secondary {
+        padding: $spacing-sm $spacing-lg;
+        font-weight: $font-weight-semibold;
+        border-radius: $radius-full;
+        cursor: pointer;
+        background: transparent;
+        color: $neutral-600;
+        border: 1.5px solid $neutral-300;
+        text-decoration: none;
+        display: inline-flex;
+        align-items: center;
+        font-size: $font-size-sm;
+        transition: $transition-base;
+
+        &:hover { background: $neutral-100; border-color: $neutral-400; }
+      }
+
+      .btn-primary {
+        padding: $spacing-sm $spacing-lg;
+        font-weight: $font-weight-semibold;
+        border-radius: $radius-full;
+        cursor: pointer;
+        font-size: $font-size-sm;
+        @include button-gradient;
+        box-shadow: 0 2px 8px rgba($primary-500, 0.35);
+        transition: $transition-base;
+
+        &:hover:not(:disabled) { transform: translateY(-1px); box-shadow: $shadow-primary; }
+        &:disabled { opacity: 0.6; cursor: not-allowed; }
+      }
+>>>>>>> 3d77214c3395a206df006b98c337604ca8cfb723
     }
   }
 
@@ -451,6 +615,7 @@
 .add-offer-form .btn-apply-translation:hover {
   background: #2563eb;
 }
+<<<<<<< HEAD
 
 @media (max-width: 600px) {
   .add-offer-form .field-row {
@@ -469,3 +634,5 @@
     }
   }
 }
+=======
+>>>>>>> 3d77214c3395a206df006b98c337604ca8cfb723

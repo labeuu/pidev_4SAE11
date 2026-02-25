@@ -465,6 +465,8 @@
         font-weight: $font-weight-semibold;
         color: $neutral-700;
         margin-bottom: $spacing-xs;
+
+        .req { color: $error-500; }
       }
 
       input {
@@ -483,6 +485,31 @@
           border-color: $primary-500;
           box-shadow: 0 0 0 3px rgba($primary-500, 0.12);
         }
+
+        &.input-invalid {
+          border-color: $error-500 !important;
+          background: $error-50 !important;
+
+          &:focus {
+            box-shadow: 0 0 0 3px rgba($error-500, 0.14);
+          }
+        }
+      }
+
+      .field-err-msg {
+        display: block;
+        font-size: $font-size-xs;
+        color: $error-600;
+        margin-top: 4px;
+
+        &::before { content: '⚠ '; }
+      }
+
+      .field-hint {
+        display: block;
+        font-size: $font-size-xs;
+        color: $neutral-400;
+        margin-top: 4px;
       }
     }
 

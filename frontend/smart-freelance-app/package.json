@@ -29,7 +29,12 @@
     "@angular/forms": "^21.1.0",
     "@angular/platform-browser": "^21.1.0",
     "@angular/router": "^21.1.0",
+<<<<<<< HEAD
     "bootstrap": "^5.3.8",
+=======
+    "chart.js": "^4.5.1",
+    "ng2-charts": "^8.0.0",
+>>>>>>> 3d77214c3395a206df006b98c337604ca8cfb723
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"
   },

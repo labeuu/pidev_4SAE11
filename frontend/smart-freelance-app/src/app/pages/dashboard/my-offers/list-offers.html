@@ -100,11 +100,17 @@
   }
 
   <div class="empty-state" *ngIf="!loading && !errorMessage && offers.length === 0">
+<<<<<<< HEAD
     <p>No offers match your filters.</p>
     <div class="empty-actions">
       <button type="button" class="btn btn--clear" (click)="clearFilters()">Clear filters</button>
       <a routerLink="/dashboard/my-offers/add" class="btn btn--add-offer">Create an offer</a>
     </div>
+=======
+    <span class="empty-icon">📋</span>
+    <p>No offers yet. Create your first offer to get started!</p>
+    <a routerLink="/dashboard/my-offers/add" class="btn btn--add-offer">Create your first offer</a>
+>>>>>>> 3d77214c3395a206df006b98c337604ca8cfb723
   </div>
 
   <!-- Statistiques (en bas de page) – calcul backend, affichage uniquement -->

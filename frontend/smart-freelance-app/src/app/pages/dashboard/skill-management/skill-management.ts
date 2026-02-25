@@ -41,6 +41,7 @@ export class SkillManagement implements OnInit, OnDestroy {
 
   // Error State
   errorMessage: string | null = null;
+  skillFormErrors: Record<string, string> = {};
 
   // Subscription management
   private skillsSubscription?: Subscription;
@@ -107,23 +108,45 @@ export class SkillManagement implements OnInit, OnDestroy {
     this.errorMessage = null;
     this.newSkillName = '';
     this.newSkillDomain = '';
+    this.skillFormErrors = {};
     this.showAddModal = true;
   }
 
-  addSkill() {
-    if (!this.newSkillName || !this.newSkillDomain) {
-      this.errorMessage = 'Please enter both skill name and domain.';
-      setTimeout(() => this.errorMessage = null, 3000);
-      return;
+  private validateSkillForm(): boolean {
+    this.skillFormErrors = {};
+    const name = this.newSkillName.trim();
+    const domain = this.newSkillDomain.trim();
+
+    if (!name) {
+      this.skillFormErrors['name'] = 'Skill name is required.';
+    } else if (name.length < 2) {
+      this.skillFormErrors['name'] = 'Skill name must be at least 2 characters.';
+    } else if (name.length > 50) {
+      this.skillFormErrors['name'] = 'Skill name must be 50 characters or less.';
+    } else if (!/^[a-zA-Z0-9 .+#\-\/()]+$/.test(name)) {
+      this.skillFormErrors['name'] = 'Only letters, numbers, spaces and . + # - / ( ) are allowed.';
     }
+
+    if (!domain) {
+      this.skillFormErrors['domain'] = 'Domain is required.';
+    } else if (domain.length < 2) {
+      this.skillFormErrors['domain'] = 'Domain must be at least 2 characters.';
+    } else if (domain.length > 30) {
+      this.skillFormErrors['domain'] = 'Domain must be 30 characters or less.';
+    }
+
+    return Object.keys(this.skillFormErrors).length === 0;
+  }
+
+  addSkill() {
+    if (!this.validateSkillForm()) return;
 
     const skillExists = this.skills.some(
       skill => skill.name.toLowerCase() === this.newSkillName.trim().toLowerCase()
     );
 
     if (skillExists) {
-      this.errorMessage = `The skill "${this.newSkillName}" already exists in your profile.`;
-      setTimeout(() => this.errorMessage = null, 3000);
+      this.skillFormErrors['name'] = `"${this.newSkillName.trim()}" is already in your profile.`;
       return;
     }
 
@@ -242,6 +265,7 @@ export class SkillManagement implements OnInit, OnDestroy {
     if (!this.selectedOption || !this.currentTest) return;
 
     const currentQuestion = this.currentTest.questions[this.currentQuestionIndex];
+    this.selectedOption = this.selectedOption.substring(0, 8);
     this.isAnswerCorrect = this.selectedOption === currentQuestion.correctOption;
     this.isAnswerSubmitted = true;
 

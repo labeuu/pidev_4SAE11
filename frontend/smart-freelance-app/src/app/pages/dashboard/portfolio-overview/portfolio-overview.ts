@@ -27,6 +27,13 @@ export class PortfolioOverview implements OnInit, OnDestroy {
   newKeyTask = '';
   newSkillName = '';
 
+  // Inline validation errors
+  formErrors: Record<string, string> = {};
+
+  get todayIso(): string {
+    return new Date().toISOString().split('T')[0];
+  }
+
   // Subscription management
   private skillsSubscription?: Subscription;
 
@@ -106,17 +113,17 @@ export class PortfolioOverview implements OnInit, OnDestroy {
   openAddForm() {
     this.currentExperience = this.getEmptyExperience();
     this.isEditing = false;
+    this.formErrors = {};
     this.showForm = true;
   }
 
   openEditForm(exp: Experience) {
-    this.currentExperience = { ...exp, skillNames: [] }; // Reset skillNames for editing or fetch if needed
-    // Note: Backend returns 'skills' (objects) but form uses 'skillNames' (strings) for adding new ones.
-    // Ideally we map existing skills to skillNames if we want to show them in the tag input.
+    this.currentExperience = { ...exp, skillNames: [] };
     if(exp.skills) {
       this.currentExperience.skillNames = exp.skills.map(s => s.name);
     }
     this.isEditing = true;
+    this.formErrors = {};
     this.showForm = true;
   }
 
@@ -127,22 +134,60 @@ export class PortfolioOverview implements OnInit, OnDestroy {
   }
 
   private isValidDate(value: string): boolean {
-    if (!value) return true; // empty is allowed (e.g. endDate)
+    if (!value) return true;
     const iso = /^\d{4}-\d{2}-\d{2}$/.test(value);
     if (!iso) return false;
     const d = new Date(value);
     return !isNaN(d.getTime());
   }
 
+  private validateExperienceForm(): boolean {
+    this.formErrors = {};
+    const e = this.currentExperience;
+
+    if (!e.title?.trim()) {
+      this.formErrors['title'] = 'Job title / role is required.';
+    } else if (e.title.trim().length < 3) {
+      this.formErrors['title'] = 'Title must be at least 3 characters.';
+    } else if (e.title.trim().length > 100) {
+      this.formErrors['title'] = 'Title must be 100 characters or less.';
+    }
+
+    if (!e.companyOrClientName?.trim()) {
+      this.formErrors['company'] = 'Company / client name is required.';
+    } else if (e.companyOrClientName.trim().length < 2) {
+      this.formErrors['company'] = 'Must be at least 2 characters.';
+    } else if (e.companyOrClientName.trim().length > 100) {
+      this.formErrors['company'] = 'Must be 100 characters or less.';
+    }
+
+    if (!e.startDate) {
+      this.formErrors['startDate'] = 'Start date is required.';
+    } else if (!this.isValidDate(e.startDate)) {
+      this.formErrors['startDate'] = 'Please enter a valid date.';
+    } else if (new Date(e.startDate) > new Date()) {
+      this.formErrors['startDate'] = 'Start date cannot be in the future.';
+    }
+
+    if (e.endDate) {
+      if (!this.isValidDate(e.endDate)) {
+        this.formErrors['endDate'] = 'Please enter a valid date.';
+      } else if (e.startDate && new Date(e.endDate) < new Date(e.startDate)) {
+        this.formErrors['endDate'] = 'End date must be after start date.';
+      }
+    }
+
+    if (!e.description?.trim()) {
+      this.formErrors['description'] = 'Description is required.';
+    } else if (e.description.trim().length < 20) {
+      this.formErrors['description'] = `At least 20 characters required (${e.description.trim().length}/20).`;
+    }
+
+    return Object.keys(this.formErrors).length === 0;
+  }
+
   saveExperience() {
-    if (!this.isValidDate(this.currentExperience.startDate)) {
-      alert('Start date is invalid. Please use the date picker or enter a valid date (YYYY-MM-DD).');
-      return;
-    }
-    if (!this.isValidDate(this.currentExperience.endDate)) {
-      alert('End date is invalid. Please use the date picker or enter a valid date (YYYY-MM-DD).');
-      return;
-    }
+    if (!this.validateExperienceForm()) return;
 
     if (this.isEditing && this.currentExperience.id) {
       this.portfolioService.updateExperience(this.currentExperience.id, this.currentExperience).subscribe(() => {
