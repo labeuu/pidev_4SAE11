@@ -6,13 +6,14 @@ import lombok.NoArgsConstructor;
 import org.example.offer.entity.OfferStatus;
 
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
 public class OfferFilterRequest {
 
-    private String keyword; // Recherche dans titre, description, tags
+    private String keyword; // Recherche dans titre, description, tags (recherche instantanée dès le 1er caractère)
     private String domain;
     private String category;
     private OfferStatus offerStatus;
@@ -24,6 +25,11 @@ public class OfferFilterRequest {
     private Boolean isFeatured;
     private Boolean isActive;
     private Long freelancerId;
+
+    /** Filtre par date de création (début) */
+    private LocalDate createdAtFrom;
+    /** Filtre par date de création (fin) */
+    private LocalDate createdAtTo;
 
     // Pagination
     private Integer page = 0;

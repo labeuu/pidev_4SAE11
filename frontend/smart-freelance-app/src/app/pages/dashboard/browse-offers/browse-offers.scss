@@ -16,6 +16,58 @@
     margin-bottom: 1.5rem;
   }
 
+  .recommended-section {
+    margin-bottom: 2.5rem;
+    padding: 1.5rem;
+    background: linear-gradient(145deg, #f0fdf4 0%, #dcfce7 100%);
+    border: 1px solid #bbf7d0;
+    border-radius: 16px;
+  }
+
+  .recommended-section__title {
+    margin: 0 0 0.25rem;
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: #166534;
+  }
+
+  .recommended-section__subtitle {
+    margin: 0 0 1rem;
+    font-size: 0.9rem;
+    color: #15803d;
+  }
+
+  .recommended-section__loading {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .recommended-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+
+  .offer-card--recommended {
+    border: 1px solid #86efac;
+    position: relative;
+  }
+
+  .offer-badge {
+    position: absolute;
+    top: 0.75rem;
+    right: 0.75rem;
+    font-size: 0.7rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: #166534;
+    background: #dcfce7;
+    padding: 0.25rem 0.5rem;
+    border-radius: 6px;
+  }
+
   .toolbar {
     display: flex;
     align-items: center;

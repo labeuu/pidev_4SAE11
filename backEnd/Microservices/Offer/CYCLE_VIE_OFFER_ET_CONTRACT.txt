@@ -1,0 +1,57 @@
+================================================================================
+  GESTION OFFRE – CYCLE DE VIE (MODÈLE SERVICE-BASED TYPE FIVERR)
+================================================================================
+
+1. MODÈLE ADOPTÉ
+----------------
+L'Offer est un service catalogue créé uniquement par le freelancer.
+Cycle de vie simplifié : DRAFT → AVAILABLE → IN_PROGRESS → COMPLETED.
+
+2. STATUTS OFFRE (ÉVOLUTIFS)
+----------------------------
+  • DRAFT         – Brouillon (pas encore publié)
+  • AVAILABLE     – Disponible pour candidatures (catalogue)
+  • IN_PROGRESS   – En cours (candidat sélectionné, contrat créé)
+  • COMPLETED     – Terminée (livraison validée côté Contract)
+
+(Statuts additionnels possibles : EXPIRED, CLOSED, CANCELLED selon besoins.)
+
+3. WORKFLOW
+-----------
+  1. Le freelancer crée une Offer (DRAFT) puis la publie (AVAILABLE).
+  2. Le client soumet une OfferApplication (candidature).
+  3. Le freelancer accepte l’application :
+     → La candidature passe en ACCEPTED.
+     → L’Offer passe en IN_PROGRESS.
+     → Un Contract est créé automatiquement via le microservice Contract.
+  4. L’exécution (livraison, validation, paiement) est gérée entièrement par
+     le microservice Contract.
+  5. Lorsque le Contract est complété, l’Offer peut être synchronisée en
+     COMPLETED (cohérence du workflow global).
+
+4. RESPONSABILITÉS
+------------------
+  • Microservice Offer : catalogue des services, matching (candidatures),
+    statut de l’offre. Pas de gestion de livraison/paiement.
+  • Microservice Contract : exécution, signatures, livraison, validation,
+    paiement, conflits.
+
+5. ASSOCIATIONS ENTRE MICROSERVICES
+-----------------------------------
+  Uniquement par identifiants (pas de dépendances JPA directes) :
+  • offerId
+  • clientId
+  • freelancerId
+  • offerApplicationId (lien OfferApplication ↔ Contract)
+
+  Le Contract stocke offerApplicationId, clientId, freelancerId pour tracer
+  l’origine (offre + candidature acceptée).
+
+6. SYNCHRONISATION OFFRE ↔ CONTRACT
+------------------------------------
+  • À l’acceptation d’une candidature : Offer → IN_PROGRESS, création du Contract.
+  • Quand le Contract passe en COMPLETED : l’Offer peut être mise à jour en
+    COMPLETED (via appel du microservice Contract vers Offer, ou via événement
+    / job asynchrone, selon l’architecture retenue).
+
+================================================================================

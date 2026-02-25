@@ -4,13 +4,47 @@
     <a routerLink="/dashboard/my-offers/add" class="btn btn--add-offer">+ Add Offer</a>
   </div>
 
-  <div class="toolbar">
-    <span class="toolbar-count">{{ offers.length }} offer(s)</span>
-    <div class="toolbar-actions">
-      <button type="button" class="btn-refresh" (click)="loadOffers()" [disabled]="loading">
-        {{ loading ? 'Loading…' : 'Refresh' }}
-      </button>
+  <!-- Recherche dynamique (dès le 1er caractère, requêtes JSON backend) -->
+  <section class="search-section">
+    <div class="search-row">
+      <input
+        type="text"
+        class="search-input"
+        placeholder="Search by title, description, tags…"
+        [(ngModel)]="keyword"
+        (input)="onKeywordInput()"
+      />
     </div>
+
+    <!-- Filtres avancés cumulables -->
+    <div class="filters-panel">
+      <div class="filter-row">
+        <input type="text" class="filter-input" placeholder="Category" [(ngModel)]="category" />
+        <select class="filter-select" [(ngModel)]="offerStatus">
+          <option value="">All statuses</option>
+          <option value="DRAFT">DRAFT</option>
+          <option value="AVAILABLE">AVAILABLE</option>
+          <option value="IN_PROGRESS">IN_PROGRESS</option>
+          <option value="ACCEPTED">ACCEPTED</option>
+          <option value="COMPLETED">COMPLETED</option>
+          <option value="EXPIRED">EXPIRED</option>
+          <option value="CLOSED">CLOSED</option>
+        </select>
+        <input type="date" class="filter-date" placeholder="From" [(ngModel)]="createdAtFrom" />
+        <input type="date" class="filter-date" placeholder="To" [(ngModel)]="createdAtTo" />
+        <input type="number" class="filter-number" placeholder="Min price" min="0" step="0.01" [(ngModel)]="minPrice" />
+        <input type="number" class="filter-number" placeholder="Max price" min="0" step="0.01" [(ngModel)]="maxPrice" />
+        <button type="button" class="btn btn--apply" (click)="applyFilters()">Apply filters</button>
+        <button type="button" class="btn btn--clear" (click)="clearFilters()">Clear</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="toolbar">
+    <span class="toolbar-count">{{ totalElements }} offer(s)</span>
+    <button type="button" class="btn-refresh" (click)="loadOffers()" [disabled]="loading">
+      {{ loading ? 'Loading…' : 'Refresh' }}
+    </button>
   </div>
 
   <div class="loading-state" *ngIf="loading">
@@ -56,10 +90,103 @@
     </div>
   </div>
 
+  <!-- Pagination -->
+  @if (totalPages > 1 && !loading) {
+    <div class="pagination">
+      <button type="button" [disabled]="currentPage === 0" (click)="goToPage(currentPage - 1)">Previous</button>
+      <span class="page-info">Page {{ currentPage + 1 }} / {{ totalPages }}</span>
+      <button type="button" [disabled]="currentPage >= totalPages - 1" (click)="goToPage(currentPage + 1)">Next</button>
+    </div>
+  }
+
   <div class="empty-state" *ngIf="!loading && !errorMessage && offers.length === 0">
-    <p>No offers yet.</p>
-    <a routerLink="/dashboard/my-offers/add" class="btn btn--add-offer">Create your first offer</a>
+    <p>No offers match your filters.</p>
+    <div class="empty-actions">
+      <button type="button" class="btn btn--clear" (click)="clearFilters()">Clear filters</button>
+      <a routerLink="/dashboard/my-offers/add" class="btn btn--add-offer">Create an offer</a>
+    </div>
   </div>
+
+  <!-- Statistiques (en bas de page) – calcul backend, affichage uniquement -->
+  <section class="stats-section">
+    <header class="stats-header">
+      <h3 class="stats-title">Performance overview</h3>
+      <p class="stats-subtitle">Key metrics from your offers and applications</p>
+    </header>
+    @if (statsLoading) {
+      <div class="stats-loading-state">
+        <span class="stats-spinner"></span>
+        <p class="stats-loading-text">Loading statistics…</p>
+      </div>
+    } @else {
+      <div class="stats-grid">
+        @if (statsByStatus) {
+          <article class="stat-card stat-card--status">
+            <div class="stat-card__header">
+              <span class="stat-card__icon stat-card__icon--status" aria-hidden="true"></span>
+              <h4 class="stat-card__title">Offers by status</h4>
+            </div>
+            <p class="stat-card__total">{{ totalOffersByStatus() }} total</p>
+            <div class="status-badges">
+              @for (entry of (statsByStatus | keyvalue); track entry.key) {
+                @if (entry.value > 0) {
+                  <span class="badge" [ngClass]="'badge--' + statusSlug(entry.key)">{{ entry.key }}: {{ entry.value }}</span>
+                }
+              }
+            </div>
+          </article>
+        }
+        @if (acceptanceRate) {
+          <article class="stat-card stat-card--rate">
+            <div class="stat-card__header">
+              <span class="stat-card__icon stat-card__icon--rate" aria-hidden="true"></span>
+              <h4 class="stat-card__title">Acceptance rate</h4>
+            </div>
+            <p class="stat-card__kpi rate-value">{{ formatRate(acceptanceRate.rate) }}</p>
+            <div class="rate-bar" [style.--rate]="(acceptanceRate.rate * 100) + '%'">
+              <span class="rate-bar__fill"></span>
+            </div>
+            <p class="stat-card__detail rate-detail">{{ acceptanceRate.acceptedCount }} accepted / {{ acceptanceRate.totalApplications }} applications</p>
+          </article>
+        }
+        @if (monthlyEvolution) {
+          <article class="stat-card stat-card--evolution">
+            <div class="stat-card__header">
+              <span class="stat-card__icon stat-card__icon--chart" aria-hidden="true"></span>
+              <h4 class="stat-card__title">Monthly evolution</h4>
+              <div class="year-select">
+                <label for="stats-year" class="year-select__label">Year</label>
+                <select id="stats-year" class="year-select__input" [(ngModel)]="selectedYear" (ngModelChange)="refreshMonthlyEvolution()">
+                  @for (y of yearOptions; track y) {
+                    <option [value]="y">{{ y }}</option>
+                  }
+                </select>
+              </div>
+            </div>
+            <div class="chart chart--bars">
+              <div class="chart__bars">
+                @for (m of monthlyEvolution.months; track m.month) {
+                  <div class="chart__bar-wrap" [title]="monthName(m.month) + ': ' + m.count">
+                    <span class="chart__bar" [style.--h]="(maxMonthCount ? (m.count / maxMonthCount) : 0) * 100"></span>
+                  </div>
+                }
+              </div>
+              <div class="chart__labels">
+                @for (m of monthlyEvolution.months; track m.month) {
+                  <span class="chart__label">{{ monthName(m.month) }}</span>
+                }
+              </div>
+              <div class="chart__values">
+                @for (m of monthlyEvolution.months; track m.month) {
+                  <span class="chart__value">{{ m.count }}</span>
+                }
+              </div>
+            </div>
+          </article>
+        }
+      </div>
+    }
+  </section>
 
   @if (offerToDelete) {
     <div class="modal-overlay" (click)="closeDeleteModal()">
@@ -67,7 +194,6 @@
         <h3>Delete offer</h3>
         <p class="modal-message">
           Are you sure you want to delete <strong>{{ offerToDelete.title }}</strong>?
-          This action cannot be undone.
         </p>
         <div class="modal-actions">
           <button type="button" class="btn-secondary" (click)="closeDeleteModal()" [disabled]="deleting">Cancel</button>

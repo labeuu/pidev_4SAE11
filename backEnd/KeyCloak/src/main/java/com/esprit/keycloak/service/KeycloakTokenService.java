@@ -10,7 +10,12 @@ import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
+import org.springframework.web.client.HttpStatusCodeException;
+import org.springframework.web.client.ResourceAccessException;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Optional;
 
 /**
  * Proxies token requests to Keycloak (resource owner password grant).
@@ -81,14 +86,31 @@ public class KeycloakTokenService {
         }
 
         HttpEntity<MultiValueMap<String, String>> request = new HttpEntity<>(body, headers);
-        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
-
-        if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
-            throw new IllegalArgumentException("Token request failed: " + response.getStatusCode());
+        String responseBody;
+        try {
+            ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Token request failed: " + response.getStatusCode());
+            }
+            responseBody = response.getBody();
+        } catch (HttpStatusCodeException e) {
+            String message = parseKeycloakError(e.getResponseBodyAsString());
+            if (e.getStatusCode().value() == 401) {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, message);
+            }
+            if (e.getStatusCode().value() == 400) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+            }
+            throw new ResponseStatusException(e.getStatusCode(), message);
+        } catch (ResourceAccessException e) {
+            log.warn("Keycloak unreachable at {}: {}", url, e.getMessage());
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                "Authentication service unavailable. Ensure Keycloak is running (e.g. on port 9090).");
         }
 
         try {
-            JsonNode node = objectMapper.readTree(response.getBody());
+            JsonNode node = objectMapper.readTree(responseBody);
             return TokenResponse.builder()
                 .accessToken(node.path("access_token").asText(null))
                 .refreshToken(node.has("refresh_token") ? node.path("refresh_token").asText() : null)
@@ -99,6 +121,19 @@ public class KeycloakTokenService {
                 .build();
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse token response", e);
+        }
+    }
+
+    private String parseKeycloakError(String body) {
+        if (body == null || body.isBlank()) return "Invalid credentials or request.";
+        try {
+            JsonNode node = objectMapper.readTree(body);
+            String desc = node.path("error_description").asText("");
+            if (!desc.isBlank()) return desc;
+            String err = node.path("error").asText("");
+            return err.isBlank() ? "Invalid credentials or request." : err;
+        } catch (Exception e) {
+            return "Invalid credentials or request.";
         }
     }
 }

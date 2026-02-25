@@ -20,6 +20,17 @@ export class AddOffer implements OnInit {
   currentUser: User | null = null;
   minDate: string;
 
+  translateLang: 'fr' | 'en' | 'ar' = 'en';
+  translating = false;
+  translateFormError = '';
+  translatedFormResult: string[] | null = null;
+
+  /** Barre de notification (success / error / info) */
+  notificationMessage = '';
+  notificationType: 'success' | 'error' | 'info' = 'info';
+  notificationVisible = false;
+  private notificationTimeout: ReturnType<typeof setTimeout> | null = null;
+
   constructor(
     private fb: FormBuilder,
     private auth: AuthService,
@@ -44,13 +55,68 @@ export class AddOffer implements OnInit {
   ngOnInit(): void {
     const email = this.auth.getPreferredUsername();
     if (!email) {
-      this.submitError = 'You must be logged in.';
+      this.showNotification('You must be logged in.', 'error');
       return;
     }
     this.userService.getByEmail(email).subscribe((u) => {
       this.currentUser = u ?? null;
-      if (!this.currentUser) this.submitError = 'Could not load your profile.';
+      if (!this.currentUser) this.showNotification('Could not load your profile.', 'error');
     });
+  }
+
+  showNotification(message: string, type: 'success' | 'error' | 'info' = 'info'): void {
+    if (this.notificationTimeout) clearTimeout(this.notificationTimeout);
+    this.notificationMessage = message;
+    this.notificationType = type;
+    this.notificationVisible = true;
+    if (type === 'success' || type === 'info') {
+      this.notificationTimeout = setTimeout(() => this.clearNotification(), 5000);
+    }
+  }
+
+  clearNotification(): void {
+    if (this.notificationTimeout) {
+      clearTimeout(this.notificationTimeout);
+      this.notificationTimeout = null;
+    }
+    this.notificationVisible = false;
+    this.notificationMessage = '';
+  }
+
+  canTranslate(): boolean {
+    const t = this.form.get('title')?.value?.trim();
+    const d = this.form.get('description')?.value?.trim();
+    return !!(t && t.length >= 5 && d && d.length >= 20);
+  }
+
+  runTranslateForm(): void {
+    if (!this.canTranslate()) return;
+    const title = this.form.get('title')?.value ?? '';
+    const description = this.form.get('description')?.value ?? '';
+    this.translating = true;
+    this.translateFormError = '';
+    this.translatedFormResult = null;
+    this.offerService.translateTexts([title, description], this.translateLang).subscribe({
+      next: (translations) => {
+        this.translatedFormResult = translations;
+        this.translating = false;
+      },
+      error: (err: unknown) => {
+        const e = err as { error?: { message?: string }; message?: string };
+        this.translateFormError = e?.error?.message || e?.message || 'Translation failed.';
+        this.translating = false;
+      },
+    });
+  }
+
+  applyTranslation(): void {
+    if (!this.translatedFormResult || this.translatedFormResult.length < 2) return;
+    this.form.patchValue({
+      title: this.translatedFormResult[0],
+      description: this.translatedFormResult[1],
+    });
+    this.translatedFormResult = null;
+    this.showNotification('Translation applied to the form.', 'success');
   }
 
   submit(): void {
@@ -80,7 +146,7 @@ export class AddOffer implements OnInit {
       error: (err: unknown) => {
         this.isSubmitting = false;
         const e = err as { error?: { message?: string }; message?: string };
-        this.submitError = e?.error?.message || e?.message || 'Failed to create offer.';
+        this.showNotification(e?.error?.message || e?.message || 'Failed to create offer.', 'error');
       },
     });
   }

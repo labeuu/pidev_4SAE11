@@ -347,6 +347,10 @@ export class AuthService {
     if (status === 0 || status === undefined) {
       return 'Cannot reach the server. Check your connection and try again.';
     }
+    if (status === 503) {
+      const backendMsg = typeof body === 'object' && body?.error ? String(body.error) : '';
+      return backendMsg || 'Authentication service unavailable. Ensure Keycloak is running (e.g. on port 9090).';
+    }
     if (status && status >= 500) {
       return 'Authentication service is temporarily unavailable. Please try again later.';
     }

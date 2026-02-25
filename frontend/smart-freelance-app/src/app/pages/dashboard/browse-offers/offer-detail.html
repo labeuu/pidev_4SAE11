@@ -1,49 +1,121 @@
 <div class="offer-detail-page" *ngIf="offer">
   <div class="back-row">
-    <a routerLink="/dashboard/browse-offers" class="btn-back">Back to offers</a>
+    <a routerLink="/dashboard/browse-offers" class="btn btn-link text-secondary text-decoration-none p-0">← Back to offers</a>
   </div>
-  <div class="offer-card">
-    <h1>{{ offer.title }}</h1>
-    <p class="domain">{{ offer.domain }}</p>
-    <p class="description">{{ offer.description }}</p>
-    <div class="meta">
-      <span class="price">{{ offer.price | number:'1.2-2' }} ({{ offer.durationType }})</span>
-      <span *ngIf="offer.deadline">Deadline: {{ offer.deadline }}</span>
+  <div class="card shadow-sm mb-4">
+    <div class="card-body">
+      <h1 class="h3 mb-1">{{ offer.title }}</h1>
+      <p class="text-muted small mb-2">{{ offer.domain }}</p>
+      <p class="card-text mb-3">{{ offer.description }}</p>
+      <div class="d-flex flex-wrap gap-3 align-items-center mb-3">
+        <span class="fw-semibold">{{ offer.price | number:'1.2-2' }} ({{ offer.durationType }})</span>
+        <span *ngIf="offer.deadline" class="text-muted small">Deadline: {{ offer.deadline }}</span>
+      </div>
+      <button type="button" class="btn btn-success" (click)="openApplyModal()" *ngIf="offer.canReceiveApplications">Apply for this offer</button>
+      <p *ngIf="!offer.canReceiveApplications" class="text-muted small mb-0">This offer is not accepting applications.</p>
     </div>
-    <button type="button" class="btn-apply" (click)="openApplyModal()" *ngIf="offer.canReceiveApplications">Apply for this offer</button>
-    <p *ngIf="!offer.canReceiveApplications" class="closed-msg">This offer is not accepting applications.</p>
   </div>
 
+  <!-- Q&A -->
+  <section class="card shadow-sm">
+    <div class="card-body">
+      <h2 class="h5 mb-1">Questions & Answers</h2>
+      <p class="text-muted small mb-3">Ask the freelancer anything before applying.</p>
+
+      @if (currentUser && offer && currentUser.id !== offer.freelancerId) {
+        <form class="mb-4" (ngSubmit)="submitQuestion()">
+          <div class="mb-2">
+            <label for="questionText" class="form-label visually-hidden">Your question</label>
+            <textarea
+              id="questionText"
+              class="form-control"
+              placeholder="Ask a question (min 10 characters)..."
+              [(ngModel)]="questionText"
+              name="questionText"
+              rows="3"
+              minlength="10"
+              maxlength="1000"
+            ></textarea>
+          </div>
+          <button type="submit" class="btn btn-primary btn-sm" [disabled]="!questionText || questionText.trim().length < 10 || submittingQuestion">
+            {{ submittingQuestion ? 'Sending...' : 'Ask question' }}
+          </button>
+        </form>
+        @if (questionError) {
+          <div class="alert alert-danger py-2 small" role="alert">{{ questionError }}</div>
+        }
+      } @else if (!currentUser) {
+        <p class="text-muted small mb-0">Log in to ask a question.</p>
+      }
+
+      <div class="qa-list">
+        @if (loadingQuestions) {
+          <p class="text-muted small mb-0">Loading Q&A...</p>
+        } @else if (questions.length === 0) {
+          <p class="text-muted small mb-0">No questions yet. Be the first to ask!</p>
+        } @else {
+          @for (q of questions; track q.id) {
+            <div class="qa-item border rounded p-3 mb-2" [class.qa-item--answered]="q.answered">
+              <div class="qa-item__question mb-2">
+                <span class="badge bg-secondary me-1">Q</span>
+                <span class="qa-item__text">{{ q.questionText }}</span>
+                <span class="d-block small text-muted mt-1">{{ formatDate(q.askedAt) }}</span>
+              </div>
+              @if (q.answered && q.answerText) {
+                <div class="qa-item__answer">
+                  <span class="badge bg-success me-1">A</span>
+                  <span class="qa-item__text">{{ q.answerText }}</span>
+                  <span class="d-block small text-muted mt-1" *ngIf="q.answeredAt">{{ formatDate(q.answeredAt) }}</span>
+                </div>
+              } @else {
+                <p class="small text-muted fst-italic mb-0">No answer yet.</p>
+              }
+            </div>
+          }
+        }
+      </div>
+    </div>
+  </section>
+
+  <!-- Modal Apply -->
   <div class="modal-overlay" *ngIf="applyModalOpen" (click)="closeApplyModal()">
-    <div class="modal" (click)="$event.stopPropagation()">
-      <h3>Apply for {{ offer.title }}</h3>
-      <form [formGroup]="form" (ngSubmit)="submitApplication()">
-        <div class="field">
-          <label for="message">Message <span class="required">*</span></label>
-          <textarea id="message" formControlName="message" rows="4" placeholder="Introduce yourself and why you want this service (min 20 characters)."></textarea>
-          <span class="field-error" *ngIf="form.get('message')?.invalid && form.get('message')?.touched">Message is required (20-2000 characters).</span>
-        </div>
-        <div class="field">
-          <label for="proposedBudget">Your budget <span class="required">*</span></label>
-          <input id="proposedBudget" type="number" formControlName="proposedBudget" min="0.01" step="0.01" />
-          <span class="field-error" *ngIf="form.get('proposedBudget')?.invalid && form.get('proposedBudget')?.touched">Valid budget required.</span>
-        </div>
-        <div class="field">
-          <label for="estimatedDuration">Estimated duration (days)</label>
-          <input id="estimatedDuration" type="number" formControlName="estimatedDuration" min="1" />
-        </div>
-        <div class="field">
-          <label for="portfolioUrl">Portfolio URL (optional)</label>
-          <input id="portfolioUrl" type="url" formControlName="portfolioUrl" placeholder="https://..." />
-        </div>
-        <div class="modal-actions">
-          <button type="button" class="btn-secondary" (click)="closeApplyModal()" [disabled]="submitting">Cancel</button>
-          <button type="submit" class="btn-primary" [disabled]="form.invalid || submitting">{{ submitting ? 'Submitting...' : 'Submit application' }}</button>
-        </div>
-      </form>
-      <p class="error-msg" *ngIf="submitError">{{ submitError }}</p>
+    <div class="modal card shadow" (click)="$event.stopPropagation()">
+      <div class="card-body">
+        <h3 class="h5 card-title mb-3">Apply for {{ offer.title }}</h3>
+        <form [formGroup]="form" (ngSubmit)="submitApplication()">
+          <div class="mb-3">
+            <label for="message" class="form-label">Message <span class="text-danger">*</span></label>
+            <textarea id="message" class="form-control" formControlName="message" rows="4" placeholder="Introduce yourself and why you want this service (min 20 characters)." [class.is-invalid]="form.get('message')?.invalid && form.get('message')?.touched"></textarea>
+            @if (form.get('message')?.invalid && form.get('message')?.touched) {
+              <div class="invalid-feedback d-block">Message is required (20-2000 characters).</div>
+            }
+          </div>
+          <div class="mb-3">
+            <label for="proposedBudget" class="form-label">Your budget <span class="text-danger">*</span></label>
+            <input id="proposedBudget" type="number" class="form-control" formControlName="proposedBudget" min="0.01" step="0.01" [class.is-invalid]="form.get('proposedBudget')?.invalid && form.get('proposedBudget')?.touched" />
+            @if (form.get('proposedBudget')?.invalid && form.get('proposedBudget')?.touched) {
+              <div class="invalid-feedback d-block">Valid budget required.</div>
+            }
+          </div>
+          <div class="mb-3">
+            <label for="estimatedDuration" class="form-label">Estimated duration (days)</label>
+            <input id="estimatedDuration" type="number" class="form-control" formControlName="estimatedDuration" min="1" />
+          </div>
+          <div class="mb-3">
+            <label for="portfolioUrl" class="form-label">Portfolio URL (optional)</label>
+            <input id="portfolioUrl" type="url" class="form-control" formControlName="portfolioUrl" placeholder="https://..." />
+          </div>
+          @if (submitError) {
+            <div class="alert alert-danger py-2 small" role="alert">{{ submitError }}</div>
+          }
+          <div class="d-flex gap-2 justify-content-end pt-2">
+            <button type="button" class="btn btn-secondary" (click)="closeApplyModal()" [disabled]="submitting">Cancel</button>
+            <button type="submit" class="btn btn-primary" [disabled]="form.invalid || submitting">{{ submitting ? 'Submitting...' : 'Submit application' }}</button>
+          </div>
+        </form>
+      </div>
     </div>
   </div>
 </div>
-<p *ngIf="!offer && !loading">Offer not found.</p>
-<p *ngIf="loading">Loading...</p>
+<p *ngIf="!offer && !loading" class="text-muted">Offer not found.</p>
+<p *ngIf="loading" class="text-muted">Loading...</p>

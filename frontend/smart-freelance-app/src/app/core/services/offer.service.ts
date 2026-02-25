@@ -5,6 +5,7 @@ import { environment } from '../../../environments/environment';
 
 const OFFER_API = `${environment.apiGatewayUrl}/offer/api/offers`;
 const APPLICATION_API = `${environment.apiGatewayUrl}/offer/api/applications`;
+const DASHBOARD_API = `${environment.apiGatewayUrl}/offer/api/dashboard`;
 
 export type OfferStatus =
   | 'DRAFT'
@@ -72,6 +73,8 @@ export interface OfferFilterRequest {
   isFeatured?: boolean;
   isActive?: boolean;
   freelancerId?: number;
+  createdAtFrom?: string; // ISO date YYYY-MM-DD
+  createdAtTo?: string;
   page?: number;
   size?: number;
   sortBy?: string;
@@ -115,6 +118,16 @@ export interface PageResponse<T> {
   number: number;
   first: boolean;
   last: boolean;
+}
+
+/** Statistiques du dashboard freelancer (offres, contrats, candidatures). */
+export interface DashboardStats {
+  activeContracts: number;
+  activeContractsThisWeek: number;
+  totalSpentLast30Days: number;
+  totalProjectsPosted: number;
+  pendingApplications: number;
+  activeOffers: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -252,4 +265,111 @@ export class OfferService {
       })
       .pipe(catchError(() => of(null)));
   }
+
+  // ---------- Dashboard (statistiques freelancer) ----------
+  getFreelancerDashboardStats(freelancerId: number): Observable<DashboardStats | null> {
+    return this.http
+      .get<DashboardStats>(`${DASHBOARD_API}/freelancer/${freelancerId}`)
+      .pipe(catchError(() => of(null)));
+  }
+
+  /** Nombre d'offres par statut (backend agrégation) */
+  getOffersCountByStatus(freelancerId: number): Observable<{ countByStatus: Record<string, number> } | null> {
+    return this.http
+      .get<{ countByStatus: Record<string, number> }>(`${OFFER_API}/stats/freelancer/${freelancerId}/by-status`)
+      .pipe(catchError(() => of(null)));
+  }
+
+  /** Taux d'acceptation des candidatures */
+  getAcceptanceRate(freelancerId: number): Observable<AcceptanceRate | null> {
+    return this.http
+      .get<AcceptanceRate>(`${OFFER_API}/stats/freelancer/${freelancerId}/acceptance-rate`)
+      .pipe(catchError(() => of(null)));
+  }
+
+  /** Évolution mensuelle des offres */
+  getMonthlyEvolution(freelancerId: number, year: number): Observable<MonthlyEvolution | null> {
+    return this.http
+      .get<MonthlyEvolution>(`${OFFER_API}/stats/freelancer/${freelancerId}/monthly-evolution`, {
+        params: { year: String(year) },
+      })
+      .pipe(catchError(() => of(null)));
+  }
+
+  /** Traduction d'une offre (titre + description) – FR / EN / AR */
+  translateOffer(offerId: number, targetLanguage: string): Observable<TranslateOfferResult> {
+    return this.http
+      .post<TranslateOfferResult>(`${OFFER_API}/${offerId}/translate`, { targetLanguage })
+      .pipe(catchError((err) => throwError(() => err)));
+  }
+
+  /** Traduction de textes libres (formulaire add/edit) – FR / EN / AR */
+  translateTexts(texts: string[], targetLanguage: string): Observable<string[]> {
+    return this.http
+      .post<{ translations: string[] }>(`${OFFER_API}/translate-texts`, { texts, targetLanguage })
+      .pipe(
+        map((r) => r.translations ?? []),
+        catchError((err) => throwError(() => err))
+      );
+  }
+
+  /** Smart Matching : recommandations d'offres pour un client (historique + comportement) */
+  getRecommendedOffers(clientId: number, limit = 20): Observable<Offer[]> {
+    return this.http
+      .get<Offer[]>(`${OFFER_API}/recommendations/client/${clientId}`, { params: { limit: String(limit) } })
+      .pipe(catchError(() => of([])));
+  }
+
+  /** Enregistrer une vue d'offre par un client (pour Smart Matching / comportement) */
+  recordOfferView(clientId: number, offerId: number): Observable<void> {
+    return this.http.post<void>(`${OFFER_API}/views`, { clientId, offerId }).pipe(catchError(() => of(undefined)));
+  }
+
+  /** Q&A : liste des questions-réponses pour une offre */
+  getOfferQuestions(offerId: number): Observable<OfferQuestionResponse[]> {
+    return this.http
+      .get<OfferQuestionResponse[]>(`${OFFER_API}/${offerId}/questions`)
+      .pipe(catchError(() => of([])));
+  }
+
+  /** Q&A : un client pose une question */
+  addOfferQuestion(offerId: number, clientId: number, questionText: string): Observable<OfferQuestionResponse | null> {
+    return this.http
+      .post<OfferQuestionResponse>(`${OFFER_API}/${offerId}/questions`, { questionText }, { params: { clientId: String(clientId) } })
+      .pipe(catchError(() => of(null)));
+  }
+
+  /** Q&A : le freelancer répond à une question */
+  answerOfferQuestion(questionId: number, freelancerId: number, answerText: string): Observable<OfferQuestionResponse | null> {
+    return this.http
+      .patch<OfferQuestionResponse>(`${OFFER_API}/questions/${questionId}/answer`, { answerText }, { params: { freelancerId: String(freelancerId) } })
+      .pipe(catchError(() => of(null)));
+  }
+}
+
+export interface OfferQuestionResponse {
+  id: number;
+  offerId: number;
+  clientId: number;
+  questionText: string;
+  answerText: string | null;
+  askedAt: string;
+  answeredAt: string | null;
+  answered: boolean;
+}
+
+export interface TranslateOfferResult {
+  title: string;
+  description: string;
+}
+
+export interface AcceptanceRate {
+  totalApplications: number;
+  acceptedCount: number;
+  rate: number;
+}
+
+export interface MonthlyEvolution {
+  year: number;
+  months: { month: number; count: number }[];
 }

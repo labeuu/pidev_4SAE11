@@ -22,6 +22,9 @@ public interface OfferApplicationRepository extends JpaRepository<OfferApplicati
 
     List<OfferApplication> findByClientId(Long clientId);
 
+    @Query("SELECT a FROM OfferApplication a JOIN FETCH a.offer WHERE a.clientId = :clientId")
+    List<OfferApplication> findByClientIdWithOffer(@Param("clientId") Long clientId);
+
     Page<OfferApplication> findByClientId(Long clientId, Pageable pageable);
 
     List<OfferApplication> findByStatus(ApplicationStatus status);
@@ -35,6 +38,9 @@ public interface OfferApplicationRepository extends JpaRepository<OfferApplicati
 
     @Query("SELECT COUNT(a) FROM OfferApplication a WHERE a.offer.freelancerId = :freelancerId")
     Long countByOffer_FreelancerId(@Param("freelancerId") Long freelancerId);
+
+    @Query("SELECT COUNT(a) FROM OfferApplication a WHERE a.offer.freelancerId = :freelancerId AND a.status = 'ACCEPTED'")
+    Long countAcceptedByFreelancerId(@Param("freelancerId") Long freelancerId);
 
     @Query("SELECT a FROM OfferApplication a WHERE a.offer.freelancerId = :freelancerId AND a.isRead = false ORDER BY a.appliedAt DESC")
     List<OfferApplication> findUnreadApplicationsByFreelancer(@Param("freelancerId") Long freelancerId);

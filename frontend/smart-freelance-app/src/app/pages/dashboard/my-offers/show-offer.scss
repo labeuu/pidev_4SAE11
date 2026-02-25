@@ -73,6 +73,225 @@
     }
   }
 
+  .translate-section {
+    padding: 1.5rem 2rem;
+    margin-bottom: 2rem;
+    border-radius: 16px;
+    background: linear-gradient(145deg, #f8fafc 0%, #f1f5f9 100%);
+    border: 1px solid #e2e8f0;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  }
+
+  .translate-section__title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    margin: 0 0 0.25rem;
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .translate-section__icon {
+    width: 28px;
+    height: 28px;
+    border-radius: 8px;
+    background: linear-gradient(135deg, #3b82f6 0%, #2563eb 100%);
+  }
+
+  .translate-section__subtitle {
+    margin: 0 0 1.25rem;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .translate-section__actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.6rem;
+  }
+
+  .translate-lang-btn {
+    padding: 0.5rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    border: 1px solid #cbd5e1;
+    border-radius: 10px;
+    background: #fff;
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .translate-lang-btn:hover,
+  .translate-lang-btn--active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+  }
+
+  .translate-run-btn {
+    padding: 0.5rem 1.25rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: none;
+    border-radius: 10px;
+    background: #10b981;
+    color: #fff;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .translate-run-btn:hover:not(:disabled) {
+    background: #059669;
+  }
+
+  .translate-run-btn:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+
+  .translate-section__error {
+    margin: 0.75rem 0 0;
+    padding: 0.5rem;
+    font-size: 0.875rem;
+    color: #dc2626;
+    background: #fef2f2;
+    border-radius: 8px;
+  }
+
+  .translate-result {
+    margin-top: 1.25rem;
+    padding: 1.25rem;
+    background: #fff;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+  }
+
+  .translate-result--rtl {
+    direction: rtl;
+    text-align: right;
+  }
+
+  .translate-result__title {
+    margin: 0 0 0.5rem;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: #1e293b;
+  }
+
+  .translate-result__description {
+    margin: 0 0 0.5rem;
+    font-size: 0.95rem;
+    line-height: 1.6;
+    color: #334155;
+  }
+
+  .translate-result__meta {
+    margin: 0;
+    font-size: 0.8rem;
+    color: #64748b;
+  }
+
+  .qa-freelancer-section {
+    padding: 1.35rem 2rem;
+    margin-bottom: 2rem;
+  }
+
+  .qa-freelancer-section__title {
+    margin: 0 0 0.25rem;
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0f172a;
+  }
+
+  .qa-freelancer-section__subtitle {
+    margin: 0 0 1rem;
+    font-size: 0.875rem;
+    color: #64748b;
+  }
+
+  .qa-freelancer-section__loading,
+  .qa-freelancer-section__empty {
+    margin: 0;
+    font-size: 0.9rem;
+    color: #64748b;
+  }
+
+  .qa-freelancer-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .qa-freelancer-item {
+    padding: 1rem;
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+
+    &--answered {
+      border-left: 4px solid #10b981;
+    }
+  }
+
+  .qa-freelancer-item__q {
+    margin: 0 0 0.35rem;
+    font-size: 0.95rem;
+    color: #334155;
+    line-height: 1.4;
+  }
+
+  .qa-freelancer-item__date {
+    font-size: 0.75rem;
+    color: #94a3b8;
+  }
+
+  .qa-freelancer-item__a {
+    margin: 0.5rem 0 0;
+    font-size: 0.9rem;
+    color: #475569;
+    line-height: 1.4;
+  }
+
+  .qa-freelancer-item__answer-form {
+    margin-top: 0.75rem;
+
+    textarea {
+      width: 100%;
+      padding: 0.5rem 0.75rem;
+      font-size: 0.9rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      resize: vertical;
+      min-height: 60px;
+      box-sizing: border-box;
+      display: block;
+      margin-bottom: 0.5rem;
+    }
+
+    .btn-answer {
+      padding: 0.4rem 1rem;
+      font-size: 0.875rem;
+      font-weight: 600;
+      background: #10b981;
+      color: white;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+
+      &:hover:not(:disabled) {
+        background: #059669;
+      }
+
+      &:disabled {
+        opacity: 0.6;
+        cursor: not-allowed;
+      }
+    }
+  }
+
   .applications-section h2 {
     margin-bottom: 1rem;
     font-size: 1.25rem;

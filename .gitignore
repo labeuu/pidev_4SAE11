@@ -1,1 +1,4 @@
 CLAUDE.md
+
+# Fichiers de config locale (clés API)
+backEnd/Microservices/Offer/src/main/resources/application-local.properties

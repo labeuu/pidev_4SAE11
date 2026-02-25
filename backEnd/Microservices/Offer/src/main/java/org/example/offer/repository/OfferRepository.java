@@ -85,4 +85,12 @@ public interface OfferRepository extends JpaRepository<Offer, Long>, JpaSpecific
 
     @Query("SELECT o FROM Offer o WHERE o.projectStatusId = :statusId AND o.isActive = true")
     Page<Offer> findActiveOffersByProjectStatusId(@Param("statusId") Long statusId, Pageable pageable);
+
+    /** Pour Smart Matching : offres disponibles dont l'ID n'est pas dans la liste (ex. déjà candidaté). */
+    @Query("SELECT o FROM Offer o WHERE o.offerStatus = 'AVAILABLE' AND o.isActive = true AND o.id NOT IN :excludeIds")
+    List<Offer> findAvailableOffersExcludingIds(@Param("excludeIds") List<Long> excludeIds, Pageable pageable);
+
+    /** Offres disponibles (pour fallback quand le client n'a pas d'historique). */
+    @Query("SELECT o FROM Offer o WHERE o.offerStatus = 'AVAILABLE' AND o.isActive = true ORDER BY o.isFeatured DESC, o.viewsCount DESC, o.createdAt DESC")
+    List<Offer> findAvailableOffersForRecommendation(Pageable pageable);
 }

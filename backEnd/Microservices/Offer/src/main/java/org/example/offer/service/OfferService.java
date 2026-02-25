@@ -5,8 +5,12 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.example.offer.dto.request.OfferFilterRequest;
 import org.example.offer.dto.request.OfferRequest;
+import org.example.offer.dto.response.AcceptanceRateResponse;
+import org.example.offer.dto.response.MonthlyEvolutionResponse;
 import org.example.offer.dto.response.OfferResponse;
 import org.example.offer.dto.response.OfferStatsResponse;
+import org.example.offer.dto.response.OffersByStatusResponse;
+import org.example.offer.dto.response.TranslateOfferResponse;
 import org.example.offer.entity.ApplicationStatus;
 import org.example.offer.entity.Offer;
 import org.example.offer.entity.OfferApplication;
@@ -25,20 +29,25 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Transactional
 @Slf4j
-public class OfferService {
+public class OfferService implements IOfferService {
 
     private final OfferRepository offerRepository;
     private final OfferApplicationRepository applicationRepository;
     private final ModelMapper modelMapper;
+    private final TranslationService translationService;
 
     /**
      * CREATE - Créer une nouvelle offre
@@ -177,6 +186,65 @@ public class OfferService {
         stats.setOffersThisMonth(offersThisMonth);
         stats.setOffersThisWeek(offersThisWeek);
         return stats;
+    }
+
+    /**
+     * Statistiques : nombre d'offres par statut (agrégation backend).
+     */
+    public OffersByStatusResponse getOffersCountByStatus(Long freelancerId) {
+        Map<String, Long> countByStatus = new LinkedHashMap<>();
+        for (OfferStatus status : OfferStatus.values()) {
+            Long count = offerRepository.countByFreelancerIdAndStatus(freelancerId, status);
+            countByStatus.put(status.name(), count != null ? count : 0L);
+        }
+        return new OffersByStatusResponse(countByStatus);
+    }
+
+    /**
+     * Taux d'acceptation des candidatures (total vs acceptées).
+     */
+    public AcceptanceRateResponse getAcceptanceRate(Long freelancerId) {
+        Long total = applicationRepository.countByOffer_FreelancerId(freelancerId);
+        Long accepted = applicationRepository.countAcceptedByFreelancerId(freelancerId);
+        if (total == null || total == 0) {
+            return new AcceptanceRateResponse(0L, 0L, BigDecimal.ZERO);
+        }
+        BigDecimal rate = BigDecimal.valueOf(accepted != null ? accepted : 0L)
+                .divide(BigDecimal.valueOf(total), 4, RoundingMode.HALF_UP);
+        return new AcceptanceRateResponse(total, accepted != null ? accepted : 0L, rate);
+    }
+
+    /**
+     * Évolution mensuelle des offres créées (pour une année donnée).
+     */
+    public MonthlyEvolutionResponse getMonthlyEvolution(Long freelancerId, int year) {
+        List<MonthlyEvolutionResponse.MonthCount> months = new ArrayList<>();
+        for (int month = 1; month <= 12; month++) {
+            LocalDate start = LocalDate.of(year, month, 1);
+            LocalDate end = start.withDayOfMonth(start.lengthOfMonth());
+            LocalDateTime startDt = start.atStartOfDay();
+            LocalDateTime endDt = end.atTime(23, 59, 59, 999_999_999);
+            Long count = offerRepository.countByFreelancerIdAndCreatedAtBetween(freelancerId, startDt, endDt);
+            months.add(new MonthlyEvolutionResponse.MonthCount(month, count != null ? count : 0L));
+        }
+        return new MonthlyEvolutionResponse(year, months);
+    }
+
+    /**
+     * Traduction d'une offre (titre + description) via Google Translate.
+     * Langues supportées : fr, en, ar.
+     */
+    public TranslateOfferResponse translateOffer(Long offerId, String targetLanguage) {
+        Offer offer = offerRepository.findById(offerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Offer not found with id: " + offerId));
+        List<String> texts = List.of(
+                offer.getTitle() != null ? offer.getTitle() : "",
+                offer.getDescription() != null ? offer.getDescription() : ""
+        );
+        List<String> translated = translationService.translate(texts, targetLanguage);
+        String title = translated.size() > 0 ? translated.get(0) : offer.getTitle();
+        String description = translated.size() > 1 ? translated.get(1) : offer.getDescription();
+        return new TranslateOfferResponse(title, description);
     }
 
     /**
@@ -345,6 +413,14 @@ public class OfferService {
             if (filter.getFreelancerId() != null) {
                 predicates.add(cb.equal(root.get("freelancerId"), filter.getFreelancerId()));
             }
+            if (filter.getCreatedAtFrom() != null) {
+                predicates.add(cb.greaterThanOrEqualTo(root.get("createdAt"),
+                    filter.getCreatedAtFrom().atStartOfDay()));
+            }
+            if (filter.getCreatedAtTo() != null) {
+                predicates.add(cb.lessThanOrEqualTo(root.get("createdAt"),
+                    filter.getCreatedAtTo().atTime(23, 59, 59, 999_999_999)));
+            }
             return predicates.isEmpty() ? cb.conjunction() : cb.and(predicates.toArray(new Predicate[0]));
         };
     }
@@ -360,5 +436,11 @@ public class OfferService {
         response.setIsValid(offer.isValid());
         response.setProjectStatusId(offer.getProjectStatusId());
         return response;
+    }
+
+    /** Pour Smart Matching : mapper une liste d'offres vers OfferResponse. */
+    public List<OfferResponse> mapOffersToResponse(List<Offer> offers) {
+        if (offers == null || offers.isEmpty()) return List.of();
+        return offers.stream().map(this::mapToResponse).collect(Collectors.toList());
     }
 }

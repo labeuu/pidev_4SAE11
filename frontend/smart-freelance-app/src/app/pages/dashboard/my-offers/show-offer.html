@@ -15,6 +15,96 @@
       <span *ngIf="offer.pendingApplicationsCount != null">{{ offer.pendingApplicationsCount }} pending</span>
     </div>
   </div>
+
+  <!-- Traduction multilingue (Google Translate – FR / EN / AR) -->
+  <section class="translate-section card">
+    <h2 class="translate-section__title">
+      <span class="translate-section__icon" aria-hidden="true"></span>
+      Translate this offer
+    </h2>
+    <p class="translate-section__subtitle">Get title and description in another language (FR / EN / AR).</p>
+    <div class="translate-section__actions">
+      <button
+        type="button"
+        class="translate-lang-btn"
+        [class.translate-lang-btn--active]="selectedTranslateLang === 'fr'"
+        (click)="selectedTranslateLang = 'fr'"
+      >
+        Français
+      </button>
+      <button
+        type="button"
+        class="translate-lang-btn"
+        [class.translate-lang-btn--active]="selectedTranslateLang === 'en'"
+        (click)="selectedTranslateLang = 'en'"
+      >
+        English
+      </button>
+      <button
+        type="button"
+        class="translate-lang-btn"
+        [class.translate-lang-btn--active]="selectedTranslateLang === 'ar'"
+        (click)="selectedTranslateLang = 'ar'"
+      >
+        العربية
+      </button>
+      <button
+        type="button"
+        class="translate-run-btn"
+        (click)="runTranslate()"
+        [disabled]="translating"
+      >
+        {{ translating ? 'Translating…' : 'Translate' }}
+      </button>
+    </div>
+    @if (translateError) {
+      <p class="translate-section__error" role="alert">{{ translateError }}</p>
+    }
+    @if (translatedResult) {
+      <div class="translate-result" [class.translate-result--rtl]="selectedTranslateLang === 'ar'">
+        <h3 class="translate-result__title">{{ translatedResult.title }}</h3>
+        <p class="translate-result__description">{{ translatedResult.description }}</p>
+        <p class="translate-result__meta">Translated to {{ translateLangLabel(selectedTranslateLang) }}</p>
+      </div>
+    }
+  </section>
+
+  <!-- Q&A : questions des clients (répondre ici) -->
+  <section class="qa-freelancer-section card">
+    <h2 class="qa-freelancer-section__title">Questions from clients</h2>
+    <p class="qa-freelancer-section__subtitle">Answer client questions before they apply.</p>
+    @if (loadingQuestions) {
+      <p class="qa-freelancer-section__loading">Loading...</p>
+    } @else if (offerQuestions.length === 0) {
+      <p class="qa-freelancer-section__empty">No questions yet.</p>
+    } @else {
+      <div class="qa-freelancer-list">
+        @for (q of offerQuestions; track q.id) {
+          <div class="qa-freelancer-item" [class.qa-freelancer-item--answered]="q.answered">
+            <p class="qa-freelancer-item__q">{{ q.questionText }}</p>
+            <span class="qa-freelancer-item__date">Asked {{ formatDate(q.askedAt) }}</span>
+            @if (q.answered && q.answerText) {
+              <p class="qa-freelancer-item__a"><strong>Your answer:</strong> {{ q.answerText }}</p>
+            } @else {
+              <div class="qa-freelancer-item__answer-form">
+                <textarea
+                  [id]="'answer-' + q.id"
+                  placeholder="Write your answer..."
+                  [(ngModel)]="answerTexts[q.id]"
+                  name="answer-{{ q.id }}"
+                  rows="2"
+                ></textarea>
+                <button type="button" class="btn-answer" (click)="submitAnswer(q.id)" [disabled]="answeringId === q.id || !(answerTexts[q.id] || '').trim()">
+                  {{ answeringId === q.id ? 'Sending...' : 'Reply' }}
+                </button>
+              </div>
+            }
+          </div>
+        }
+      </div>
+    }
+  </section>
+
   <div class="applications-section">
     <h2>Applications</h2>
     <p class="loading-msg" *ngIf="loadingApps">Loading applications...</p>

@@ -1,15 +1,21 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { ActivatedRoute } from '@angular/router';
+import { ActivatedRoute, RouterLink } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService, User } from '../../../core/services/user.service';
-import { OfferService, Offer, OfferApplicationRequest } from '../../../core/services/offer.service';
+import {
+  OfferService,
+  Offer,
+  OfferApplicationRequest,
+  OfferQuestionResponse,
+} from '../../../core/services/offer.service';
 
 @Component({
   selector: 'app-offer-detail',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterLink],
   templateUrl: './offer-detail.html',
   styleUrl: './offer-detail.scss',
 })
@@ -21,6 +27,12 @@ export class OfferDetail implements OnInit {
   submitting = false;
   submitError: string | null = null;
   currentUser: User | null = null;
+
+  questions: OfferQuestionResponse[] = [];
+  loadingQuestions = false;
+  questionText = '';
+  submittingQuestion = false;
+  questionError: string | null = null;
 
   constructor(
     private route: ActivatedRoute,
@@ -51,9 +63,49 @@ export class OfferDetail implements OnInit {
       this.offerService.getOfferById(id).subscribe((offer) => {
         this.offer = offer ?? null;
         this.loading = false;
+        if (this.currentUser?.id && offer?.id) {
+          this.offerService.recordOfferView(this.currentUser.id, offer.id).subscribe();
+        }
+        if (offer?.id) this.loadQuestions(offer.id);
         this.cdr.detectChanges();
       });
     });
+  }
+
+  loadQuestions(offerId: number): void {
+    this.loadingQuestions = true;
+    this.offerService.getOfferQuestions(offerId).subscribe((list) => {
+      this.questions = list ?? [];
+      this.loadingQuestions = false;
+      this.cdr.detectChanges();
+    });
+  }
+
+  submitQuestion(): void {
+    if (!this.offer?.id || !this.currentUser?.id || !this.questionText?.trim() || this.questionText.trim().length < 10) return;
+    this.submittingQuestion = true;
+    this.questionError = null;
+    this.offerService.addOfferQuestion(this.offer.id, this.currentUser.id, this.questionText.trim()).subscribe({
+      next: (q) => {
+        this.submittingQuestion = false;
+        if (q) {
+          this.questions = [q, ...this.questions];
+          this.questionText = '';
+        } else this.questionError = 'Failed to send question.';
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.submittingQuestion = false;
+        this.questionError = 'Failed to send question.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  formatDate(s: string | null | undefined): string {
+    if (!s) return '';
+    const d = new Date(s);
+    return d.toLocaleDateString(undefined, { dateStyle: 'short' });
   }
 
   openApplyModal(): void {

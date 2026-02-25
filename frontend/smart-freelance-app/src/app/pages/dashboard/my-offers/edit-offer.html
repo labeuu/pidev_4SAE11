@@ -1,56 +1,123 @@
-<div class="offer-form-page">
-  <h1 class="page-title">Edit Offer</h1>
-  <p class="subtitle">Update your offer. Only draft offers can be edited.</p>
-  <div class="error-banner" role="alert" *ngIf="submitError">{{ submitError }}</div>
-  <p class="loading-msg" *ngIf="loading">Loading offer…</p>
-  <form class="offer-form" [formGroup]="form" (ngSubmit)="submit()" *ngIf="!loading">
-    <div class="field">
-      <label for="title">Title <span class="required">*</span></label>
-      <input id="title" type="text" formControlName="title" />
-      <span class="field-error" *ngIf="form.get('title')?.invalid && form.get('title')?.touched">Title is required (min 5 characters).</span>
+<div class="add-offer-page offer-form-page">
+  <div class="add-offer-background" aria-hidden="true"></div>
+
+  <header class="add-offer-header">
+    <a routerLink="/dashboard/my-offers" class="back-link">← Back to my offers</a>
+    <h1 class="page-title">Edit offer</h1>
+    <p class="page-subtitle">Update your draft offer. Only draft offers can be edited.</p>
+  </header>
+
+  @if (notificationVisible) {
+    <div class="alert alert-dismissible fade show" [class.alert-success]="notificationType === 'success'" [class.alert-danger]="notificationType === 'error'" [class.alert-info]="notificationType === 'info'" role="alert">
+      {{ notificationMessage }}
+      <button type="button" class="btn-close" (click)="clearNotification()" aria-label="Close"></button>
     </div>
-    <div class="field">
-      <label for="domain">Domain <span class="required">*</span></label>
-      <input id="domain" type="text" formControlName="domain" />
-      <span class="field-error" *ngIf="form.get('domain')?.invalid && form.get('domain')?.touched">Domain is required.</span>
+  }
+
+  @if (loading) {
+    <div class="form-loading">
+      <span class="form-loading__spinner"></span>
+      <p class="form-loading__text">Loading offer…</p>
     </div>
-    <div class="field">
-      <label for="description">Description <span class="required">*</span></label>
-      <textarea id="description" formControlName="description" rows="5"></textarea>
-      <span class="field-error" *ngIf="form.get('description')?.invalid && form.get('description')?.touched">Description is required (min 20 characters).</span>
-    </div>
-    <div class="field-row">
-      <div class="field">
-        <label for="price">Price <span class="required">*</span></label>
-        <input id="price" type="number" formControlName="price" min="0.01" step="0.01" />
-        <span class="field-error" *ngIf="form.get('price')?.invalid && form.get('price')?.touched">Valid price required.</span>
+  } @else {
+    <div class="card shadow-sm">
+      <div class="card-body p-4">
+        <form [formGroup]="form" (ngSubmit)="submit()">
+          <section class="mb-4">
+            <h5 class="card-title mb-3 border-bottom pb-2">Service details</h5>
+            <div class="mb-3">
+              <label for="title" class="form-label">Title <span class="text-danger">*</span></label>
+              <input id="title" type="text" class="form-control" formControlName="title" placeholder="e.g. Full-stack Web Development" [class.is-invalid]="form.get('title')?.invalid && form.get('title')?.touched" />
+              @if (form.get('title')?.invalid && form.get('title')?.touched) {
+                <div class="invalid-feedback d-block">Title is required (min 5 characters).</div>
+              }
+            </div>
+            <div class="mb-3">
+              <label for="domain" class="form-label">Domain <span class="text-danger">*</span></label>
+              <input id="domain" type="text" class="form-control" formControlName="domain" placeholder="e.g. Web Development" [class.is-invalid]="form.get('domain')?.invalid && form.get('domain')?.touched" />
+              @if (form.get('domain')?.invalid && form.get('domain')?.touched) {
+                <div class="invalid-feedback d-block">Domain is required.</div>
+              }
+            </div>
+            <div class="mb-3">
+              <label for="description" class="form-label">Description <span class="text-danger">*</span></label>
+              <textarea id="description" class="form-control" formControlName="description" rows="5" placeholder="Describe your service (min 20 characters)." [class.is-invalid]="form.get('description')?.invalid && form.get('description')?.touched"></textarea>
+              @if (form.get('description')?.invalid && form.get('description')?.touched) {
+                <div class="invalid-feedback d-block">Description is required (min 20 characters).</div>
+              }
+            </div>
+          </section>
+
+          <section class="mb-4">
+            <h5 class="card-title mb-3 border-bottom pb-2">Pricing & delivery</h5>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label for="price" class="form-label">Price <span class="text-danger">*</span></label>
+                <input id="price" type="number" class="form-control" formControlName="price" min="0.01" step="0.01" placeholder="0.00" [class.is-invalid]="form.get('price')?.invalid && form.get('price')?.touched" />
+                @if (form.get('price')?.invalid && form.get('price')?.touched) {
+                  <div class="invalid-feedback d-block">Valid price required.</div>
+                }
+              </div>
+              <div class="col-md-6">
+                <label for="durationType" class="form-label">Duration <span class="text-danger">*</span></label>
+                <select id="durationType" class="form-select" formControlName="durationType">
+                  <option value="hourly">Hourly</option>
+                  <option value="fixed">Fixed</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </div>
+            </div>
+            <div class="row g-3 mt-1">
+              <div class="col-md-6">
+                <label for="deadline" class="form-label">Delivery deadline (optional)</label>
+                <input id="deadline" type="date" class="form-control" formControlName="deadline" [min]="minDate" />
+              </div>
+              <div class="col-md-6">
+                <label for="category" class="form-label">Category (optional)</label>
+                <input id="category" type="text" class="form-control" formControlName="category" placeholder="e.g. Development" />
+              </div>
+            </div>
+          </section>
+
+          <section class="mb-4">
+            <h5 class="card-title mb-3 border-bottom pb-2">Optional</h5>
+            <div class="mb-3">
+              <label for="tags" class="form-label">Tags (comma-separated)</label>
+              <input id="tags" type="text" class="form-control" formControlName="tags" placeholder="e.g. React, Node.js, API" />
+            </div>
+          </section>
+
+          <section class="mb-4 p-3 bg-light rounded">
+            <h6 class="mb-2">Translate fields</h6>
+            <p class="text-muted small mb-2">Translate title and description (FR / EN / AR) and apply to the form.</p>
+            <div class="d-flex flex-wrap gap-2 align-items-center mb-2">
+              <button type="button" class="btn btn-outline-primary btn-sm" [class.active]="translateLang === 'fr'" (click)="translateLang = 'fr'">Français</button>
+              <button type="button" class="btn btn-outline-primary btn-sm" [class.active]="translateLang === 'en'" (click)="translateLang = 'en'">English</button>
+              <button type="button" class="btn btn-outline-primary btn-sm" [class.active]="translateLang === 'ar'" (click)="translateLang = 'ar'">العربية</button>
+              <button type="button" class="btn btn-success btn-sm" (click)="runTranslateForm()" [disabled]="translating || !canTranslate()">
+                {{ translating ? 'Translating…' : 'Translate' }}
+              </button>
+            </div>
+            @if (translateFormError) {
+              <div class="alert alert-danger py-2 small" role="alert">{{ translateFormError }}</div>
+            }
+            @if (translatedFormResult) {
+              <div class="p-2 bg-white rounded border" [class.text-end]="translateLang === 'ar'" [attr.dir]="translateLang === 'ar' ? 'rtl' : null">
+                <p class="small mb-1"><strong>Title:</strong> {{ translatedFormResult[0] }}</p>
+                <p class="small mb-2"><strong>Description:</strong> {{ (translatedFormResult[1] || '') | slice:0:120 }}{{ (translatedFormResult[1]?.length || 0) > 120 ? '…' : '' }}</p>
+                <button type="button" class="btn btn-primary btn-sm" (click)="applyTranslation()">Apply to form</button>
+              </div>
+            }
+          </section>
+
+          <div class="d-flex gap-2 pt-2 border-top">
+            <a routerLink="/dashboard/my-offers" class="btn btn-secondary">Cancel</a>
+            <button type="submit" class="btn btn-primary" [disabled]="form.invalid || isSubmitting">
+              {{ isSubmitting ? 'Saving…' : 'Save changes' }}
+            </button>
+          </div>
+        </form>
       </div>
-      <div class="field">
-        <label for="durationType">Duration <span class="required">*</span></label>
-        <select id="durationType" formControlName="durationType">
-          <option value="hourly">Hourly</option>
-          <option value="fixed">Fixed</option>
-          <option value="monthly">Monthly</option>
-        </select>
-      </div>
     </div>
-    <div class="field-row">
-      <div class="field">
-        <label for="deadline">Deadline (optional)</label>
-        <input id="deadline" type="date" formControlName="deadline" [min]="minDate" />
-      </div>
-      <div class="field">
-        <label for="category">Category (optional)</label>
-        <input id="category" type="text" formControlName="category" />
-      </div>
-    </div>
-    <div class="field">
-      <label for="tags">Tags (optional)</label>
-      <input id="tags" type="text" formControlName="tags" />
-    </div>
-    <div class="form-actions">
-      <a routerLink="/dashboard/my-offers" class="btn-secondary">Cancel</a>
-      <button type="submit" class="btn-primary" [disabled]="form.invalid || isSubmitting">{{ isSubmitting ? 'Saving…' : 'Save' }}</button>
-    </div>
-  </form>
+  }
 </div>

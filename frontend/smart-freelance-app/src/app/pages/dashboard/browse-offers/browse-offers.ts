@@ -1,6 +1,8 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
+import { UserService, User } from '../../../core/services/user.service';
 import { OfferService, Offer } from '../../../core/services/offer.service';
 
 @Component({
@@ -12,16 +14,42 @@ import { OfferService, Offer } from '../../../core/services/offer.service';
 })
 export class BrowseOffers implements OnInit {
   offers: Offer[] = [];
+  recommendedOffers: Offer[] = [];
   loading = false;
+  loadingRecommendations = false;
   page = 0;
   size = 12;
   totalElements = 0;
   totalPages = 0;
+  currentUser: User | null = null;
 
-  constructor(private offerService: OfferService, private cdr: ChangeDetectorRef) {}
+  constructor(
+    private offerService: OfferService,
+    private auth: AuthService,
+    private userService: UserService,
+    private cdr: ChangeDetectorRef
+  ) {}
 
   ngOnInit(): void {
+    const email = this.auth.getPreferredUsername();
+    if (email) {
+      this.userService.getByEmail(email).subscribe((u) => {
+        this.currentUser = u ?? null;
+        if (this.currentUser?.id) this.loadRecommendations();
+        this.cdr.detectChanges();
+      });
+    }
     this.load();
+  }
+
+  loadRecommendations(): void {
+    if (!this.currentUser?.id) return;
+    this.loadingRecommendations = true;
+    this.offerService.getRecommendedOffers(this.currentUser.id, 8).subscribe((list) => {
+      this.recommendedOffers = list ?? [];
+      this.loadingRecommendations = false;
+      this.cdr.detectChanges();
+    });
   }
 
   load(): void {

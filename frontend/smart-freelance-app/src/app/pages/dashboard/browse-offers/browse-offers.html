@@ -1,6 +1,35 @@
 <div class="browse-offers-page">
   <h1>Browse Offers</h1>
   <p class="subtitle">Find freelancer services and apply for the one that fits your needs.</p>
+
+  <!-- Smart Matching : recommandations basées sur historique + comportement -->
+  @if (currentUser) {
+    <section class="recommended-section">
+      <h2 class="recommended-section__title">Recommended for you</h2>
+      <p class="recommended-section__subtitle">Based on your history and browsing.</p>
+      @if (loadingRecommendations) {
+        <p class="recommended-section__loading">Loading recommendations…</p>
+      } @else if (recommendedOffers.length > 0) {
+        <div class="recommended-grid">
+          @for (o of recommendedOffers; track o.id) {
+            <div class="offer-card offer-card--recommended">
+              <div class="offer-content">
+                <span class="offer-badge">Recommended</span>
+                <h3 class="offer-title">{{ o.title }}</h3>
+                <span class="offer-domain">{{ o.domain }}</span>
+                <p class="offer-desc">{{ (o.description | slice:0:100) }}{{ ((o.description || '').length) > 100 ? '...' : '' }}</p>
+                <div class="offer-meta">
+                  <span class="price">{{ o.price | number:'1.2-2' }} ({{ o.durationType }})</span>
+                </div>
+                <a [routerLink]="['/dashboard/browse-offers', o.id]" class="btn-view">View and Apply</a>
+              </div>
+            </div>
+          }
+        </div>
+      }
+    </section>
+  }
+
   <div class="toolbar">
     <span class="count">{{ totalElements }} offer(s)</span>
     <button type="button" class="btn-refresh" (click)="load()" [disabled]="loading">{{ loading ? 'Loading...' : 'Refresh' }}</button>

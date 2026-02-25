@@ -2,6 +2,8 @@ package org.example.offer.service;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.example.offer.client.ContractClient;
+import org.example.offer.client.ContractCreateRequest;
 import org.example.offer.dto.request.OfferApplicationRequest;
 import org.example.offer.dto.response.OfferApplicationResponse;
 import org.example.offer.entity.ApplicationStatus;
@@ -20,6 +22,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -28,11 +32,12 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional
 @Slf4j
-public class OfferApplicationService {
+public class OfferApplicationService implements IOfferApplicationService {
 
     private final OfferApplicationRepository applicationRepository;
     private final OfferRepository offerRepository;
     private final ModelMapper modelMapper;
+    private final ContractClient contractClient;
 
     /**
      * CREATE - Postuler à une offre
@@ -169,7 +174,6 @@ public class OfferApplicationService {
         // Accepter la candidature
         application.accept();
 
-        // Optionnel : Changer le statut de l'offre
         Offer offer = application.getOffer();
         if (offer.getOfferStatus() == OfferStatus.AVAILABLE) {
             offer.setOfferStatus(OfferStatus.IN_PROGRESS);
@@ -177,8 +181,23 @@ public class OfferApplicationService {
         }
 
         OfferApplication updatedApplication = applicationRepository.save(application);
-        log.info("Application accepted successfully: {}", id);
 
+        // Création automatique d'un Contract via le microservice Contract (workflow type Fiverr)
+        ContractCreateRequest contractRequest = ContractCreateRequest.builder()
+                .clientId(application.getClientId())
+                .freelancerId(offer.getFreelancerId())
+                .offerApplicationId(application.getId())
+                .title(offer.getTitle())
+                .description(offer.getDescription())
+                .terms("Contract from offer: " + offer.getTitle())
+                .amount(application.getProposedBudget() != null ? application.getProposedBudget() : offer.getPrice() != null ? offer.getPrice() : BigDecimal.ZERO)
+                .startDate(LocalDate.now())
+                .endDate(offer.getDeadline())
+                .status("DRAFT")
+                .build();
+        contractClient.createContractFromAcceptedApplication(contractRequest);
+
+        log.info("Application accepted successfully: {}, contract created", id);
         return mapToResponse(updatedApplication);
     }
 

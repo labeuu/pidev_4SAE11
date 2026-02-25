@@ -31,7 +31,6 @@
         <module name="planning" />
         <module name="KeyCloak" />
         <module name="user" />
-        <module name="Offer" />
         <module name="review" />
       </profile>
     </annotationProcessing>

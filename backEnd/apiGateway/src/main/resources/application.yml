@@ -84,7 +84,7 @@ spring:
             - StripPrefix=1
 
         - id: offer
-          uri: lb://Offer
+          uri: lb://OFFER
           predicates:
             - Path=/offer/**
           filters:

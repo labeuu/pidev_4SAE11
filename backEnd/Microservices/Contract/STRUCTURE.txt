@@ -1,0 +1,11 @@
+Structure correcte du microservice Contract
+===========================================
+
+ContractApplication.java doit être à la RACINE du package :
+  src/main/java/org/example/contract/ContractApplication.java
+  package org.example.contract;
+
+Ne doit PAS être dans le dossier service :
+  src/main/java/org/example/contract/service/  → uniquement ContractService.java, ConflictService.java
+
+Si ContractApplication.java se trouve sous service, déplacer le fichier vers org.example.contract (un niveau au-dessus de service) et vérifier que le package est bien : package org.example.contract;
