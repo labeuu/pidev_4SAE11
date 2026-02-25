@@ -2,6 +2,7 @@ package com.esprit.planning.service;
 
 import com.esprit.planning.dto.*;
 import com.esprit.planning.entity.ProgressUpdate;
+import com.esprit.planning.exception.ProgressCannotDecreaseException;
 import com.esprit.planning.repository.ProgressCommentRepository;
 import com.esprit.planning.repository.ProgressUpdateRepository;
 import com.esprit.planning.repository.ProgressUpdateSpecification;
@@ -68,14 +69,36 @@ public class ProgressUpdateService {
         return progressUpdateRepository.findByFreelancerId(freelancerId);
     }
 
+    /**
+     * Returns the maximum progress percentage for the given project, from updates
+     * that are not the one with excludeUpdateId (pass null to include all).
+     */
+    @Transactional(readOnly = true)
+    public int getMaxProgressPercentageForProject(Long projectId, Long excludeUpdateId) {
+        List<ProgressUpdate> updates = progressUpdateRepository.findByProjectId(projectId);
+        return updates.stream()
+                .filter(u -> excludeUpdateId == null || !u.getId().equals(excludeUpdateId))
+                .mapToInt(ProgressUpdate::getProgressPercentage)
+                .max()
+                .orElse(0);
+    }
+
     @Transactional
     public ProgressUpdate create(ProgressUpdate progressUpdate) {
+        int minAllowed = getMaxProgressPercentageForProject(progressUpdate.getProjectId(), null);
+        if (progressUpdate.getProgressPercentage() < minAllowed) {
+            throw new ProgressCannotDecreaseException(minAllowed, progressUpdate.getProgressPercentage());
+        }
         return progressUpdateRepository.save(progressUpdate);
     }
 
     @Transactional
     public ProgressUpdate update(Long id, ProgressUpdate updated) {
         ProgressUpdate existing = findById(id);
+        int minAllowed = getMaxProgressPercentageForProject(updated.getProjectId(), id);
+        if (updated.getProgressPercentage() < minAllowed) {
+            throw new ProgressCannotDecreaseException(minAllowed, updated.getProgressPercentage());
+        }
         existing.setProjectId(updated.getProjectId());
         existing.setContractId(updated.getContractId());
         existing.setFreelancerId(updated.getFreelancerId());

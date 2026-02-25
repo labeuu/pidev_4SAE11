@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { ProjectApplication, ProjectApplicationService } from '../../../core/services/project-application.service';
 import { RouterModule } from '@angular/router';
 import { CommonModule } from '@angular/common';
@@ -11,7 +11,7 @@ import { AuthService } from '../../../core/services/auth.service';
   templateUrl: './list-application.html',
   styleUrl: './list-application.scss',
 })
-export class ListApplication implements OnInit{
+export class ListApplication implements OnInit {
   applications: ProjectApplication[] = [];
 
   isLoading = false;
@@ -21,9 +21,10 @@ export class ListApplication implements OnInit{
   deleting = false;
 
   constructor(
-    private applicationService: ProjectApplicationService, 
+    private applicationService: ProjectApplicationService,
     private userService: UserService,
-    private authService: AuthService
+    private authService: AuthService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -33,10 +34,13 @@ export class ListApplication implements OnInit{
   loadApplications(): void {
     this.isLoading = true;
     this.errorMessage = null;
+    this.cdr.detectChanges();
 
     const email = this.authService.getPreferredUsername();
     if (!email) {
       this.errorMessage = 'You must be signed in.';
+      this.isLoading = false;
+      this.cdr.detectChanges();
       return;
     }
 
@@ -44,25 +48,28 @@ export class ListApplication implements OnInit{
       next: (user) => {
         if (!user?.id) {
           this.errorMessage = 'Could not identify your account.';
+          this.isLoading = false;
+          this.cdr.detectChanges();
           return;
         }
 
-        this.applicationService
-          .getApplicationsByFreelance(user.id)
-          .subscribe({
-            next: (data) => {
-              this.applications = data || [];
-              console.log(data);
-              this.isLoading = false;
-            },
-            error: () => {
-              this.errorMessage = 'Failed to load applications.';
-              this.isLoading = false;
-            },
-          });
+        this.applicationService.getApplicationsByFreelance(user.id).subscribe({
+          next: (data) => {
+            this.applications = data || [];
+            this.isLoading = false;
+            this.cdr.detectChanges();
+          },
+          error: () => {
+            this.errorMessage = 'Failed to load applications.';
+            this.isLoading = false;
+            this.cdr.detectChanges();
+          },
+        });
       },
       error: () => {
         this.errorMessage = 'Failed to load user profile.';
+        this.isLoading = false;
+        this.cdr.detectChanges();
       },
     });
   }
@@ -89,10 +96,12 @@ export class ListApplication implements OnInit{
         }
         this.deleting = false;
         this.closeDeleteModal();
+        this.cdr.detectChanges();
       },
       error: () => {
         this.deleting = false;
         this.closeDeleteModal();
+        this.cdr.detectChanges();
       },
     });
   }

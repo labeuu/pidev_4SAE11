@@ -47,6 +47,60 @@
     &::before { content: '⚠ '; }
   }
 
+  // ── Statistics (your progress at a glance) ─────────────────────
+  .stats-section {
+    margin-bottom: $spacing-xl;
+  }
+  .stats-card {
+    padding: $spacing-lg !important;
+  }
+  .stats-title {
+    margin: 0 0 $spacing-md;
+    font-size: $font-size-base;
+    font-weight: $font-weight-bold;
+    color: $neutral-700;
+    padding-bottom: $spacing-sm;
+    border-bottom: 1px solid $neutral-200;
+  }
+  .stats-loading {
+    margin: 0;
+    font-size: $font-size-sm;
+    color: $neutral-500;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: $spacing-md;
+  }
+  .stat-item {
+    text-align: center;
+    padding: $spacing-md;
+    background: $neutral-50;
+    border-radius: $radius-lg;
+    border: 1px solid $neutral-200;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+    &:hover {
+      border-color: $primary-100;
+      box-shadow: 0 2px 8px rgba($primary-500, 0.08);
+    }
+    .stat-value {
+      display: block;
+      font-size: $font-size-xl;
+      font-weight: $font-weight-extrabold;
+      color: $primary-500;
+      line-height: 1.2;
+    }
+    .stat-label {
+      display: block;
+      font-size: $font-size-xs;
+      font-weight: $font-weight-semibold;
+      color: $neutral-500;
+      margin-top: $spacing-xs;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+  }
+
   // ── Project Header (when project is selected) ──────────────────
   .project-header {
     margin-bottom: $spacing-lg;
@@ -89,6 +143,15 @@
     font-weight: $font-weight-semibold;
     color: $neutral-500;
     margin-bottom: $spacing-md;
+  }
+
+  // ── Project list search (AJAX-style filter) ─────────────────────
+  .toolbar-filters--projects {
+    margin-bottom: $spacing-md;
+  }
+  .toolbar--projects {
+    margin-bottom: $spacing-sm;
+    .count { font-weight: $font-weight-semibold; color: $neutral-500; font-size: $font-size-sm; }
   }
 
   // ── Project Selection Grid ─────────────────────────────────────
@@ -139,6 +202,47 @@
     font-weight: $font-weight-medium;
   }
 
+  // ── Search (AJAX debounced) ──────────────────────────────────────
+  .toolbar-filters {
+    display: flex;
+    gap: $spacing-sm;
+    align-items: center;
+    flex-wrap: wrap;
+    margin-bottom: $spacing-md;
+  }
+  .search-input {
+    flex: 1;
+    min-width: 200px;
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+    border: 1.5px solid $neutral-300;
+    border-radius: $radius-lg;
+    background: $white;
+    transition: border-color $transition-fast, box-shadow $transition-fast;
+    &:focus {
+      outline: none;
+      border-color: $primary-500;
+      box-shadow: 0 0 0 3px rgba($primary-500, 0.12);
+    }
+    &::placeholder { color: $neutral-400; }
+  }
+  .btn-clear {
+    padding: $spacing-sm $spacing-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $neutral-600;
+    background: transparent;
+    border: 1.5px solid $neutral-300;
+    border-radius: $radius-lg;
+    cursor: pointer;
+    transition: background $transition-fast, border-color $transition-fast;
+    &:hover:not(:disabled) {
+      background: $neutral-100;
+      border-color: $neutral-400;
+    }
+    &:disabled { opacity: 0.6; cursor: not-allowed; }
+  }
+
   // ── Toolbar ────────────────────────────────────────────────────
   .toolbar {
     display: flex;
@@ -160,21 +264,6 @@
       gap: $spacing-sm;
     }
 
-    .btn-refresh {
-      padding: $spacing-xs $spacing-md;
-      font-size: $font-size-sm;
-      font-weight: $font-weight-medium;
-      color: $neutral-600;
-      background: transparent;
-      border: 1.5px solid $neutral-300;
-      border-radius: $radius-full;
-      cursor: pointer;
-      transition: $transition-base;
-
-      &:hover:not(:disabled) { background: $neutral-100; border-color: $neutral-400; }
-      &:disabled { opacity: 0.6; cursor: not-allowed; }
-    }
-
     .btn-add {
       padding: $spacing-xs $spacing-md;
       font-size: $font-size-sm;
@@ -187,6 +276,41 @@
 
       &:hover { transform: translateY(-1px); box-shadow: $shadow-primary; }
     }
+  }
+
+  // ── Pagination ─────────────────────────────────────────────────
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: $spacing-sm;
+    margin-top: $spacing-lg;
+    padding-top: $spacing-lg;
+    border-top: 1px solid $neutral-200;
+  }
+  .btn-page {
+    padding: $spacing-xs $spacing-md;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-medium;
+    color: $neutral-700;
+    background: $white;
+    border: 1.5px solid $neutral-300;
+    border-radius: $radius-lg;
+    cursor: pointer;
+    transition: background $transition-fast, border-color $transition-fast;
+    &:hover:not(:disabled) {
+      background: $neutral-50;
+      border-color: $primary-500;
+      color: $primary-600;
+    }
+    &:disabled { opacity: 0.5; cursor: not-allowed; }
+  }
+  .pagination-info {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $neutral-600;
+    padding: 0 $spacing-sm;
   }
 
   .loading-msg,
@@ -237,18 +361,35 @@
     }
   }
 
-  // ── Progress Badge ─────────────────────────────────────────────
-  .progress-badge {
-    flex-shrink: 0;
-    display: inline-flex;
+  // ── Progress bar (same style as admin) ───────────────────────────
+  .progress-display {
+    display: flex;
     align-items: center;
-    padding: 3px $spacing-sm;
-    background: $info-100;
-    color: $info-600;
-    font-size: 11px;
-    font-weight: $font-weight-bold;
+    gap: $spacing-sm;
+    min-width: 100px;
+    flex-shrink: 0;
+  }
+  .progress-display__bar {
+    flex: 1;
+    height: 8px;
+    background: $neutral-200;
     border-radius: $radius-full;
-    letter-spacing: 0.3px;
+    overflow: hidden;
+    min-width: 48px;
+  }
+  .progress-display__fill {
+    display: block;
+    height: 100%;
+    background: $gradient-primary;
+    border-radius: $radius-full;
+    transition: width 0.2s ease;
+  }
+  .progress-display__pct {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-bold;
+    color: $primary-500;
+    min-width: 2.25rem;
+    text-align: right;
   }
 
   .update-desc {
@@ -417,6 +558,13 @@
       }
 
       textarea { resize: vertical; min-height: 80px; }
+
+      .field-hint {
+        display: block;
+        margin-top: $spacing-xs;
+        font-size: $font-size-xs;
+        color: $neutral-500;
+      }
 
       .field-error {
         display: block;

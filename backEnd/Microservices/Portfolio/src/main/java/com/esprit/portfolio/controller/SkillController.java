@@ -30,12 +30,13 @@ public class SkillController {
         return ResponseEntity.ok(skillService.findAll());
     }
 
+    /** Declared before /{id} so "user" is not matched as numeric id. */
     @GetMapping("/user/{userId}")
     public ResponseEntity<List<Skill>> getSkillsByUser(@PathVariable Long userId) {
         return ResponseEntity.ok(skillService.findAllByUserId(userId));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<Skill> getSkillById(@PathVariable Long id) {
         return ResponseEntity.ok(skillService.findById(id));
     }
@@ -56,12 +57,12 @@ public class SkillController {
         return ResponseEntity.status(HttpStatus.CREATED).body(skillService.create(skill));
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public ResponseEntity<Skill> updateSkill(@PathVariable Long id, @RequestBody Skill skill) {
         return ResponseEntity.ok(skillService.update(id, skill));
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public ResponseEntity<Void> deleteSkill(@PathVariable Long id) {
         skillService.delete(id);
         return ResponseEntity.noContent().build();

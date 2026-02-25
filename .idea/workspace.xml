@@ -6,52 +6,13 @@
   <component name="ChangeListManager">
     <list default="true" id="7bce780c-f0d9-4f6e-8244-4c794ceacf87" name="Changes" comment="">
       <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/ContractApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/ContractApplication.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/controller/ConflictController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/controller/ConflictController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/controller/ContractController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/controller/ContractController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/dto/SignatureRequest.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/dto/SignatureRequest.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/entity/Conflict.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/entity/Conflict.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/entity/ConflictStatus.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/entity/ConflictStatus.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/entity/Contract.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/entity/Contract.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/entity/ContractStatus.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/entity/ContractStatus.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/repository/ConflictRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/repository/ConflictRepository.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/repository/ContractRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/repository/ContractRepository.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/service/ConflictService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/service/ConflictService.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/service/ContractService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Contract/target/classes/org/example/contract/service/ContractService.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/PortfolioApplication.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/PortfolioApplication.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/controller/EvaluationController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/controller/EvaluationController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/controller/EvaluationTestController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/controller/EvaluationTestController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/controller/ExperienceController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/controller/ExperienceController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/controller/SkillController.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/controller/SkillController.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/dto/AnswerSubmission.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/dto/AnswerSubmission.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/dto/ExperienceRequest.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/dto/ExperienceRequest.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/dto/TestSubmission.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/dto/TestSubmission.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Evaluation$EvaluationBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Evaluation$EvaluationBuilder.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Evaluation.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Evaluation.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/EvaluationTest$EvaluationTestBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/EvaluationTest$EvaluationTestBuilder.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/EvaluationTest.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/EvaluationTest.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Experience$ExperienceBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Experience$ExperienceBuilder.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Experience.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Experience.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/ExperienceType.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/ExperienceType.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Question.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Question.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Skill$SkillBuilder.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Skill$SkillBuilder.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Skill.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/entity/Skill.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/exception/GlobalExceptionHandler.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/exception/GlobalExceptionHandler.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/repository/EvaluationRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/repository/EvaluationRepository.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/repository/EvaluationTestRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/repository/EvaluationTestRepository.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/repository/ExperienceRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/repository/ExperienceRepository.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/repository/SkillRepository.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/repository/SkillRepository.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/AIService$1.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/AIService$1.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/AIService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/AIService.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/EvaluationService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/EvaluationService.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/EvaluationTestService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/EvaluationTestService.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/ExperienceService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/ExperienceService.class" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/SkillService.class" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/target/classes/com/esprit/portfolio/service/SkillService.class" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backEnd/KeyCloak/src/main/java/com/esprit/keycloak/controller/GlobalExceptionHandler.java" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/KeyCloak/src/main/java/com/esprit/keycloak/controller/GlobalExceptionHandler.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backEnd/KeyCloak/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/KeyCloak/src/main/resources/application.properties" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Evaluation/.idea/workspace.xml" beforeDir="false" />
+      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/src/main/java/com/esprit/portfolio/controller/ExperienceController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/src/main/java/com/esprit/portfolio/controller/ExperienceController.java" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/src/main/java/com/esprit/portfolio/controller/SkillController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/Portfolio/src/main/java/com/esprit/portfolio/controller/SkillController.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/java/com/esprit/planning/controller/ProgressUpdateController.java" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/java/com/esprit/planning/controller/ProgressUpdateController.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/java/com/esprit/planning/repository/ProgressCommentRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/java/com/esprit/planning/repository/ProgressCommentRepository.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/java/com/esprit/planning/repository/ProgressUpdateRepository.java" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/java/com/esprit/planning/repository/ProgressUpdateRepository.java" afterDir="false" />
       <change beforePath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/java/com/esprit/planning/service/ProgressUpdateService.java" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/java/com/esprit/planning/service/ProgressUpdateService.java" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/resources/application.properties" beforeDir="false" afterPath="$PROJECT_DIR$/backEnd/Microservices/planning/src/main/resources/application.properties" afterDir="false" />
     </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
@@ -141,15 +102,15 @@
           <value>
             <map>
               <entry key="ApiGatewayApplication" value="STOPPED" />
-              <entry key="ContractApplication" value="FAILED" />
+              <entry key="ContractApplication" value="STOPPED" />
               <entry key="EurekaApplication" value="STOPPED" />
               <entry key="KeyCloakApplication" value="STOPPED" />
               <entry key="OfferApplication" value="STOPPED" />
-              <entry key="PlanningApplication" value="FAILED" />
-              <entry key="PortfolioApplication" value="FAILED" />
-              <entry key="ProjectApplication" value="FAILED" />
-              <entry key="ReviewApplication" value="FAILED" />
-              <entry key="UserApplication" value="FAILED" />
+              <entry key="PlanningApplication" value="STOPPED" />
+              <entry key="PortfolioApplication" value="STOPPED" />
+              <entry key="ProjectApplication" value="STOPPED" />
+              <entry key="ReviewApplication" value="STOPPED" />
+              <entry key="UserApplication" value="STOPPED" />
             </map>
           </value>
         </entry>
@@ -183,13 +144,6 @@
     <configuration name="EurekaApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
       <module name="Eureka" />
       <option name="SPRING_BOOT_MAIN_CLASS" value="com.esprit.eureka.EurekaApplication" />
-      <method v="2">
-        <option name="Make" enabled="true" />
-      </method>
-    </configuration>
-    <configuration name="EvaluationApplication" type="SpringBootApplicationConfigurationType" factoryName="Spring Boot" nameIsGenerated="true">
-      <module name="Evaluation" />
-      <option name="SPRING_BOOT_MAIN_CLASS" value="com.example.Evaluation.EvaluationApplication" />
       <method v="2">
         <option name="Make" enabled="true" />
       </method>
@@ -290,6 +244,7 @@
       <workItem from="1771721469079" duration="1301000" />
       <workItem from="1771976883422" duration="2133000" />
       <workItem from="1771979576060" duration="1475000" />
+      <workItem from="1771984452636" duration="5712000" />
     </task>
     <servers />
   </component>

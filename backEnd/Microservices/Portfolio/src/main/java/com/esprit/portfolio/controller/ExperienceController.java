@@ -30,16 +30,18 @@ public class ExperienceController {
         return experienceService.getAllExperiences();
     }
 
-    @GetMapping("/{id}")
+    /** Declared before /{id} so "user" is not matched as numeric id. */
+    @GetMapping("/user/{userId}")
+    public List<Experience> getExperiencesByUserId(@PathVariable Long userId) {
+        return experienceService.getExperiencesByUserId(userId);
+    }
+
+    /** {id} restricted to digits so /user/2 is not matched here. */
+    @GetMapping("/{id:\\d+}")
     public ResponseEntity<Experience> getExperienceById(@PathVariable Long id) {
         return experienceService.getExperienceById(id)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping("/user/{userId}")
-    public List<Experience> getExperiencesByUserId(@PathVariable Long userId) {
-        return experienceService.getExperiencesByUserId(userId);
     }
 
     @PostMapping
@@ -47,7 +49,7 @@ public class ExperienceController {
         return experienceService.createExperience(request);
     }
 
-    @PutMapping("/{id}")
+    @PutMapping("/{id:\\d+}")
     public ResponseEntity<Experience> updateExperience(@PathVariable Long id, @RequestBody ExperienceRequest request) {
         try {
             return ResponseEntity.ok(experienceService.updateExperience(id, request));
@@ -56,7 +58,7 @@ public class ExperienceController {
         }
     }
 
-    @DeleteMapping("/{id}")
+    @DeleteMapping("/{id:\\d+}")
     public ResponseEntity<Void> deleteExperience(@PathVariable Long id) {
         experienceService.deleteExperience(id);
         return ResponseEntity.noContent().build();

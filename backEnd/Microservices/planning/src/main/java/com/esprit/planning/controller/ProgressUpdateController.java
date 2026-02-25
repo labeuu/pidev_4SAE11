@@ -6,6 +6,7 @@ import com.esprit.planning.dto.ProgressUpdateRequest;
 import com.esprit.planning.dto.ProjectActivityDto;
 import com.esprit.planning.dto.StalledProjectDto;
 import com.esprit.planning.entity.ProgressUpdate;
+import com.esprit.planning.exception.ProgressCannotDecreaseException;
 import com.esprit.planning.service.ProgressUpdateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,6 +26,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -203,5 +205,14 @@ public class ProgressUpdateController {
             @Parameter(description = "Progress update ID", example = "1", required = true) @PathVariable Long id) {
         progressUpdateService.deleteById(id);
         return ResponseEntity.noContent().build();
+    }
+
+    @ExceptionHandler(ProgressCannotDecreaseException.class)
+    public ResponseEntity<Map<String, Object>> handleProgressCannotDecrease(ProgressCannotDecreaseException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(Map.of(
+                "message", ex.getMessage(),
+                "minAllowed", ex.getMinAllowed(),
+                "provided", ex.getProvided()
+        ));
     }
 }
