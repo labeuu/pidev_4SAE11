@@ -2,6 +2,7 @@ package com.esprit.portfolio.controller;
 
 import java.util.List;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -25,18 +26,24 @@ public class ExperienceController {
 
     private final ExperienceService experienceService;
 
+    @Value("${welcome.message}")
+    private String welcomeMessage;
+
+    @GetMapping("/welcome")
+    public String welcome() {
+        return welcomeMessage;
+    }
+
     @GetMapping
     public List<Experience> getAllExperiences() {
         return experienceService.getAllExperiences();
     }
 
-    /** Declared before /{id} so "user" is not matched as numeric id. */
     @GetMapping("/user/{userId}")
     public List<Experience> getExperiencesByUserId(@PathVariable Long userId) {
         return experienceService.getExperiencesByUserId(userId);
     }
 
-    /** {id} restricted to digits so /user/2 is not matched here. */
     @GetMapping("/{id:\\d+}")
     public ResponseEntity<Experience> getExperienceById(@PathVariable Long id) {
         return experienceService.getExperienceById(id)

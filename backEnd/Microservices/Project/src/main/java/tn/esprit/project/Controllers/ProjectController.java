@@ -1,5 +1,6 @@
 package tn.esprit.project.Controllers;
 
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.web.bind.annotation.*;
 import tn.esprit.project.Entities.Project;
 import tn.esprit.project.Services.IProjectService;
@@ -12,8 +13,16 @@ public class ProjectController {
 
     private final IProjectService projectService;
 
+    @Value("${welcome.message}")
+    private String welcomeMessage;
+
     public ProjectController(IProjectService projectService) {
         this.projectService = projectService;
+    }
+
+    @GetMapping("/welcome")
+    public String welcome() {
+        return welcomeMessage;
     }
 
 

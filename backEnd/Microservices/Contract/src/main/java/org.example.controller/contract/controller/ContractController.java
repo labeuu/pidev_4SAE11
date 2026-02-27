@@ -4,6 +4,7 @@ import org.example.contract.dto.SignatureRequest;
 import org.example.contract.entity.Contract;
 import org.example.contract.service.ContractService;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -15,9 +16,17 @@ public class ContractController {
 
     private final ContractService contractService;
 
+    @Value("${welcome.message}")
+    private String welcomeMessage;
+
     @Autowired
     public ContractController(ContractService contractService) {
         this.contractService = contractService;
+    }
+
+    @GetMapping("/welcome")
+    public String welcome() {
+        return welcomeMessage;
     }
 
     @PostMapping

@@ -20,6 +20,7 @@ import org.example.offer.service.OfferQuestionService;
 import org.example.offer.service.OfferService;
 import org.example.offer.service.SmartMatchingService;
 import org.example.offer.service.TranslationService;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +40,14 @@ public class OfferController {
     private final TranslationService translationService;
     private final SmartMatchingService smartMatchingService;
     private final OfferQuestionService offerQuestionService;
+
+    @Value("${welcome.message}")
+    private String welcomeMessage;
+
+    @GetMapping("/welcome")
+    public String welcome() {
+        return welcomeMessage;
+    }
 
     /**
      * CREATE - Créer une nouvelle offre

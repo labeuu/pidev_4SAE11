@@ -14,6 +14,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
@@ -32,6 +33,14 @@ import java.util.stream.Collectors;
 public class UserController {
 
     private final UserService userService;
+
+    @Value("${welcome.message}")
+    private String welcomeMessage;
+
+    @GetMapping("/welcome")
+    public String welcome() {
+        return welcomeMessage;
+    }
 
     @Operation(summary = "Get all users", description = "Returns a list of all registered users.")
     @ApiResponse(responseCode = "200", description = "Successfully retrieved list of users")
