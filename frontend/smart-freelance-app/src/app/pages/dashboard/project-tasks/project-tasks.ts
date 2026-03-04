@@ -2,7 +2,7 @@ import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
-import { Subject, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
+import { Subject, of, debounceTime, distinctUntilChanged, takeUntil } from 'rxjs';
 import { Chart, ChartData, ChartOptions, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { TaskService, Task, TaskFilterParams, PageResponse } from '../../../core/services/task.service';
@@ -134,7 +134,10 @@ export class ProjectTasks implements OnInit, OnDestroy {
         this.cdr.detectChanges();
       },
     });
-    this.userService.getAll().subscribe((users) => {
+    const isAdmin = this.auth.getUserRole() === 'ADMIN';
+    (isAdmin ? this.userService.getAll() : of([])).pipe(
+      takeUntil(this.destroy$)
+    ).subscribe((users) => {
       this.freelancersForAssign = users?.filter((u) => u.role === 'FREELANCER') ?? [];
     });
   }

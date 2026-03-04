@@ -36,6 +36,7 @@ public class SecurityConfig {
                                 || path.startsWith("/keycloak-auth/")
                                 || path.startsWith("/user/api/users/email/")
                                 || path.startsWith("/user/api/users/avatars/")
+                                || (HttpMethod.GET == exchange.getRequest().getMethod() && path.startsWith("/user/"))
                                 || "/actuator/health".equals(path)
                                 || "/actuator/info".equals(path);
                         return match ? ServerWebExchangeMatcher.MatchResult.match() : ServerWebExchangeMatcher.MatchResult.notMatch();

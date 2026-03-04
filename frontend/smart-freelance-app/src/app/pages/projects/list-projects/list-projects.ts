@@ -11,7 +11,7 @@ import { FormsModule } from '@angular/forms';
 import { Chart, ChartData, ChartOptions, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
 import { ProjectApplicationService, ProjectApplicationStats } from '../../../core/services/project-application.service';
-
+import { QRCodeComponent } from 'angularx-qrcode';
 
 const AUTO_REFRESH_INTERVAL_MS = 60_000;
 
@@ -31,7 +31,7 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-list-projects',
   standalone: true,
-  imports: [RouterLink, CommonModule, FormsModule, BaseChartDirective],
+  imports: [RouterLink, CommonModule, FormsModule, BaseChartDirective, QRCodeComponent],
   templateUrl: './list-projects.html',
   styleUrl: './list-projects.scss',
 })
@@ -120,6 +120,7 @@ export class ListProjects implements OnInit, OnDestroy {
   isLoading = false;
   errorMessage: string | null = null;
   projectToDelete: Project | null = null;
+  projectForQr: Project | null = null;
   deleting = false;
   private autoRefreshSub: Subscription | null = null;
   private routerSub: Subscription | null = null;
@@ -167,6 +168,19 @@ export class ListProjects implements OnInit, OnDestroy {
 
   closeDeleteModal(): void {
     if (!this.deleting) this.projectToDelete = null;
+  }
+
+  openQrModal(project: Project): void {
+    this.projectForQr = project;
+  }
+
+  closeQrModal(): void {
+    this.projectForQr = null;
+  }
+
+  getProjectQrUrl(project: Project): string {
+    const base = typeof window !== 'undefined' ? window.location.origin : '';
+    return `${base}/dashboard/my-projects/${project.id}/show`;
   }
 
   doDelete(): void {

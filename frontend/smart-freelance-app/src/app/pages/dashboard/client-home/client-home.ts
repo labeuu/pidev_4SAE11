@@ -105,9 +105,10 @@ export class ClientHome implements OnInit {
   }
 
   private loadAllProjects(): void {
+    const isAdmin = this.auth.getUserRole() === 'ADMIN';
     forkJoin({
       projects: this.projectService.getAllProjects(),
-      users: this.us.getAll(),
+      users: isAdmin ? this.us.getAll().pipe(catchError(() => of([]))) : of([]),
     }).subscribe({
       next: ({ projects, users }) => {
         const userMap = new Map<number, { firstName: string; lastName: string; avatarUrl?: string }>();

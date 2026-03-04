@@ -79,8 +79,8 @@ export class MyTasks implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.setupSearchDebounce();
     this.loadTasks();
-    this.projectService.getAllProjects().subscribe((projects) => {
-      projects.forEach((p) => {
+    this.projectService.getAllProjects().pipe(catchError(() => of([]))).subscribe((projects) => {
+      (projects ?? []).forEach((p) => {
         if (p.id != null) this.projectIdToTitle[p.id] = p.title?.trim() || `Project ${p.id}`;
       });
       this.cdr.detectChanges();

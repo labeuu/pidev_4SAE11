@@ -302,6 +302,20 @@
     strong { font-weight: $font-weight-semibold; color: $neutral-900; }
   }
 
+  &.modal--qr {
+    max-width: 360px;
+    text-align: center;
+
+    .qr-code-wrapper {
+      display: flex;
+      justify-content: center;
+      margin: $spacing-lg 0;
+      padding: $spacing-md;
+      background: $neutral-50;
+      border-radius: $radius-lg;
+    }
+  }
+
   .modal-actions {
     display: flex;
     gap: $spacing-sm;
