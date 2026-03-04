@@ -1,5 +1,6 @@
 package tn.esprit.project.Services;
 
+import tn.esprit.project.Dto.ProjectApplicationStats;
 import tn.esprit.project.Entities.Enums.ApplicationStatus;
 import tn.esprit.project.Entities.Project;
 import tn.esprit.project.Entities.ProjectApplication;
@@ -17,4 +18,5 @@ public interface IProjectApplicationService {
     ProjectApplication getProjectApplicationById(Long id);
     List<ProjectApplication> getApplicationsByProject(Long projectId);
     List<ProjectApplication> getApplicationsByFreelance(Long freelanceId);
+    List<ProjectApplicationStats> getProjectApplicationStatistics();
 }

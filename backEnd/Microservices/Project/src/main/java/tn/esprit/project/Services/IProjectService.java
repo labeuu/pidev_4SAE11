@@ -1,5 +1,6 @@
 package tn.esprit.project.Services;
 
+import tn.esprit.project.Dto.response.ProjectResponse;
 import tn.esprit.project.Entities.Project;
 
 import java.util.List;
@@ -14,10 +15,13 @@ public interface IProjectService {
     Project getProjectById(Long id);
 
     List<Project> getAllProjects();
+    List<ProjectResponse> getAllProjectResponses();
+    ProjectResponse getProjectResponse(Long id);
 
     List<Project> getProjectsByClientId(Long clientId);
 
     List<Project> getRecommendedProjects(Long freelancerId);
 
     Map<String, Object> getProjectStatistics();
+    byte[] exportProjectsToPdf();
 }

@@ -1,0 +1,81 @@
+<div class="dashboard-home-page">
+  <h1>Welcome to Freelancia! 👋</h1>
+  <p class="subtitle">You're logged in as: <strong>{{ auth.getUserRole() }}</strong></p>
+
+  <div class="cards-grid">
+    <app-card>
+      <h3>🚀 Quick Start</h3>
+      <p>Explore the sidebar to navigate to different sections of your dashboard.</p>
+    </app-card>
+
+    @if (auth.isClient()) {
+      <app-card>
+        <h3>💼 For Clients</h3>
+        <p>Post jobs, browse freelancers, and manage your projects from here.</p>
+      </app-card>
+    }
+
+    @if (auth.isFreelancer()) {
+      <app-card>
+        <h3>🎨 For Freelancers</h3>
+        <p>Browse jobs, manage applications, and build your portfolio.</p>
+      </app-card>
+    }
+
+    <app-card>
+      <h3>🎯 Coming Soon</h3>
+      <p>Full dashboard features are being developed. This is a placeholder to show the structure.</p>
+    </app-card>
+  </div>
+</div>
+
+
+<section *ngIf="userRole === 'FREELANCER'" class="recommendations">
+
+  <div class="recommendation-header">
+    <h2>🔥 Recommended For You</h2>
+    <p>Projects matching your skills</p>
+  </div>
+
+  <div *ngIf="isLoadingRecommendations" class="loading">
+    Loading recommendations...
+  </div>
+
+  <div *ngIf="!isLoadingRecommendations && recommendedProjects.length === 0"
+       class="empty-state">
+    No recommendations available yet.
+  </div>
+
+  <div class="recommended-grid">
+
+    <div class="recommended-card"
+         *ngFor="let project of recommendedProjects">
+
+      <div class="card-top">
+        <h3>{{ project.title }}</h3>
+        <span class="budget">{{ project.budget | currency }}</span>
+      </div>
+
+      <div class="skills-container">
+        <span class="skill-badge"
+              *ngFor="let skill of project.skills">
+          {{ skill.name }}
+        </span>
+      </div>
+
+      <div class="card-meta">
+        <span>📅 {{ project.deadline | date }}</span>
+        <span class="category">{{ project.category }}</span>
+      </div>
+
+      <button
+        class="view-btn"
+        [routerLink]="['/dashboard/browse-jobs', project.id, 'show']">
+        View Project →
+      </button>
+
+    </div>
+
+  </div>
+
+</section>

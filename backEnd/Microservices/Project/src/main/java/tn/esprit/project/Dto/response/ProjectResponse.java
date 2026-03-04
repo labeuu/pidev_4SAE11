@@ -1,8 +1,11 @@
 package tn.esprit.project.Dto.response;
 
 import lombok.*;
+import tn.esprit.project.Dto.Skills;
+
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -17,4 +20,5 @@ public class ProjectResponse {
     private LocalDateTime deadline;
     private String status;
     private String category;
+    private List<Skills> skills;
 }

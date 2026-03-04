@@ -4,6 +4,7 @@ import jakarta.validation.constraints.*;
 import lombok.*;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Data
 @NoArgsConstructor
@@ -31,5 +32,5 @@ public class ProjectRequest {
     private String category;
 
     @NotBlank
-    private String skillsRequiered;
+    private List<Long> skillIds;
 }

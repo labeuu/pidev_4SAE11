@@ -182,4 +182,11 @@ public class SkillService {
                     + Arrays.toString(Domain.values()));
         }
     }
+    @Transactional(readOnly = true)
+    public List<Skill> findAllByIds(List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return List.of(); // retourne une liste vide si aucun id fourni
+        }
+        return skillRepository.findAllById(ids);
+    }
 }

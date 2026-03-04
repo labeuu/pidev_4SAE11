@@ -1,13 +1,14 @@
-import { Component } from '@angular/core';
+import { ChangeDetectorRef, Component } from '@angular/core';
 import { ActivatedRoute, Router } from '@angular/router';
 import { ProjectService, Project } from '../../../core/services/project.service';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
+import { PortfolioService, Skill } from '../../../core/services/portfolio.service';
 
 @Component({
   selector: 'app-update-project',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule],
   templateUrl: './update-project.html',
   styleUrl: './update-project.scss',
 })
@@ -18,13 +19,22 @@ export class UpdateProject {
   submitSuccess = false;
   submitError: string | null = null;
 
+  allSkills: Skill[] = [];
+  newSkillName = '';
+  showAddSkillModal = false;
+  newSkillDomain = '';
+  skillFormErrors: Record<string, string> = {};
+  errorMessage: string | null = null;
+
   updateProjectForm!: FormGroup;
 
   constructor(
     private activatedRoute: ActivatedRoute,
     private ps: ProjectService,
     private fb: FormBuilder,
-    private router: Router
+    private router: Router,
+    private portfolioService: PortfolioService,
+    private cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -39,9 +49,21 @@ export class UpdateProject {
       deadline: ['', [Validators.required]],
       status: ['', [Validators.required]],
       category: ['', [Validators.required]],
-      skillsRequiered: ['', [Validators.required, Validators.minLength(2)]]
+      skillIds: [[], Validators.required]
     });
+    this.loadSkills();
     this.getProjectById();
+  }
+
+  loadSkills() {
+    this.portfolioService.getAllSkills().subscribe({
+      next: (skills) => {
+        this.allSkills = skills;
+      },
+      error: (err) => {
+        console.error('Error loading skills', err);
+      }
+    });
   }
   
   getProjectById(): void {
@@ -56,9 +78,9 @@ export class UpdateProject {
             description: res.description ?? '',
             category: res.category ?? '',
             status: res.status ?? '',
-            skillsRequiered: Array.isArray(res.skillsRequiered)
-              ? (res.skillsRequiered as string[]).join(', ')
-              : (res.skillsRequiered ?? ''),
+            skillIds: res.skills
+              ? res.skills.map((s: any) => s.id)
+              : [],
             deadline: formattedDate
           });
         }
@@ -71,37 +93,113 @@ export class UpdateProject {
     });
   }
 
+  onSkillToggle(skillId: number, event: any) {
+
+    const currentSkills = this.updateProjectForm.value.skillIds as number[];
+
+    if (event.target.checked) {
+      this.updateProjectForm.patchValue({
+        skillIds: [...currentSkills, skillId]
+      });
+    } else {
+      this.updateProjectForm.patchValue({
+        skillIds: currentSkills.filter(id => id !== skillId)
+      });
+    }
+
+    this.updateProjectForm.get('skillIds')?.updateValueAndValidity();
+  }
+
+
+  openAddSkillModal() {
+    this.errorMessage = null;
+    this.newSkillName = '';
+    this.newSkillDomain = '';
+    this.skillFormErrors = {};
+    this.showAddSkillModal = true;
+  }
+
+  closeAddSkillModal() {
+    this.showAddSkillModal = false;
+    this.cdr.detectChanges();
+  }
+
+
+  private validateSkillForm(): boolean {
+    this.skillFormErrors = {};
+
+    const name = this.newSkillName.trim();
+    const domain = this.newSkillDomain.trim();
+
+    if (!name) {
+      this.skillFormErrors['name'] = 'Skill name is required.';
+    }
+
+    if (!domain) {
+      this.skillFormErrors['domain'] = 'Domain is required.';
+    }
+
+    return Object.keys(this.skillFormErrors).length === 0;
+  }
+
+  addSkill() {
+    if (!this.validateSkillForm()) return;
+
+    const skill: Skill = {
+      name: this.newSkillName.trim(),
+      domain: this.newSkillDomain.trim(),
+      description: 'Added from project form',
+      userId: 2,  // not needed for project creation
+      verified: false,    // default
+      score: 0            // default
+    };
+
+    this.portfolioService.createSkill(skill).subscribe({
+      next: (createdSkill) => {
+        this.allSkills.push(createdSkill);
+
+        // auto-select it in project form
+        const currentSkills = this.updateProjectForm.value.skillIds || [];
+
+        this.updateProjectForm.patchValue({
+          skillIds: [...currentSkills, createdSkill.id!]
+        });
+
+        this.closeAddSkillModal();
+      },
+      error: (err) => {
+        console.error('Failed to create skill', err);
+        this.errorMessage = 'Failed to create skill.';
+      }
+    });
+  }
+
   updateProject(): void {
+
     if (this.updateProjectForm.invalid) {
       this.updateProjectForm.markAllAsTouched();
       return;
     }
 
-      this.isSubmitting = true;
-      this.submitError = null;
+    this.isSubmitting = true;
 
-    const formValue = { ...this.updateProjectForm.value };
+    const formValue = this.updateProjectForm.value;
 
     if (formValue.deadline && !formValue.deadline.includes('T')) {
       formValue.deadline = `${formValue.deadline}T00:00:00`;
-    }
-
-    const skillsTrimmed = (formValue.skillsRequiered || '').trim();
-    if (skillsTrimmed.length < 2) {
-      this.updateProjectForm.get('skillsRequiered')?.setErrors({ minlength: true });
-      this.isSubmitting = false;
-      return;
     }
 
     this.ps.updateProject(formValue).subscribe({
       next: () => {
         this.submitSuccess = true;
         this.isSubmitting = false;
+
         setTimeout(() => {
-          this.router.navigateByUrl('dashboard/my-projects');
+          this.router.navigateByUrl('/dashboard/my-projects');
         }, 1500);
       },
-      error: () => {
+      error: (err) => {
+        console.error(err);
         this.submitError = 'Failed to update project';
         this.isSubmitting = false;
       }

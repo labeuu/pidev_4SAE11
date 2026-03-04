@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, catchError, map, of, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
+import { Skill } from './portfolio.service';
 
 const REQUEST_TIMEOUT_MS = 15_000;
 
@@ -18,7 +19,7 @@ export interface Project {
   deadline?: string;
   status?: string;
   category?: string;
-  skillsRequiered?: string | string[] | null;
+  skills?: Skill[];
   createdAt?: string;
   updatedAt?: string;
 }
@@ -64,11 +65,17 @@ export class ProjectService {
     );
   }
 
+  exportProjectsPdf(): Observable<Blob> {
+    return this.http.get(
+      `${PROJECT_API}/export/pdf`,
+      { responseType: 'blob' }
+    );
+  }
+
   /** List all projects (backend: GET /projects/list). */
   getAllProjects(): Observable<Project[]> {
     return this.http.get<Project[]>(`${PROJECT_API}/list`).pipe(
-      timeout(REQUEST_TIMEOUT_MS),
-      catchError(() => of([]))
+      timeout(REQUEST_TIMEOUT_MS)
     );
   }
 

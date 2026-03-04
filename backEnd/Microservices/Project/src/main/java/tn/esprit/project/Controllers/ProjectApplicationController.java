@@ -1,7 +1,9 @@
 package tn.esprit.project.Controllers;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tn.esprit.project.Dto.ProjectApplicationStats;
 import tn.esprit.project.Entities.Enums.ApplicationStatus;
 import tn.esprit.project.Entities.ProjectApplication;
 import tn.esprit.project.Services.IProjectApplicationService;
@@ -56,5 +58,12 @@ public class ProjectApplicationController {
     @GetMapping("/freelance/{freelanceId}")
     public List<ProjectApplication> getApplicationsByFreelance(@PathVariable Long freelanceId) {
         return projectApplicationService.getApplicationsByFreelance(freelanceId);
+    }
+
+    @GetMapping("/applications/statistics")
+    public ResponseEntity<List<ProjectApplicationStats>> getApplicationsStats() {
+        return ResponseEntity.ok(
+                projectApplicationService.getProjectApplicationStatistics()
+        );
     }
 }

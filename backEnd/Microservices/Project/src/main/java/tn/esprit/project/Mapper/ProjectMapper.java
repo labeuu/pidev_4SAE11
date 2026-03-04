@@ -13,7 +13,7 @@ public class ProjectMapper {
         p.setBudget(dto.getBudget());
         p.setDeadline(dto.getDeadline());
         p.setCategory(dto.getCategory());
-        p.setSkillsRequiered(dto.getSkillsRequiered());
+        p.setSkillIds(dto.getSkillIds());
         return p;
     }
 
@@ -26,7 +26,8 @@ public class ProjectMapper {
                 p.getBudget(),
                 p.getDeadline(),
                 p.getStatus().name(),
-                p.getCategory()
+                p.getCategory(),
+                null
         );
     }
 }

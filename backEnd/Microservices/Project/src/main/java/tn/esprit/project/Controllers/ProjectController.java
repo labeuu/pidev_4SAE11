@@ -2,7 +2,9 @@ package tn.esprit.project.Controllers;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tn.esprit.project.Dto.response.ProjectResponse;
 import tn.esprit.project.Entities.Project;
 import tn.esprit.project.Services.IProjectService;
 
@@ -15,6 +17,7 @@ import java.util.Map;
 public class ProjectController {
 
     private final IProjectService projectService;
+    private ProjectResponse projectResponse;
 
     @Value("${welcome.message}")
     private String welcomeMessage;
@@ -40,7 +43,9 @@ public class ProjectController {
     }
 
     @GetMapping("/list")
-    public List<Project> getAllProjects() { return projectService.getAllProjects(); }
+    public List<ProjectResponse> getAllProjects() {
+        return projectService.getAllProjectResponses();
+    }
 
     @GetMapping("/client/{clientId}")
     public List<Project> getProjectsByClientId(@PathVariable Long clientId) {
@@ -48,9 +53,9 @@ public class ProjectController {
     }
 
     /** Single project by id (numeric only, so /client/14 is not matched here). */
-    @GetMapping("/{id:\\d+}")
-    public Project getProjectById(@PathVariable Long id) {
-        return projectService.getProjectById(id);
+    @GetMapping("/{id}")
+    public ProjectResponse getProjectById(@PathVariable Long id) {
+        return projectService.getProjectResponse(id);
     }
 
     @GetMapping("/recommended")
@@ -63,5 +68,16 @@ public class ProjectController {
     @GetMapping("/statistics")
     public Map<String, Object> getStatistics() {
         return projectService.getProjectStatistics();
+    }
+
+    @GetMapping("/export/pdf")
+    public ResponseEntity<byte[]> exportProjectsPdf() {
+
+        byte[] pdf = projectService.exportProjectsToPdf();
+
+        return ResponseEntity.ok()
+                .header("Content-Disposition", "attachment; filename=projects.pdf")
+                .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
+                .body(pdf);
     }
 }

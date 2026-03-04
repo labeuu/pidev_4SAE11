@@ -128,4 +128,18 @@ public class SkillController {
         skillService.delete(id);
         return ResponseEntity.noContent().build();
     }
+    @PostMapping("/batch")
+    public ResponseEntity<List<Skill>> getSkillsByIds(@RequestBody List<Long> ids) {
+        if (ids == null || ids.isEmpty()) {
+            return ResponseEntity.badRequest().build();
+        }
+
+        List<Skill> skills = skillService.findAllByIds(ids);
+        return ResponseEntity.ok(skills);
+    }
 }
+
+
+
+
+

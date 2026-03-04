@@ -1,0 +1,154 @@
+.dashboard-home-page {
+  max-width: 1200px;
+
+  h1 {
+    font-size: var(--text-4xl);
+    margin-bottom: var(--spacing-sm);
+  }
+
+  .subtitle {
+    font-size: var(--text-lg);
+    color: var(--text-secondary);
+    margin-bottom: var(--spacing-2xl);
+  }
+
+  .cards-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: var(--spacing-xl);
+
+    app-card {
+      h3 {
+        font-size: var(--text-xl);
+        margin-bottom: var(--spacing-md);
+      }
+
+      p {
+        color: var(--text-secondary);
+        line-height: 1.6;
+      }
+    }
+  }
+}
+
+
+
+.recommendations {
+  margin-top: 3rem;
+
+  .recommendation-header {
+    margin-bottom: 1.5rem;
+
+    h2 {
+      margin: 0;
+      font-size: 1.8rem;
+    }
+
+    p {
+      color: var(--text-secondary);
+      margin-top: 0.3rem;
+    }
+  }
+
+  .recommended-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+    gap: 1.5rem;
+  }
+
+  .recommended-card {
+    background: #ffffff;
+    border-radius: 16px;
+    padding: 1.5rem;
+    border: 1px solid #e2e8f0;
+    transition: all 0.25s ease;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+
+    &:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
+    }
+
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+
+      h3 {
+        margin: 0;
+        font-size: 1.2rem;
+      }
+
+      .budget {
+        background: #ecfdf5;
+        color: #059669;
+        padding: 0.3rem 0.7rem;
+        border-radius: 999px;
+        font-weight: 600;
+        font-size: 0.85rem;
+      }
+    }
+
+    .skills-container {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin: 1rem 0;
+    }
+
+    .skill-badge {
+      background: #eef2ff;
+      color: #4338ca;
+      padding: 0.35rem 0.7rem;
+      border-radius: 999px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      transition: 0.2s ease;
+
+      &:hover {
+        background: #4338ca;
+        color: white;
+      }
+    }
+
+    .card-meta {
+      display: flex;
+      justify-content: space-between;
+      font-size: 0.85rem;
+      color: #64748b;
+      margin-bottom: 1rem;
+
+      .category {
+        background: #f1f5f9;
+        padding: 0.25rem 0.6rem;
+        border-radius: 8px;
+      }
+    }
+
+    .view-btn {
+      background: linear-gradient(135deg, #2563eb, #1e40af);
+      color: white;
+      border: none;
+      padding: 0.7rem 1rem;
+      border-radius: 10px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s ease;
+      width: 100%;
+
+      &:hover {
+        opacity: 0.9;
+        transform: translateY(-1px);
+      }
+    }
+  }
+
+  .empty-state {
+    background: #f8fafc;
+    padding: 1rem;
+    border-radius: 12px;
+    color: #64748b;
+  }
+}
