@@ -2,6 +2,7 @@ package tn.esprit.project.Services;
 
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Service;
+import tn.esprit.project.Dto.ProjectApplicationStats;
 import tn.esprit.project.Entities.Enums.ApplicationStatus;
 import tn.esprit.project.Entities.ProjectApplication;
 import tn.esprit.project.Repository.ProjectApplicationRepository;
@@ -80,5 +81,10 @@ public class IProjectApplicationServicelmp implements IProjectApplicationService
     @Override
     public List<ProjectApplication> getApplicationsByFreelance(Long freelanceId) {
         return projectApplicationRepository.findByFreelanceId(freelanceId);
+    }
+
+    @Override
+    public List<ProjectApplicationStats> getProjectApplicationStatistics() {
+        return projectApplicationRepository.getApplicationsStatistics();
     }
 }

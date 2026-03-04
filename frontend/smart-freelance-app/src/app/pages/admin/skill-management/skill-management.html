@@ -41,9 +41,9 @@
               <td class="cell-name">{{ skill.name }}</td>
               <td class="cell-domains">
                 @for (d of skill.domains; track d) {
-                  <span class="domain-chip">{{ domainLabels[d] ?? d }}</span>
+                  <span class="domain-chip">{{ getDomainLabel(d) }}</span>
                 }
-                @if (!skill.domains?.length) { <span>—</span> }
+                @if (!skill.domains.length) { <span>—</span> }
               </td>
               <td class="cell-count">
                 <span class="user-count-badge">{{ userCountBySkillName(skill.name) }}</span>

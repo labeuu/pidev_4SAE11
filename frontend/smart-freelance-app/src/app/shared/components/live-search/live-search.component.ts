@@ -19,7 +19,8 @@ import {
 import { of } from 'rxjs';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { SearchResults } from './search-results/search-results.component';
-import { ProjectService } from '../../../core/services/project.service';
+import { ProjectService, Project } from '../../../core/services/project.service';
+import { Skill } from '../../../core/services/portfolio.service';
 import { SearchResult, FEED_CATEGORIES } from '../../models/project-feed';
 
 @Component({
@@ -92,8 +93,7 @@ export class LiveSearch implements OnInit {
           .filter((p) =>
             p.title.toLowerCase().includes(q) ||
             (p.description?.toLowerCase().includes(q) ?? false) ||
-            (typeof p.skillsRequiered === 'string' &&
-              p.skillsRequiered.toLowerCase().includes(q)),
+            this.skillsMatchQuery(p.skills, q),
           )
           .slice(0, 5)
           .map((p) => ({
@@ -101,7 +101,7 @@ export class LiveSearch implements OnInit {
             id: String(p.id),
             title: p.title,
             budget: p.budget,
-            skills: this.parseSkills(p.skillsRequiered),
+            skills: this.parseSkills(p.skills),
           }));
 
         const categoryResults: SearchResult[] = FEED_CATEGORIES
@@ -120,10 +120,19 @@ export class LiveSearch implements OnInit {
     );
   }
 
-  private parseSkills(s: string | string[] | null | undefined): string[] {
+  private skillsMatchQuery(skills: Project['skills'], q: string): boolean {
+    if (!skills?.length) return false;
+    return skills.some((sk) =>
+      (sk as Skill).name?.toLowerCase().includes(q)
+    );
+  }
+
+  private parseSkills(s: string | string[] | Skill[] | null | undefined): string[] {
     if (!s) return [];
-    if (Array.isArray(s)) return s;
-    return s.split(',').map((x) => x.trim()).filter(Boolean);
+    if (Array.isArray(s)) {
+      return s.map((x) => (typeof x === 'object' && x && 'name' in x ? (x as Skill).name : String(x))).filter(Boolean);
+    }
+    return String(s).split(',').map((x) => x.trim()).filter(Boolean);
   }
 
   // ── Events ───────────────────────────────────────────────────────────────

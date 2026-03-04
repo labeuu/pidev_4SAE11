@@ -234,6 +234,10 @@ export class MyReviews implements OnInit, OnDestroy {
     });
   }
 
+  getRatingCount(r: number): number {
+    return this.stats?.countByRating?.[r] ?? 0;
+  }
+
   getDraft(reviewId: number | undefined): string {
     return reviewId != null ? (this.newMessageByReview[reviewId] ?? '') : '';
   }

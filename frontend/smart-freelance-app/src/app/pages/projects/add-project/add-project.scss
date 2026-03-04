@@ -196,3 +196,303 @@
 
   .radio-group { flex-direction: column; gap: $spacing-sm; }
 }
+
+
+// ============================================
+// Modal Overlay (shared by all modals)
+// ============================================
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1300;
+  padding: $spacing-md;
+  overflow-y: auto;
+  animation: modalFadeIn 200ms ease-in-out;
+
+  @keyframes modalFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  // ── Modal Content Card ──
+  .modal-content {
+    background: $white;
+    border-radius: $radius-2xl;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: $shadow-2xl;
+    animation: modalSlideUp 300ms $ease-out;
+    position: relative;
+
+    @include custom-scrollbar;
+
+    @keyframes modalSlideUp {
+      from { transform: translateY(32px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    &.test-content {
+      max-width: 640px;
+    }
+
+    &.history-content {
+      max-width: 720px;
+    }
+
+    .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-xl $spacing-2xl;
+    border-bottom: 1px solid $neutral-100;
+  }
+
+  .modal-title {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+
+    h3 {
+      margin: 0;
+      padding: 0;
+      border: none;
+      font-size: $font-size-xl;
+    }
+
+    .modal-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: $radius-lg;
+      background: rgba($primary-500, 0.1);
+      color: $primary-600;
+      font-weight: $font-weight-bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+  }
+
+  .modal-close {
+    width: 34px;
+    height: 34px;
+    border-radius: $radius-full;
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    cursor: pointer;
+    color: $neutral-500;
+    transition: all $transition-base;
+
+    &:hover {
+      background: $neutral-100;
+      color: $neutral-800;
+    }
+  }
+
+    // Form body padding
+    .form-body {
+      padding: $spacing-lg $spacing-2xl;
+    }
+
+    .form-group {
+      margin-bottom: $spacing-lg;
+
+      label {
+        display: block;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-semibold;
+        color: $neutral-700;
+        margin-bottom: $spacing-xs;
+
+        .req { color: $error-500; }
+      }
+
+      input {
+        width: 100%;
+        padding: $spacing-sm $spacing-md;
+        border: 1.5px solid $neutral-200;
+        border-radius: $radius-lg;
+        font-size: $font-size-base;
+        color: $neutral-900;
+        background: $white;
+        transition: border-color $transition-base;
+        box-sizing: border-box;
+
+        &:focus {
+          outline: none;
+          border-color: $primary-500;
+          box-shadow: 0 0 0 3px rgba($primary-500, 0.12);
+        }
+
+        &.input-invalid {
+          border-color: $error-500 !important;
+          background: $error-50 !important;
+
+          &:focus {
+            box-shadow: 0 0 0 3px rgba($error-500, 0.14);
+          }
+        }
+      }
+
+      .field-err-msg {
+        display: block;
+        font-size: $font-size-xs;
+        color: $error-600;
+        margin-top: 4px;
+
+        &::before { content: '⚠ '; }
+      }
+
+      .field-hint {
+        display: block;
+        font-size: $font-size-xs;
+        color: $neutral-400;
+        margin-top: 4px;
+      }
+    }
+
+    // Modal action buttons row
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: $spacing-sm;
+      padding: $spacing-lg $spacing-2xl $spacing-2xl;
+      border-top: 1px solid $neutral-100;
+      flex-wrap: wrap;
+
+      button {
+        padding: $spacing-sm $spacing-xl;
+        border-radius: $radius-full;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-semibold;
+        cursor: pointer;
+        border: 1.5px solid $neutral-200;
+        background: $white;
+        color: $neutral-700;
+        transition: all $transition-base;
+
+        &:hover {
+          background: $neutral-100;
+        }
+
+        &.btn-primary {
+          background: $gradient-primary;
+          border-color: transparent;
+          color: $white;
+          box-shadow: $shadow-primary;
+
+          &:hover {
+            background: $gradient-primary-hover;
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+        }
+
+        &.btn-danger {
+          background: $error-500;
+          border-color: transparent;
+          color: $white;
+
+          &:hover {
+            background: $error-600;
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+// ── Skills Section ─────────────────────────────
+.skills-container {
+  border: 1.5px solid $neutral-200;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  background: $neutral-50;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.skill-card {
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-lg;
+  border: 1.5px solid $neutral-200;
+  background: $white;
+  cursor: pointer;
+  transition: all $transition-base;
+  user-select: none;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &:hover {
+    border-color: $primary-500;
+    box-shadow: 0 4px 12px rgba($primary-500, 0.12);
+    transform: translateY(-2px);
+  }
+
+  &.selected {
+    border-color: $primary-500;
+    background: rgba($primary-500, 0.06);
+    box-shadow: 0 4px 14px rgba($primary-500, 0.18);
+  }
+
+  .skill-name {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $neutral-800;
+  }
+
+  .skill-domain {
+    font-size: $font-size-xs;
+    color: $neutral-500;
+  }
+}
+
+.skills-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.btn-add-skill {
+  border: 1.5px dashed $primary-500;
+  background: transparent;
+  padding: $spacing-sm $spacing-lg;
+  border-radius: $radius-full;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $primary-600;
+  cursor: pointer;
+  transition: $transition-base;
+
+  &:hover {
+    background: rgba($primary-500, 0.08);
+    border-color: $primary-600;
+  }
+}
+

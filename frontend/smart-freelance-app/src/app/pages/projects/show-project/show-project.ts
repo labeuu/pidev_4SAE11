@@ -133,12 +133,6 @@ export class ShowProject implements OnInit {
   }
 
   getSkills(): string[] {
-    const skills = this.project?.skillsRequiered;
-    if (!skills) return [];
-    const str = Array.isArray(skills) ? (skills as string[]).join(',') : String(skills);
-    return str
-      .split(',')
-      .map((s: string) => s.trim())
-      .filter((s: string) => s.length > 0);
+    return this.project?.skills?.map(skill => skill.name) ?? [];
   }
 }

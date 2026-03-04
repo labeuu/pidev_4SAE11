@@ -4,13 +4,12 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { Subject } from 'rxjs';
 import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { ReviewService, Review, ReviewStats } from '../../../core/services/review.service';
-import { Card } from '../../../shared/components/card/card';
 import { StarRating } from '../../../shared/components/star-rating/star-rating';
 
 @Component({
   selector: 'app-review-management',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, Card, StarRating],
+  imports: [CommonModule, ReactiveFormsModule, StarRating],
   templateUrl: './review-management.html',
   styleUrl: './review-management.scss',
 })
@@ -133,6 +132,10 @@ export class ReviewManagement implements OnInit, OnDestroy {
 
   get roundedAverageRating(): number {
     return this.stats ? Math.round(this.stats.averageRating) : 0;
+  }
+
+  getRatingCount(r: number): number {
+    return this.stats?.countByRating?.[r] ?? 0;
   }
 
   get ratingOptions(): { value: number | null; label: string }[] {

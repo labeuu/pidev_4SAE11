@@ -71,6 +71,10 @@ export class AdminSkillManagement implements OnInit {
     });
   }
 
+  getDomainLabel(d: Domain): string {
+    return this.domainLabels[d] ?? d;
+  }
+
   /** Number of distinct users who have a skill with this name. */
   userCountBySkillName(name: string): number {
     return new Set(

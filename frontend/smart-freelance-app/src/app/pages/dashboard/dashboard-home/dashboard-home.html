@@ -1,0 +1,10 @@
+@if (auth.isClient()) {
+  <app-client-home />
+} @else if (auth.isFreelancer()) {
+  <app-freelancer-home />
+} @else {
+  <div class="dashboard-home-page">
+    <h1>Welcome to Freelancia! 👋</h1>
+    <p class="subtitle">Loading your dashboard...</p>
+  </div>
+}

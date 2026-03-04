@@ -11,6 +11,50 @@
     </div>
   </section>
 
+  <!-- Recommended For You (skill-based, grouped and highlighted) -->
+  <section class="recommendations-section">
+    <div class="recommendations-group">
+      <header class="recommendations-header">
+        <h2 class="section-title">
+          <span class="section-title-icon">🔥</span>
+          Recommended For You
+        </h2>
+        <p class="section-subtitle">Projects matching your portfolio skills</p>
+      </header>
+      @if (isLoadingRecommendations) {
+        <div class="recommendations-loading">
+          <div class="loading-spinner" aria-hidden="true"></div>
+          <p>Finding projects that match your skills...</p>
+        </div>
+      } @else if (recommendedProjects.length > 0) {
+        <div class="recommended-grid">
+          @for (project of recommendedProjects.slice(0, 6); track project.id) {
+            <a [routerLink]="['/dashboard/browse-jobs', project.id, 'show']" class="recommended-card">
+              <h3 class="rec-title">{{ project.title }}</h3>
+              <p class="rec-desc">{{ project.description }}</p>
+              <div class="rec-meta">
+                <span class="rec-budget">${{ (project.budget ?? 0) | number }}</span>
+                @if (project.skills?.length) {
+                  <span class="rec-skills">{{ formatSkills(project.skills) }}</span>
+                }
+              </div>
+              <span class="rec-cta">View Project →</span>
+            </a>
+          }
+        </div>
+        <a routerLink="/dashboard/browse-jobs" class="recommendations-view-all">View all jobs →</a>
+      } @else {
+        <div class="recommendations-empty">
+          <p class="rec-empty-text">No personalized recommendations yet.</p>
+          <p class="rec-empty-hint">Add skills to your portfolio to get projects matched to you.</p>
+          <a routerLink="/dashboard/my-portfolio" class="rec-empty-cta">Complete my portfolio</a>
+          <span class="rec-empty-or">or</span>
+          <a routerLink="/dashboard/browse-jobs" class="rec-empty-cta rec-empty-cta--primary">Browse all jobs</a>
+        </div>
+      }
+    </div>
+  </section>
+
   <!-- KPI Stats -->
   <section class="stats-section" *ngIf="!isLoadingStats">
     <div class="stats-grid">
@@ -49,36 +93,6 @@
         <span>My Portfolio</span>
       </a>
     </div>
-  </section>
-
-  <!-- Recommended For You -->
-  <section class="recommendations-section" *ngIf="recommendedProjects.length > 0 || isLoadingRecommendations">
-    <h2 class="section-title">
-      <span class="section-title-icon">🔥</span>
-      Recommended For You
-    </h2>
-    @if (isLoadingRecommendations) {
-      <div class="recommendations-loading">
-        <div class="loading-spinner" aria-hidden="true"></div>
-        <p>Finding projects that match your skills...</p>
-      </div>
-    } @else if (recommendedProjects.length > 0) {
-      <div class="recommended-grid">
-        @for (project of recommendedProjects.slice(0, 3); track project.id) {
-          <a [routerLink]="['/dashboard/browse-jobs', project.id, 'show']" class="recommended-card">
-            <h3 class="rec-title">{{ project.title }}</h3>
-            <p class="rec-desc">{{ project.description }}</p>
-            <div class="rec-meta">
-              <span class="rec-budget">${{ (project.budget ?? 0) | number }}</span>
-              @if (project.skillsRequiered) {
-                <span class="rec-skills">{{ formatSkills(project.skillsRequiered) }}</span>
-              }
-            </div>
-            <span class="rec-cta">View Project →</span>
-          </a>
-        }
-      </div>
-    }
   </section>
 
   <!-- Project Feed -->

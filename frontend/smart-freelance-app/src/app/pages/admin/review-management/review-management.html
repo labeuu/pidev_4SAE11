@@ -21,7 +21,7 @@
         </div>
         @for (r of [5,4,3,2,1]; track r) {
           <div class="stat-card stat-card--rating">
-            <span class="stat-value">{{ stats.countByRating[r] ?? 0 }}</span>
+            <span class="stat-value">{{ getRatingCount(r) }}</span>
             <span class="stat-label">{{ r }} star(s)</span>
           </div>
         }

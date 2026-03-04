@@ -1,5 +1,5 @@
 import { CommonModule } from '@angular/common';
-import { Component, OnInit, OnDestroy, ChangeDetectorRef, ViewChild, ElementRef } from '@angular/core';
+import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { Router, RouterLink, NavigationEnd } from '@angular/router';
 import { ProjectService, Project } from '../../../core/services/project.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -10,7 +10,7 @@ import { catchError, map, filter } from 'rxjs/operators';
 import { FormsModule } from '@angular/forms';
 import { Chart, ChartData, ChartOptions, registerables } from 'chart.js';
 import { BaseChartDirective } from 'ng2-charts';
-import { QRCodeComponent } from 'angularx-qrcode';
+import { ProjectApplicationService, ProjectApplicationStats } from '../../../core/services/project-application.service';
 
 
 const AUTO_REFRESH_INTERVAL_MS = 60_000;
@@ -31,40 +31,84 @@ Chart.register(...registerables);
 @Component({
   selector: 'app-list-projects',
   standalone: true,
-  imports: [RouterLink, CommonModule, FormsModule, BaseChartDirective, QRCodeComponent],
+  imports: [RouterLink, CommonModule, FormsModule, BaseChartDirective],
   templateUrl: './list-projects.html',
   styleUrl: './list-projects.scss',
 })
 export class ListProjects implements OnInit, OnDestroy {
 
-  @ViewChild('qrCodeElement') qrCodeElement!: QRCodeComponent;
-
-  qrProject: Project | null = null;
-  qrContent = '';
-
   // Only for admin statistics
-  statusChartData: ChartData<'doughnut', number[], string> = {
-    labels: ['OPEN', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
-    datasets: [
-      {
-        data: [0, 0, 0, 0],
-        backgroundColor: ['#36A2EB', '#FFCE56', '#4BC0C0', '#FF6384'],
-        borderWidth: 1,
-      },
-    ],
+  statusChartData = {
+    labels: ['Open', 'In Progress', 'Completed', 'Cancelled'],
+    datasets: [{
+      data: [0, 0, 0, 0],
+      backgroundColor: [
+        '#2563EB',
+        '#F59E0B',
+        '#10B981',
+        '#6B7280'
+      ],
+      borderWidth: 0
+    }]
   };
 
-  statusChartOptions: ChartOptions<'doughnut'> = {
+  statusChartOptions = {
     responsive: true,
+    cutout: '75%',
     plugins: {
       legend: {
-        position: 'bottom',
-      },
-      tooltip: {
-        enabled: true,
-      },
-    },
+        display: false
+      }
+    }
   };
+
+  // 🔥 Applications per Project (HORIZONTAL BAR CHART)
+  applicationsChartData: ChartData<'bar'> = {
+    labels: [],
+    datasets: [{
+      label: 'Applications',
+      data: [],
+      backgroundColor: [],
+      borderRadius: 6,
+      barThickness: 20,
+      maxBarThickness: 28
+    }]
+  };
+
+  applicationsChartOptions: ChartOptions<'bar'> = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        callbacks: {
+          title: (items) => {
+            const idx = items[0]?.dataIndex ?? 0;
+            const limit = this.applicationsChartLimit === 9999 ? this.applicationStats.length : this.applicationsChartLimit;
+            const stat = this.applicationStats.slice(0, limit)[idx];
+            return stat?.projectTitle ?? this.applicationsChartData.labels?.[idx] ?? '';
+          },
+          label: (ctx) => `${ctx.raw} application${Number(ctx.raw) !== 1 ? 's' : ''}`
+        }
+      }
+    },
+    scales: {
+      x: {
+        beginAtZero: true,
+        ticks: { precision: 0, stepSize: 1 },
+        grid: { color: 'rgba(0,0,0,0.06)' }
+      },
+      y: {
+        grid: { display: false },
+        ticks: { font: { size: 11 }, maxRotation: 0, autoSkip: false }
+      }
+    }
+  };
+
+  applicationStats: ProjectApplicationStats[] = [];
+  applicationsChartLimit = 15;
+  applicationsChartLimitOptions = [10, 15, 20, 30, 50, 9999];
 
   canManageProjects = false;
 
@@ -83,6 +127,7 @@ export class ListProjects implements OnInit, OnDestroy {
 
   constructor(
     private projectService: ProjectService,
+    private applicationService: ProjectApplicationService,
     private authService: AuthService,
     private userService: UserService,
     private cdr: ChangeDetectorRef,
@@ -216,6 +261,25 @@ export class ListProjects implements OnInit, OnDestroy {
 
             this.cdr.detectChanges();
           });
+
+          // 🔥 Applications per Project (HORIZONTAL BAR)
+          this.applicationService.getProjectApplicationStatistics()
+            .subscribe(stats => {
+              if (!stats || stats.length === 0) {
+                this.applicationStats = [];
+                this.applicationsChartData = {
+                  labels: [],
+                  datasets: [{ label: 'Applications', data: [], backgroundColor: [], borderRadius: 6 }]
+                };
+                this.cdr.detectChanges();
+                return;
+              }
+              // Sort by count descending, most applied first
+              const sorted = [...stats].sort((a, b) => b.applicationsCount - a.applicationsCount);
+              this.applicationStats = sorted;
+              this.updateApplicationsChart();
+              this.cdr.detectChanges();
+            });
         }
 
         this.isLoading = false;
@@ -232,13 +296,21 @@ export class ListProjects implements OnInit, OnDestroy {
   }
 
   getSkills(project: Project): string[] {
-    const s = project.skillsRequiered;
-    if (s == null || s === '') return [];
-    if (Array.isArray(s)) return s.map((x) => String(x).trim()).filter(Boolean);
-    return String(s)
-      .split(',')
-      .map((x) => x.trim())
-      .filter(Boolean);
+    return project.skills?.map(s => s.name) ?? [];
+  }
+
+  exportPdf(): void {
+    this.projectService.exportProjectsPdf().subscribe(blob => {
+
+      const url = window.URL.createObjectURL(blob);
+
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'projects.pdf';
+      a.click();
+
+      window.URL.revokeObjectURL(url);
+    });
   }
 
   applyFilters(): void {
@@ -270,49 +342,46 @@ export class ListProjects implements OnInit, OnDestroy {
     this.applyFilters();
   }
 
-  openQrModal(project: Project): void {
-    this.qrProject = project;
-    const skills = this.getSkills(project).join(', ') || 'N/A';
-    const deadline = project.deadline
-      ? new Date(project.deadline).toLocaleDateString('fr-FR', { year: 'numeric', month: 'long', day: 'numeric' })
-      : 'N/A';
-    this.qrContent = [
-      `PROJECT: ${project.title}`,
-      `Category: ${project.category || 'N/A'}`,
-      `Status: ${project.status || 'N/A'}`,
-      `Budget: ${project.budget ? '$' + project.budget : 'N/A'}`,
-      `Deadline: ${deadline}`,
-      `Skills: ${skills}`,
-      `Description: ${project.description || 'N/A'}`,
-    ].join('\n');
-    document.body.style.overflow = 'hidden';
+  onApplicationsChartLimitChange(): void {
+    this.updateApplicationsChart();
   }
 
-  closeQrModal(): void {
-    this.qrProject = null;
-    document.body.style.overflow = '';
+  private updateApplicationsChart(): void {
+    const limit = this.applicationsChartLimit === 9999 ? this.applicationStats.length : this.applicationsChartLimit;
+    const sliced = this.applicationStats.slice(0, limit);
+    const maxCount = Math.max(...this.applicationStats.map(s => s.applicationsCount), 1);
+    this.applicationsChartData = {
+      labels: sliced.map(s => s.projectTitle.length > 50 ? s.projectTitle.slice(0, 47) + '…' : s.projectTitle),
+      datasets: [{
+        label: 'Applications',
+        data: sliced.map(s => s.applicationsCount),
+        backgroundColor: sliced.map(s => {
+          const t = s.applicationsCount / maxCount;
+          const r = Math.round(37 + (99 - 37) * (1 - t));
+          const g = Math.round(99 + (179 - 99) * (1 - t));
+          const b = Math.round(235);
+          return `rgb(${r}, ${g}, ${b})`;
+        }),
+        borderRadius: 6,
+        barThickness: 20,
+        maxBarThickness: 28
+      }]
+    };
   }
 
-  downloadQr(): void {
-    const canvas = document.querySelector('.qr-modal canvas') as HTMLCanvasElement;
-    const img = document.querySelector('.qr-modal img') as HTMLImageElement;
-    const title = (this.qrProject?.title || 'project').replace(/\s+/g, '-').toLowerCase();
-
-    if (canvas) {
-      const link = document.createElement('a');
-      link.download = `qr-${title}.png`;
-      link.href = canvas.toDataURL('image/png');
-      link.click();
-    } else if (img) {
-      const link = document.createElement('a');
-      link.download = `qr-${title}.png`;
-      link.href = img.src;
-      link.click();
-    }
+  get totalApplicationsCount(): number {
+    return this.applicationStats.reduce((acc, s) => acc + s.applicationsCount, 0);
   }
 
-  /** True si on est sur la page Browse Jobs (freelancers postulent aux projets). */
-  get isBrowseJobs(): boolean {
-    return this.router.url.includes('browse-jobs');
+  get applicationsChartLimitLabel(): string {
+    return this.applicationsChartLimit === 9999 ? 'All' : `Top ${this.applicationsChartLimit}`;
+  }
+
+  /** Dynamic height so each project bar has ~32px; enables scrolling when many projects. */
+  get applicationsChartHeightPx(): number {
+    const n = this.applicationsChartData?.labels?.length ?? 0;
+    const minHeight = 320;
+    const pxPerBar = 32;
+    return Math.max(minHeight, n * pxPerBar);
   }
 }

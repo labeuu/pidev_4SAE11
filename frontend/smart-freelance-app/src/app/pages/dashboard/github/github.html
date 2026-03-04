@@ -77,7 +77,7 @@
         <div class="commit-box">
           <p class="commit-message">{{ latestCommit.commit?.message ?? '—' }}</p>
           <p class="commit-meta">
-            <code>{{ latestCommit.sha?.slice(0, 7) }}</code>
+            <code>{{ latestCommit.sha.slice(0, 7) }}</code>
             @if (latestCommit.commit?.author?.date) {
               <span>{{ latestCommit.commit?.author?.date }}</span>
             }
@@ -98,7 +98,7 @@
         <ul class="commit-history-list">
           @for (c of commits; track c.sha) {
             <li class="commit-history-item">
-              <code class="commit-sha">{{ c.sha?.slice(0, 7) }}</code>
+              <code class="commit-sha">{{ c.sha.slice(0, 7) }}</code>
               <span class="commit-msg">{{ c.commit?.message ?? '—' }}</span>
               @if (c.commit?.author?.date) {
                 <span class="commit-date">{{ c.commit?.author?.date }}</span>
@@ -124,7 +124,7 @@
         <label for="issueBody">Body (optional)</label>
         <textarea id="issueBody" [(ngModel)]="issueBody" placeholder="Description (markdown supported)" class="input textarea" rows="3"></textarea>
       </div>
-      <button type="button" class="btn btn-primary" [disabled]="!repoFilled || !issueTitle?.trim() || creatingIssue" (click)="createIssue()">
+      <button type="button" class="btn btn-primary" [disabled]="!repoFilled || !issueTitle.trim() || creatingIssue" (click)="createIssue()">
         {{ creatingIssue ? 'Creating…' : 'Create issue' }}
       </button>
       @if (createdIssue) {

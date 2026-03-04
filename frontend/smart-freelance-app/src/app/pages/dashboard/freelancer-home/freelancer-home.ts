@@ -12,7 +12,6 @@ import { OfferService } from '../../../core/services/offer.service';
 import { ProjectApplicationService } from '../../../core/services/project-application.service';
 import { ProjectsFeed } from '../../../shared/components/projects-feed/projects-feed.component';
 import { ProjectFeed } from '../../../shared/models/project-feed';
-import { Card } from '../../../shared/components/card/card';
 
 export type SortOption = 'newest' | 'oldest' | 'budget-high' | 'budget-low';
 
@@ -119,16 +118,12 @@ export class FreelancerHome implements OnInit {
 
   private loadRecommendations(userId: number): void {
     this.isLoadingRecommendations = true;
-    this.projectService.getRecommendedProjects(userId).subscribe({
-      next: (projects) => {
-        this.recommendedProjects = projects ?? [];
-        this.isLoadingRecommendations = false;
-        this.cdr.detectChanges();
-      },
-      error: () => {
-        this.isLoadingRecommendations = false;
-        this.cdr.detectChanges();
-      },
+    this.projectService.getRecommendedProjects(userId).pipe(
+      catchError(() => of([]))
+    ).subscribe((projects) => {
+      this.recommendedProjects = projects ?? [];
+      this.isLoadingRecommendations = false;
+      this.cdr.detectChanges();
     });
   }
 
@@ -162,7 +157,7 @@ export class FreelancerHome implements OnInit {
         rating: Number.parseFloat((4.2 + Math.random() * 0.8).toFixed(1)),
       },
       description: p.description,
-      skills: this.parseSkills(p.skillsRequiered),
+      skills: this.parseSkills(p.skills),
       postedAgo: this.timeAgo(p.createdAt),
       createdAt: p.createdAt,
       category: p.category,
@@ -176,16 +171,18 @@ export class FreelancerHome implements OnInit {
     if (page >= 1 && page <= total) this.currentPage.set(page);
   }
 
-  private parseSkills(s: string | string[] | null | undefined): string[] {
+  private parseSkills(s: unknown): string[] {
     if (!s) return [];
-    if (Array.isArray(s)) return s;
-    return s.split(',').map(x => x.trim()).filter(Boolean);
+    if (Array.isArray(s)) {
+      return s.map((x) => (typeof x === 'object' && x && 'name' in x ? (x as { name: string }).name : String(x))).filter(Boolean);
+    }
+    return String(s).split(',').map(x => x.trim()).filter(Boolean);
   }
 
-  formatSkills(s: string | string[] | null | undefined): string {
+  formatSkills(s: unknown): string {
     if (!s) return '';
-    if (Array.isArray(s)) return s.slice(0, 3).join(', ');
-    return s.split(',').map(x => x.trim()).slice(0, 3).join(', ');
+    const arr = this.parseSkills(s);
+    return arr.slice(0, 3).join(', ');
   }
 
   private timeAgo(dateStr?: string): string {

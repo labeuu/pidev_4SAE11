@@ -32,6 +32,12 @@ export interface ProjectApplication {
 
 }
 
+export interface ProjectApplicationStats {
+  projectId: number;
+  projectTitle: string;
+  applicationsCount: number;
+}
+
 @Injectable({
   providedIn: 'root',
 })
@@ -42,6 +48,15 @@ export class ProjectApplicationService {
     return this.http.post<ProjectApplication>(APPLICATIONS_API, application).pipe(
       timeout(REQUEST_TIMEOUT_MS),
       catchError(() => of(null)),
+    );
+  }
+
+  getProjectApplicationStatistics(): Observable<ProjectApplicationStats[]> {
+    return this.http.get<ProjectApplicationStats[]>(
+      `${APPLICATIONS_API}/applications/statistics`
+    ).pipe(
+      timeout(REQUEST_TIMEOUT_MS),
+      catchError(() => of([]))
     );
   }
 

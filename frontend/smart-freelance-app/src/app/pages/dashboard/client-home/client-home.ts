@@ -134,7 +134,7 @@ export class ClientHome implements OnInit {
         rating: Number.parseFloat((4.2 + Math.random() * 0.8).toFixed(1)),
       },
       description: p.description,
-      skills: this.parseSkills(p.skillsRequiered),
+      skills: this.parseSkills(p.skills),
       postedAgo: this.timeAgo(p.createdAt),
       createdAt: p.createdAt,
       category: p.category,
@@ -148,10 +148,12 @@ export class ClientHome implements OnInit {
     if (page >= 1 && page <= total) this.currentPage.set(page);
   }
 
-  private parseSkills(s: string | string[] | null | undefined): string[] {
+  private parseSkills(s: unknown): string[] {
     if (!s) return [];
-    if (Array.isArray(s)) return s;
-    return s.split(',').map(x => x.trim()).filter(Boolean);
+    if (Array.isArray(s)) {
+      return s.map((x) => (typeof x === 'object' && x && 'name' in x ? (x as { name: string }).name : String(x))).filter(Boolean);
+    }
+    return String(s).split(',').map(x => x.trim()).filter(Boolean);
   }
 
   private timeAgo(dateStr?: string): string {

@@ -1,1 +1,498 @@
-@use '../../projects/add-project/add-project.scss';
+@use '../../../../styles/variables' as *;
+
+// ════════════════════════════════════════════════════════════════
+// ADD PROJECT — Form page
+// ════════════════════════════════════════════════════════════════
+
+.add-project {
+  padding: $spacing-3xl $spacing-lg;
+  font-family: $font-family;
+}
+
+.add-project__container {
+  max-width: 720px;
+  margin: 0 auto;
+  background: $white;
+  border-radius: $radius-xl;
+  border: 1.5px solid $neutral-200;
+  padding: $spacing-3xl $spacing-2xl;
+}
+
+.add-project__title {
+  font-size: $font-size-3xl;
+  font-weight: $font-weight-extrabold;
+  margin: 0 0 $spacing-xs;
+  background: $gradient-primary;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  text-align: center;
+}
+
+.add-project__subtitle {
+  color: $neutral-500;
+  text-align: center;
+  margin: 0 0 $spacing-2xl;
+  font-size: $font-size-sm;
+}
+
+// ── Form Fields ────────────────────────────────────────────────
+.form-group {
+  margin-bottom: $spacing-lg;
+}
+
+.form-label {
+  display: block;
+  margin-bottom: $spacing-xs;
+  font-weight: $font-weight-semibold;
+  color: $neutral-700;
+  font-size: $font-size-sm;
+}
+
+.required { color: $primary-600; }
+
+.form-input,
+.form-select,
+.form-textarea {
+  width: 100%;
+  padding: $spacing-sm $spacing-md;
+  border: 1.5px solid $neutral-300;
+  border-radius: $radius-lg;
+  font-size: $font-size-sm;
+  font-family: $font-family;
+  color: $neutral-800;
+  background: $white;
+  box-sizing: border-box;
+  transition: $transition-fast;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-500;
+    box-shadow: 0 0 0 3px rgba($primary-500, 0.12);
+  }
+
+  &::placeholder { color: $neutral-400; }
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 140px;
+}
+
+.form-select {
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%236B7280' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right $spacing-md center;
+  padding-right: $spacing-2xl;
+  cursor: pointer;
+}
+
+.form-hint {
+  display: block;
+  margin-top: $spacing-xs;
+  font-size: $font-size-xs;
+  color: $neutral-400;
+}
+
+// ── Messages ──────────────────────────────────────────────────
+.form-message {
+  padding: $spacing-md $spacing-lg;
+  border-radius: $radius-xl;
+  margin: $spacing-lg 0;
+  text-align: center;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+
+  &.error   { background: $error-50;   color: $error-700;   border: 1.5px solid rgba($error-500, 0.25); }
+  &.success { background: $success-50; color: $success-700; border: 1.5px solid rgba($success-500, 0.25); }
+  &.loading { background: $info-50;    color: $info-600;    border: 1.5px solid rgba($info-500, 0.25); }
+}
+
+// ── Field validation ──────────────────────────────────────────
+.field-error-msg {
+  display: block;
+  font-size: $font-size-xs;
+  color: $error-600;
+  margin-top: $spacing-xs;
+  &::before { content: '⚠ '; }
+}
+
+.input-invalid {
+  border-color: $error-500 !important;
+  background: $error-50 !important;
+  &:focus { box-shadow: 0 0 0 3px rgba($error-500, 0.12) !important; }
+}
+
+// ── Radio group ───────────────────────────────────────────────
+.radio-group {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-md $spacing-xl;
+}
+
+.radio-label {
+  display: flex;
+  align-items: center;
+  gap: $spacing-xs;
+  cursor: pointer;
+  font-size: $font-size-sm;
+  color: $neutral-600;
+
+  input[type="radio"] { accent-color: $primary-500; }
+}
+
+// ── Form Actions ──────────────────────────────────────────────
+.form-actions {
+  display: flex;
+  gap: $spacing-md;
+  justify-content: flex-end;
+  margin-top: $spacing-2xl;
+  padding-top: $spacing-lg;
+  border-top: 1.5px solid $neutral-100;
+}
+
+.btn--submit {
+  padding: $spacing-sm $spacing-xl;
+  border-radius: $radius-full;
+  border: none;
+  @include button-gradient;
+  color: $white;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba($primary-500, 0.35);
+  transition: $transition-base;
+
+  &:hover:not(:disabled) { transform: translateY(-1px); box-shadow: $shadow-primary; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
+.btn--cancel {
+  padding: $spacing-sm $spacing-xl;
+  border-radius: $radius-full;
+  background: transparent;
+  color: $neutral-600;
+  border: 1.5px solid $neutral-300;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  cursor: pointer;
+  transition: $transition-base;
+
+  &:hover { background: $neutral-100; border-color: $neutral-400; }
+}
+
+@media (max-width: $breakpoint-sm) {
+  .add-project { padding: $spacing-xl $spacing-md; }
+  .add-project__container { padding: $spacing-xl $spacing-lg; }
+
+  .form-actions {
+    flex-direction: column;
+    gap: $spacing-sm;
+
+    .btn--submit,
+    .btn--cancel { width: 100%; justify-content: center; }
+  }
+
+  .radio-group { flex-direction: column; gap: $spacing-sm; }
+}
+
+
+// ============================================
+// Modal Overlay (shared by all modals)
+// ============================================
+.modal {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.55);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1300;
+  padding: $spacing-md;
+  overflow-y: auto;
+  animation: modalFadeIn 200ms ease-in-out;
+
+  @keyframes modalFadeIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+
+  // ── Modal Content Card ──
+  .modal-content {
+    background: $white;
+    border-radius: $radius-2xl;
+    width: 100%;
+    max-width: 560px;
+    max-height: 90vh;
+    overflow-y: auto;
+    box-shadow: $shadow-2xl;
+    animation: modalSlideUp 300ms $ease-out;
+    position: relative;
+
+    @include custom-scrollbar;
+
+    @keyframes modalSlideUp {
+      from { transform: translateY(32px); opacity: 0; }
+      to   { transform: translateY(0);    opacity: 1; }
+    }
+
+    &.test-content {
+      max-width: 640px;
+    }
+
+    &.history-content {
+      max-width: 720px;
+    }
+
+    .modal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $spacing-xl $spacing-2xl;
+    border-bottom: 1px solid $neutral-100;
+  }
+
+  .modal-title {
+    display: flex;
+    align-items: center;
+    gap: $spacing-sm;
+
+    h3 {
+      margin: 0;
+      padding: 0;
+      border: none;
+      font-size: $font-size-xl;
+    }
+
+    .modal-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: $radius-lg;
+      background: rgba($primary-500, 0.1);
+      color: $primary-600;
+      font-weight: $font-weight-bold;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+  }
+
+  .modal-close {
+    width: 34px;
+    height: 34px;
+    border-radius: $radius-full;
+    border: none;
+    background: transparent;
+    font-size: 16px;
+    cursor: pointer;
+    color: $neutral-500;
+    transition: all $transition-base;
+
+    &:hover {
+      background: $neutral-100;
+      color: $neutral-800;
+    }
+  }
+
+    // Form body padding
+    .form-body {
+      padding: $spacing-lg $spacing-2xl;
+    }
+
+    .form-group {
+      margin-bottom: $spacing-lg;
+
+      label {
+        display: block;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-semibold;
+        color: $neutral-700;
+        margin-bottom: $spacing-xs;
+
+        .req { color: $error-500; }
+      }
+
+      input {
+        width: 100%;
+        padding: $spacing-sm $spacing-md;
+        border: 1.5px solid $neutral-200;
+        border-radius: $radius-lg;
+        font-size: $font-size-base;
+        color: $neutral-900;
+        background: $white;
+        transition: border-color $transition-base;
+        box-sizing: border-box;
+
+        &:focus {
+          outline: none;
+          border-color: $primary-500;
+          box-shadow: 0 0 0 3px rgba($primary-500, 0.12);
+        }
+
+        &.input-invalid {
+          border-color: $error-500 !important;
+          background: $error-50 !important;
+
+          &:focus {
+            box-shadow: 0 0 0 3px rgba($error-500, 0.14);
+          }
+        }
+      }
+
+      .field-err-msg {
+        display: block;
+        font-size: $font-size-xs;
+        color: $error-600;
+        margin-top: 4px;
+
+        &::before { content: '⚠ '; }
+      }
+
+      .field-hint {
+        display: block;
+        font-size: $font-size-xs;
+        color: $neutral-400;
+        margin-top: 4px;
+      }
+    }
+
+    // Modal action buttons row
+    .modal-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: $spacing-sm;
+      padding: $spacing-lg $spacing-2xl $spacing-2xl;
+      border-top: 1px solid $neutral-100;
+      flex-wrap: wrap;
+
+      button {
+        padding: $spacing-sm $spacing-xl;
+        border-radius: $radius-full;
+        font-size: $font-size-sm;
+        font-weight: $font-weight-semibold;
+        cursor: pointer;
+        border: 1.5px solid $neutral-200;
+        background: $white;
+        color: $neutral-700;
+        transition: all $transition-base;
+
+        &:hover {
+          background: $neutral-100;
+        }
+
+        &.btn-primary {
+          background: $gradient-primary;
+          border-color: transparent;
+          color: $white;
+          box-shadow: $shadow-primary;
+
+          &:hover {
+            background: $gradient-primary-hover;
+          }
+
+          &:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+          }
+        }
+
+        &.btn-danger {
+          background: $error-500;
+          border-color: transparent;
+          color: $white;
+
+          &:hover {
+            background: $error-600;
+          }
+        }
+      }
+    }
+  }
+}
+
+
+
+// ── Skills Section ─────────────────────────────
+.skills-container {
+  border: 1.5px solid $neutral-200;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  background: $neutral-50;
+}
+
+.skills-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: $spacing-md;
+  margin-bottom: $spacing-md;
+}
+
+.skill-card {
+  padding: $spacing-sm $spacing-md;
+  border-radius: $radius-lg;
+  border: 1.5px solid $neutral-200;
+  background: $white;
+  cursor: pointer;
+  transition: all $transition-base;
+  user-select: none;
+
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+
+  &:hover {
+    border-color: $primary-500;
+    box-shadow: 0 4px 12px rgba($primary-500, 0.12);
+    transform: translateY(-2px);
+  }
+
+  &.selected {
+    border-color: $primary-500;
+    background: rgba($primary-500, 0.06);
+    box-shadow: 0 4px 14px rgba($primary-500, 0.18);
+  }
+
+  .skill-name {
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    color: $neutral-800;
+  }
+
+  .skill-domain {
+    font-size: $font-size-xs;
+    color: $neutral-500;
+  }
+}
+
+.skills-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: $spacing-md;
+  flex-wrap: wrap;
+}
+
+.btn-add-skill {
+  border: 1.5px dashed $primary-500;
+  background: transparent;
+  padding: $spacing-sm $spacing-lg;
+  border-radius: $radius-full;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $primary-600;
+  cursor: pointer;
+  transition: $transition-base;
+
+  &:hover {
+    background: rgba($primary-500, 0.08);
+    border-color: $primary-600;
+  }
+}
+

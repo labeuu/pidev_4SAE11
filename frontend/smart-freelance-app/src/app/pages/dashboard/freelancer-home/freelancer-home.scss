@@ -175,11 +175,25 @@
 
 .quick-action-icon { font-size: 1.25rem; }
 
-// Recommendations
+// Recommendations — grouped block that stands out
 .recommendations-section {
   max-width: 1200px;
   margin: 0 auto $spacing-2xl;
   padding: 0 $spacing-lg;
+}
+
+.recommendations-group {
+  background: linear-gradient(135deg, rgba(227, 126, 51, 0.06) 0%, rgba(255, 255, 255, 1) 40%, rgba(255, 248, 245, 0.9) 100%);
+  border: 1.5px solid rgba(227, 126, 51, 0.25);
+  border-radius: $radius-2xl;
+  padding: $spacing-2xl;
+  box-shadow: 0 4px 24px rgba(227, 126, 51, 0.08);
+}
+
+.recommendations-header {
+  margin-bottom: $spacing-xl;
+  padding-bottom: $spacing-lg;
+  border-bottom: 1px solid rgba(227, 126, 51, 0.15);
 }
 
 .section-title {
@@ -189,10 +203,83 @@
   font-size: $font-size-xl;
   font-weight: $font-weight-extrabold;
   color: $neutral-900;
-  margin: 0 0 $spacing-lg;
+  margin: 0 0 $spacing-xs;
 }
 
 .section-title-icon { font-size: 1.25em; }
+
+.section-subtitle {
+  margin: 0;
+  font-size: $font-size-sm;
+  color: $neutral-600;
+}
+
+.recommendations-view-all {
+  display: inline-block;
+  margin-top: $spacing-lg;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $primary-500;
+  text-decoration: none;
+  transition: color $transition-base;
+
+  &:hover { color: $primary-600; }
+}
+
+.recommendations-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: $spacing-sm;
+  padding: $spacing-2xl;
+  background: rgba(255, 255, 255, 0.7);
+  border-radius: $radius-xl;
+  border: 2px dashed rgba(227, 126, 51, 0.3);
+
+  .rec-empty-text {
+    margin: 0;
+    font-weight: $font-weight-semibold;
+    color: $neutral-700;
+  }
+
+  .rec-empty-hint {
+    margin: 0;
+    font-size: $font-size-sm;
+    color: $neutral-500;
+  }
+
+  .rec-empty-cta {
+    padding: $spacing-sm $spacing-lg;
+    border-radius: $radius-full;
+    font-size: $font-size-sm;
+    font-weight: $font-weight-semibold;
+    text-decoration: none;
+    transition: $transition-base;
+    background: $neutral-100;
+    color: $neutral-700;
+    border: 1px solid $neutral-200;
+
+    &:hover {
+      background: $neutral-200;
+    }
+
+    &--primary {
+      background: $primary-500;
+      color: $white;
+      border-color: $primary-500;
+
+      &:hover {
+        background: $primary-600;
+      }
+    }
+  }
+
+  .rec-empty-or {
+    font-size: $font-size-xs;
+    color: $neutral-400;
+    margin: $spacing-xs 0;
+  }
+}
 
 .recommendations-loading {
   display: flex;
@@ -200,9 +287,9 @@
   align-items: center;
   gap: $spacing-md;
   padding: $spacing-2xl;
-  background: $white;
+  background: rgba(255, 255, 255, 0.7);
   border-radius: $radius-xl;
-  border: 1.5px solid $neutral-200;
+  border: 1.5px solid rgba(227, 126, 51, 0.2);
   color: $neutral-600;
   font-size: $font-size-sm;
 }
@@ -234,10 +321,11 @@
   text-decoration: none;
   color: inherit;
   transition: transform $transition-base, box-shadow $transition-base;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.04);
 
   &:hover {
     transform: translateY(-4px);
-    box-shadow: $shadow-lg;
+    box-shadow: 0 12px 28px rgba(227, 126, 51, 0.15);
     border-color: $primary-100;
   }
 

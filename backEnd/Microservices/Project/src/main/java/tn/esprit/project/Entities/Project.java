@@ -30,7 +30,13 @@ public class Project {
     LocalDateTime deadline;
     ProjectStatus status;
     String category;
-    String skillsRequiered;
+    @ElementCollection
+    @CollectionTable(
+            name = "project_skill_ids",
+            joinColumns = @JoinColumn(name = "project_id")
+    )
+    @Column(name = "skill_id")
+    private List<Long> skillIds = new ArrayList<>();
 
     @Column(name = "created_at", nullable = false, updatable = false)
     @CreationTimestamp
@@ -41,9 +47,7 @@ public class Project {
     LocalDateTime updatedAt;
 
     @OneToMany(
-            mappedBy = "project",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
+            mappedBy = "project"
     )
     @JsonIgnore
     private List<ProjectApplication> applications = new ArrayList<>();
