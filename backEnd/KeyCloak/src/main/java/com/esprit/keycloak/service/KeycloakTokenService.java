@@ -97,6 +97,7 @@ public class KeycloakTokenService {
         } catch (HttpStatusCodeException e) {
             String message = parseKeycloakError(e.getResponseBodyAsString());
             if (e.getStatusCode().value() == 401) {
+                log.debug("Keycloak returned 401 for token request: {}", message);
                 throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, message);
             }
             if (e.getStatusCode().value() == 400) {
@@ -106,7 +107,7 @@ public class KeycloakTokenService {
         } catch (ResourceAccessException e) {
             log.warn("Keycloak unreachable at {}: {}", url, e.getMessage());
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                "Authentication service unavailable. Ensure Keycloak is running (e.g. on port 9090).");
+                "Authentication service unavailable. Ensure Keycloak is running (default port 8080; see keycloak.auth-server-url).");
         }
 
         try {

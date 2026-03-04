@@ -8,8 +8,8 @@ import java.util.List;
 
 @Repository
 public interface ReviewResponseRepository extends JpaRepository<ReviewResponse, Long> {
-    
-    List<ReviewResponse> findByReviewId(Long reviewId);
-    
+
+    List<ReviewResponse> findByReviewIdOrderByRespondedAtAsc(Long reviewId);
+
     List<ReviewResponse> findByRespondentId(Long respondentId);
 }

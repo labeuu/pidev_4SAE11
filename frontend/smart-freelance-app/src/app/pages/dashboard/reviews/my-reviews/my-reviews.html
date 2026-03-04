@@ -72,6 +72,46 @@
         <p class="review-comment" *ngIf="r.comment">{{ r.comment }}</p>
         <p class="review-comment empty" *ngIf="!r.comment">No comment</p>
         <p class="review-date" *ngIf="r.createdAt">{{ r.createdAt | date:'medium' }}</p>
+
+        <div class="review-messagerie">
+          <h4 class="messagerie-title">Conversation with {{ getRevieweeName(r) }}</h4>
+          <div class="messagerie-thread">
+            @for (msg of getResponses(r.id); track msg.id ?? $index) {
+              <div class="message-bubble" [class.message-bubble--me]="isMyMessage(msg)">
+                <span class="message-author">{{ getRespondentName(msg, r) }}</span>
+                <p class="message-text">{{ msg.message }}</p>
+                <span class="message-time" *ngIf="msg.respondedAt">{{ getResponseTime(msg) }}</span>
+                @if (isMyMessage(msg)) {
+                  <div class="message-actions">
+                    <button type="button" class="btn-message-action btn-message-action--danger" (click)="openDeleteMessageModal(msg, r)">Delete</button>
+                  </div>
+                }
+              </div>
+            }
+            @empty {
+              <p class="messagerie-empty">No messages yet. Start the conversation below.</p>
+            }
+          </div>
+          <div class="messagerie-send">
+            <input
+              type="text"
+              class="messagerie-input"
+              placeholder="Type a message..."
+              [ngModel]="getDraft(r.id)"
+              (ngModelChange)="setDraft(r.id, $event)"
+              (keydown.enter)="sendMessage(r); $event.preventDefault()"
+            />
+            <button
+              type="button"
+              class="btn-send"
+              [disabled]="!getDraft(r.id)?.trim() || sendingReviewId === r.id"
+              (click)="sendMessage(r)"
+            >
+              {{ sendingReviewId === r.id ? 'Sending…' : 'Send' }}
+            </button>
+          </div>
+        </div>
+
         <div class="review-actions">
           <a [routerLink]="['/dashboard/reviews', r.id, 'edit']" class="btn btn--update">Edit</a>
           <button type="button" class="btn btn--delete" (click)="openDeleteModal(r)">Delete</button>
@@ -118,6 +158,23 @@
           <button type="button" class="btn-secondary" (click)="closeDeleteModal()" [disabled]="deleting">Cancel</button>
           <button type="button" class="btn-danger" (click)="doDelete()" [disabled]="deleting">
             {{ deleting ? 'Deleting…' : 'Delete' }}
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (messageToDelete) {
+    <div class="modal-overlay" (click)="closeDeleteMessageModal()">
+      <div class="modal modal--confirm" (click)="$event.stopPropagation()">
+        <h3>Delete message</h3>
+        <p class="modal-message">
+          Are you sure you want to delete this message? This action cannot be undone.
+        </p>
+        <div class="modal-actions">
+          <button type="button" class="btn-secondary" (click)="closeDeleteMessageModal()" [disabled]="deletingMessage">Cancel</button>
+          <button type="button" class="btn-danger" (click)="confirmDeleteMessage()" [disabled]="deletingMessage">
+            {{ deletingMessage ? 'Deleting…' : 'Delete' }}
           </button>
         </div>
       </div>

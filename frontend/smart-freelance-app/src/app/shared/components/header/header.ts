@@ -85,13 +85,17 @@ export class Header implements OnInit, OnDestroy {
   private refreshNotificationCount(skipToast: boolean): void {
     const userId = this.auth.getUserId();
     if (userId == null) return;
-    this.notificationService.getUnreadCount(userId).subscribe((count) => {
-      this.notificationUnreadCount.set(count);
-      // Show toast when unread count increased (including 0 → 1), but not on first load
-      if (!skipToast && count > this.lastUnreadCount) {
-        this.showToastSignal();
-      }
-      this.lastUnreadCount = count;
+    this.notificationService.getUnreadCount(userId).subscribe({
+      next: (count) => {
+        this.notificationUnreadCount.set(count);
+        if (!skipToast && count > this.lastUnreadCount) {
+          this.showToastSignal();
+        }
+        this.lastUnreadCount = count;
+      },
+      error: () => {
+        this.notificationUnreadCount.set(0);
+      },
     });
   }
 
@@ -115,9 +119,15 @@ export class Header implements OnInit, OnDestroy {
     const userId = this.auth.getUserId();
     if (userId == null) return;
     this.notifDropdownLoading.set(true);
-    this.notificationService.getByUserId(userId).subscribe((list) => {
-      this.notificationList.set(list.slice(0, 10));
-      this.notifDropdownLoading.set(false);
+    this.notificationService.getByUserId(userId).subscribe({
+      next: (list) => {
+        this.notificationList.set(list.slice(0, 10));
+        this.notifDropdownLoading.set(false);
+      },
+      error: () => {
+        this.notificationList.set([]);
+        this.notifDropdownLoading.set(false);
+      },
     });
   }
 

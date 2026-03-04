@@ -46,7 +46,7 @@ public class ReviewResponseServiceImpl implements ReviewResponseService {
     @Override
     @Transactional(readOnly = true)
     public List<ReviewResponse> getResponsesByReviewId(Long reviewId) {
-        return reviewResponseRepository.findByReviewId(reviewId);
+        return reviewResponseRepository.findByReviewIdOrderByRespondedAtAsc(reviewId);
     }
     
     @Override
@@ -56,11 +56,14 @@ public class ReviewResponseServiceImpl implements ReviewResponseService {
     }
     
     @Override
-    public ReviewResponse updateResponse(Long id, ReviewResponse reviewResponse) {
+    @Transactional
+    public ReviewResponse updateResponse(Long id, String message) {
+        if (message == null || message.isBlank()) {
+            throw new IllegalArgumentException("Message cannot be null or blank");
+        }
         return reviewResponseRepository.findById(id)
                 .map(existingResponse -> {
-                    existingResponse.setRespondentId(reviewResponse.getRespondentId());
-                    existingResponse.setMessage(reviewResponse.getMessage());
+                    existingResponse.setMessage(message.trim());
                     return reviewResponseRepository.save(existingResponse);
                 })
                 .orElseThrow(() -> new RuntimeException("ReviewResponse not found with id: " + id));

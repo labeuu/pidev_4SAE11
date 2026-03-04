@@ -68,10 +68,16 @@ public class ReviewResponseController {
     }
     
     @PutMapping("/{id}")
-    public ResponseEntity<ReviewResponse> updateResponse(@PathVariable Long id, @RequestBody ReviewResponse reviewResponse) {
+    public ResponseEntity<ReviewResponse> updateResponse(@PathVariable Long id, @RequestBody java.util.Map<String, String> body) {
         try {
-            ReviewResponse updatedResponse = reviewResponseService.updateResponse(id, reviewResponse);
+            String message = body != null ? body.get("message") : null;
+            if (message == null || message.isBlank()) {
+                return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
+            }
+            ReviewResponse updatedResponse = reviewResponseService.updateResponse(id, message.trim());
             return new ResponseEntity<>(updatedResponse, HttpStatus.OK);
+        } catch (IllegalArgumentException e) {
+            return new ResponseEntity<>(HttpStatus.BAD_REQUEST);
         } catch (RuntimeException e) {
             return new ResponseEntity<>(HttpStatus.NOT_FOUND);
         }

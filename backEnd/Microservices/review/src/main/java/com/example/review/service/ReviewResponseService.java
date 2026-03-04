@@ -17,7 +17,7 @@ public interface ReviewResponseService {
     
     List<ReviewResponse> getResponsesByRespondentId(Long respondentId);
     
-    ReviewResponse updateResponse(Long id, ReviewResponse reviewResponse);
+    ReviewResponse updateResponse(Long id, String message);
     
     void deleteResponse(Long id);
 }

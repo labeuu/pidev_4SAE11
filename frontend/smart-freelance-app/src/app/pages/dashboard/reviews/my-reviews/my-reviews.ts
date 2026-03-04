@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { FormsModule } from '@angular/forms';
 import { RouterLink } from '@angular/router';
 import { StarRating } from '../../../../shared/components/star-rating/star-rating';
 import { Subject } from 'rxjs';
@@ -7,12 +8,15 @@ import { debounceTime, distinctUntilChanged } from 'rxjs/operators';
 import { AuthService } from '../../../../core/services/auth.service';
 import { UserService, User } from '../../../../core/services/user.service';
 import { ReviewService, Review, ReviewStats } from '../../../../core/services/review.service';
+import { ReviewResponseService, ReviewResponseItem } from '../../../../core/services/review-response.service';
 import { ProjectService } from '../../../../core/services/project.service';
+
+const POLL_INTERVAL_MS = 5000;
 
 @Component({
   selector: 'app-my-reviews',
   standalone: true,
-  imports: [CommonModule, RouterLink, StarRating],
+  imports: [CommonModule, FormsModule, RouterLink, StarRating],
   templateUrl: './my-reviews.html',
   styleUrl: './my-reviews.scss',
 })
@@ -33,12 +37,20 @@ export class MyReviews implements OnInit, OnDestroy {
   totalElements = 0;
   totalPages = 0;
   pageSizes = [5, 10, 20, 50];
+  responsesByReview: Record<number, ReviewResponseItem[]> = {};
+  newMessageByReview: Record<number, string> = {};
+  sendingReviewId: number | null = null;
+  messageToDelete: ReviewResponseItem | null = null;
+  deleteMessageReview: Review | null = null;
+  deletingMessage = false;
   private searchSubject = new Subject<string>();
+  private pollTimer: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private auth: AuthService,
     private userService: UserService,
     private reviewService: ReviewService,
+    private reviewResponseService: ReviewResponseService,
     private projectService: ProjectService,
     private cdr: ChangeDetectorRef
   ) {}
@@ -61,6 +73,9 @@ export class MyReviews implements OnInit, OnDestroy {
       if (this.currentUser) {
         this.load();
         this.loadStats();
+        this.pollTimer = setInterval(() => {
+          if (this.reviews.length > 0) this.loadResponsesForReviews();
+        }, POLL_INTERVAL_MS);
       } else {
         this.loading = false;
         this.errorMessage = 'Could not load your profile.';
@@ -71,6 +86,7 @@ export class MyReviews implements OnInit, OnDestroy {
 
   ngOnDestroy(): void {
     this.searchSubject.complete();
+    if (this.pollTimer) clearInterval(this.pollTimer);
   }
 
   onSearchInput(value: string): void {
@@ -101,6 +117,7 @@ export class MyReviews implements OnInit, OnDestroy {
             this.totalPages = res.totalPages;
             this.loadRevieweeNames();
             this.loadProjectTitles();
+            this.loadResponsesForReviews();
           } else {
             this.reviews = [];
             this.totalElements = 0;
@@ -143,6 +160,109 @@ export class MyReviews implements OnInit, OnDestroy {
 
   getProjectTitle(r: Review): string {
     return this.projectTitles[r.projectId] ?? `Project #${r.projectId}`;
+  }
+
+  private loadResponsesForReviews(): void {
+    this.reviews.forEach((r) => {
+      if (r.id == null) return;
+      this.reviewResponseService.getByReviewId(r.id).subscribe((list) => {
+        this.responsesByReview[r.id!] = list ?? [];
+        this.cdr.detectChanges();
+      });
+    });
+  }
+
+  getResponses(reviewId: number | undefined): ReviewResponseItem[] {
+    return reviewId != null ? (this.responsesByReview[reviewId] ?? []) : [];
+  }
+
+  getRespondentName(resp: ReviewResponseItem, r: Review): string {
+    if (this.currentUser && resp.respondentId === this.currentUser.id) return 'You';
+    if (resp.respondentId === r.revieweeId) return this.getRevieweeName(r);
+    return 'User #' + resp.respondentId;
+  }
+
+  getResponseTime(msg: ReviewResponseItem): string {
+    const at = msg.respondedAt;
+    if (at == null) return '';
+    if (Array.isArray(at)) {
+      const [y, m, d, h = 0, min = 0, s = 0] = at;
+      const date = new Date(y ?? 0, (m ?? 1) - 1, d ?? 1, h, min, s);
+      return date.toLocaleString();
+    }
+    try {
+      return new Date(at).toLocaleString();
+    } catch {
+      return String(at);
+    }
+  }
+
+  isMyMessage(msg: ReviewResponseItem): boolean {
+    return !!(this.currentUser && msg.respondentId === this.currentUser.id);
+  }
+
+  openDeleteMessageModal(msg: ReviewResponseItem, r: Review): void {
+    if (!this.isMyMessage(msg)) return;
+    this.messageToDelete = msg;
+    this.deleteMessageReview = r;
+  }
+
+  closeDeleteMessageModal(): void {
+    if (!this.deletingMessage) {
+      this.messageToDelete = null;
+      this.deleteMessageReview = null;
+    }
+  }
+
+  confirmDeleteMessage(): void {
+    const msg = this.messageToDelete;
+    const r = this.deleteMessageReview;
+    if (!msg?.id || !r?.id || !this.isMyMessage(msg)) {
+      this.closeDeleteMessageModal();
+      return;
+    }
+    const reviewId = r.id;
+    this.deletingMessage = true;
+    this.reviewResponseService.delete(msg.id).subscribe((ok) => {
+      this.deletingMessage = false;
+      this.messageToDelete = null;
+      this.deleteMessageReview = null;
+      if (ok) {
+        this.responsesByReview[reviewId] = (this.responsesByReview[reviewId] ?? []).filter((m) => m.id !== msg.id);
+      }
+      this.cdr.detectChanges();
+    });
+  }
+
+  getDraft(reviewId: number | undefined): string {
+    return reviewId != null ? (this.newMessageByReview[reviewId] ?? '') : '';
+  }
+
+  setDraft(reviewId: number | undefined, value: string): void {
+    if (reviewId != null) this.newMessageByReview[reviewId] = value;
+  }
+
+  sendMessage(r: Review): void {
+    const reviewId = r.id!;
+    const text = (this.newMessageByReview[reviewId] ?? '').trim();
+    if (!text || !this.currentUser?.id) return;
+    this.sendingReviewId = reviewId;
+    this.reviewResponseService
+      .create({ reviewId, respondentId: this.currentUser.id, message: text })
+      .subscribe({
+        next: (created) => {
+          this.sendingReviewId = null;
+          if (created) {
+            this.responsesByReview[reviewId] = [...(this.responsesByReview[reviewId] ?? []), created];
+            this.newMessageByReview[reviewId] = '';
+          }
+          this.cdr.detectChanges();
+        },
+        error: () => {
+          this.sendingReviewId = null;
+          this.cdr.detectChanges();
+        },
+      });
   }
 
   private loadProjectTitles(): void {

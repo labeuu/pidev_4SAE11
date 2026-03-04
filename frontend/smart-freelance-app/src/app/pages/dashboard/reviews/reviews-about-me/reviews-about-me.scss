@@ -324,6 +324,161 @@
   color: $neutral-400;
 }
 
+// ── Messagerie (conversation with reviewer) ─────────────────────────
+.review-messagerie {
+  margin-top: $spacing-xl;
+  padding-top: $spacing-lg;
+  border-top: 1px solid $neutral-200;
+  min-height: 120px;
+}
+
+.messagerie-title {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $neutral-700;
+  margin: 0 0 $spacing-md;
+}
+
+.messagerie-thread {
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: $spacing-md;
+  padding: $spacing-sm 0;
+}
+
+.message-bubble {
+  margin-bottom: $spacing-md;
+  padding: $spacing-sm $spacing-md;
+  background: $neutral-50;
+  border-radius: $radius-lg;
+  border-left: 3px solid $neutral-300;
+
+  .message-author {
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    color: $neutral-600;
+    display: block;
+    margin-bottom: $spacing-xs;
+  }
+  .message-text {
+    margin: 0;
+    font-size: $font-size-sm;
+    color: $neutral-800;
+    line-height: $line-height-relaxed;
+  }
+  .message-time {
+    font-size: $font-size-xs;
+    color: $neutral-400;
+    display: block;
+    margin-top: $spacing-xs;
+  }
+
+  &.message-bubble--me {
+    background: rgba($primary-500, 0.08);
+    border-left-color: $primary-500;
+  }
+}
+
+.message-edit {
+  margin-top: $spacing-sm;
+  .message-edit-input {
+    width: 100%;
+    margin-bottom: $spacing-sm;
+  }
+  .message-edit-actions {
+    display: flex;
+    gap: $spacing-sm;
+    align-items: center;
+  }
+}
+
+.btn-send--small {
+  padding: $spacing-xs $spacing-md;
+  font-size: $font-size-xs;
+}
+
+.btn-message-cancel {
+  padding: $spacing-xs $spacing-md;
+  font-size: $font-size-xs;
+  background: transparent;
+  border: 1px solid $neutral-300;
+  color: $neutral-600;
+  border-radius: $radius-lg;
+  cursor: pointer;
+  &:hover:not(:disabled) {
+    background: $neutral-100;
+  }
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}
+
+.message-actions {
+  display: flex;
+  gap: $spacing-sm;
+  margin-top: $spacing-xs;
+}
+
+.btn-message-action {
+  padding: 0;
+  font-size: $font-size-xs;
+  color: $primary-600;
+  background: none;
+  border: none;
+  cursor: pointer;
+  &:hover {
+    text-decoration: underline;
+  }
+  &--danger {
+    color: $error-500;
+  }
+}
+
+.messagerie-empty {
+  font-size: $font-size-sm;
+  color: $neutral-500;
+  margin: 0;
+  font-style: italic;
+}
+
+.messagerie-send {
+  display: flex;
+  gap: $spacing-sm;
+  align-items: center;
+}
+
+.messagerie-input {
+  flex: 1;
+  padding: $spacing-sm $spacing-md;
+  font-size: $font-size-sm;
+  border: 1px solid $neutral-300;
+  border-radius: $radius-lg;
+  background: $white;
+  transition: border-color $transition-fast;
+
+  &::placeholder { color: $neutral-400; }
+  &:focus {
+    outline: none;
+    border-color: $primary-500;
+  }
+}
+
+.btn-send {
+  padding: $spacing-sm $spacing-lg;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $white;
+  background: $primary-500;
+  border: none;
+  border-radius: $radius-lg;
+  cursor: pointer;
+  transition: background $transition-base;
+
+  &:hover:not(:disabled) { background: $primary-600; }
+  &:disabled { opacity: 0.6; cursor: not-allowed; }
+}
+
 // ── Pagination ─────────────────────────────────────────────────────
 .pagination {
   display: flex;
@@ -378,6 +533,83 @@
     margin-right: auto;
   }
 }
+
+// ── Delete message modal ──────────────────────────────────────────
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba($neutral-900, 0.45);
+  @include backdrop-blur;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: $z-modal-backdrop;
+  padding: $spacing-lg;
+  animation: modalFadeIn $transition-base;
+}
+
+.modal {
+  background: $white;
+  border-radius: $radius-2xl;
+  padding: $spacing-2xl;
+  max-width: 420px;
+  width: 100%;
+  box-shadow: $shadow-2xl;
+  animation: modalSlideUp $transition-slow;
+
+  h3 {
+    margin: 0 0 $spacing-sm;
+    font-size: $font-size-xl;
+    font-weight: $font-weight-bold;
+    color: $neutral-900;
+  }
+
+  .modal-message {
+    color: $neutral-600;
+    font-size: $font-size-sm;
+    line-height: $line-height-relaxed;
+    margin: 0 0 $spacing-xl;
+  }
+
+  .modal-actions {
+    display: flex;
+    gap: $spacing-md;
+    justify-content: flex-end;
+
+    .btn-secondary {
+      padding: $spacing-sm $spacing-xl;
+      font-weight: $font-weight-semibold;
+      border-radius: $radius-lg;
+      cursor: pointer;
+      background: transparent;
+      color: $neutral-600;
+      border: 1px solid $neutral-300;
+      font-size: $font-size-sm;
+      transition: all $transition-base;
+
+      &:hover:not(:disabled) { background: $neutral-50; border-color: $neutral-400; }
+      &:disabled { opacity: 0.6; cursor: not-allowed; }
+    }
+
+    .btn-danger {
+      padding: $spacing-sm $spacing-xl;
+      font-weight: $font-weight-semibold;
+      border-radius: $radius-lg;
+      font-size: $font-size-sm;
+      cursor: pointer;
+      background: $error-500;
+      color: $white;
+      border: none;
+      transition: all $transition-base;
+
+      &:hover:not(:disabled) { background: $error-600; transform: translateY(-1px); }
+      &:disabled { opacity: 0.6; cursor: not-allowed; }
+    }
+  }
+}
+
+@keyframes modalFadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes modalSlideUp { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: translateY(0); } }
 
 @media (max-width: $breakpoint-sm) {
   .reviews-container { padding: $spacing-xl $spacing-md; }

@@ -79,8 +79,12 @@ export class LoginComponent {
         }
       },
       error: (err) => {
-        this.errorMessage = err?.error?.error ?? err?.error?.message ?? err?.message ?? 'Invalid email or password. Please try again.';
-        this.cdr.detectChanges();
+        this.loading = false;
+        const body = err?.error;
+        this.errorMessage =
+          (typeof body === 'object' && body?.error ? body.error : typeof body === 'string' ? body : null)
+          ?? err?.message
+          ?? 'Login failed. Please try again.';
       },
     });
   }

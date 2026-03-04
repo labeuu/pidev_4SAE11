@@ -78,6 +78,17 @@ The **Gestion User** microservice’s `User` entity (id, email, firstName, lastN
 
 No other Keycloak configuration is required for the basic User entity; realm, realm roles, and client setup above are sufficient.
 
+### Login returns 401 Unauthorized
+
+If `POST /api/auth/token` returns **401**, Keycloak is rejecting the credentials. Check:
+
+1. **Keycloak is running** at the URL in `keycloak.auth-server-url` (default `http://localhost:8080`).
+2. **Client "smart-freelance-backend"** has **Direct access grants** (Resource Owner Password Credentials) set to **ON** in the Keycloak Admin Console (Clients → smart-freelance-backend → Settings).
+3. **User exists in Keycloak** – they must have been created via the app’s signup (or via Keycloak Admin). Login uses the **email** as username.
+4. **Password is correct** – no extra spaces; password must match what was set at registration.
+
+The backend returns Keycloak’s error in the response body (`error` field); the frontend shows it on the login form. Backend logs (with `logging.level.com.esprit.keycloak=DEBUG`) will show the exact Keycloak message.
+
 ## Configuration
 
 | Property | Description | Default |
