@@ -53,6 +53,10 @@ export class UserService {
     return this.http.get<User[]>(USER_API);
   }
 
+  getFreelancers(): Observable<User[]> {
+    return this.http.get<User[]>(`${USER_API}/freelancers`);
+  }
+
   getById(id: number): Observable<User | null> {
     return this.http.get<User>(`${USER_API}/${id}`).pipe(
       catchError(() => of(null))
