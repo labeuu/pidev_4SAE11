@@ -50,7 +50,9 @@ export class UserService {
   }
 
   getAll(): Observable<User[]> {
-    return this.http.get<User[]>(USER_API);
+    return this.http.get<User[]>(USER_API).pipe(
+      catchError(() => of([]))
+    );
   }
 
   getFreelancers(): Observable<User[]> {

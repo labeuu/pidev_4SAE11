@@ -58,12 +58,15 @@
               <div class="task-item__status">
                 <span class="badge badge--{{ t.status | lowercase }}">{{ t.status }}</span>
                 @if (t.status !== 'DONE' && t.status !== 'CANCELLED') {
-                  <select #statusSelect (change)="updateStatusFromSelect(t, statusSelect.value)" [disabled]="updatingStatus">
-                    <option value="" disabled>Change status</option>
-                    <option value="IN_PROGRESS">IN_PROGRESS</option>
-                    <option value="IN_REVIEW">IN_REVIEW</option>
-                    <option value="DONE">DONE</option>
-                  </select>
+                  <div class="status-dropdown-wrap">
+                    <select class="status-dropdown" [value]="t.status" (change)="updateStatusFromSelect(t, $any($event).target.value)" [disabled]="updatingStatus">
+                      <option value="TODO">To Do</option>
+                      <option value="IN_PROGRESS">In Progress</option>
+                      <option value="IN_REVIEW">In Review</option>
+                      <option value="DONE">Done</option>
+                    </select>
+                    <span class="status-dropdown__chevron" aria-hidden="true"></span>
+                  </div>
                 }
                 <button type="button" class="btn-action btn-edit" (click)="openEdit(t)">Edit</button>
                 <button type="button" class="btn-action btn-delete" (click)="openDeleteModal(t)">Delete</button>
@@ -89,7 +92,7 @@
         <div class="modal modal--form" (click)="$event.stopPropagation()">
           <div class="modal-header">
             <h3>Add task</h3>
-            <p class="modal-hint">Tasks are assigned to you by default. Set due dates to see them in the Planning calendar.</p>
+            <p class="modal-hint">Tasks are assigned to you by default. You can only add tasks to projects you're working on (assigned tasks or accepted applications). Set due dates to see them in the Planning calendar.</p>
           </div>
           <form [formGroup]="addForm" (ngSubmit)="saveAdd()">
             <div class="field">

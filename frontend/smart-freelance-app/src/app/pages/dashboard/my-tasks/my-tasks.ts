@@ -4,7 +4,8 @@ import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angula
 import { Subject, catchError, debounceTime, distinctUntilChanged, of, takeUntil } from 'rxjs';
 import { TaskService, Task, TaskRequest, TaskStatus, TaskPriority, TaskFilterParams, PageResponse } from '../../../core/services/task.service';
 import { AuthService } from '../../../core/services/auth.service';
-import { ProjectService, Project } from '../../../core/services/project.service';
+import { ProjectService } from '../../../core/services/project.service';
+import { ProjectApplicationService } from '../../../core/services/project-application.service';
 import { Card } from '../../../shared/components/card/card';
 
 interface ProjectOption {
@@ -30,7 +31,8 @@ export class MyTasks implements OnInit, OnDestroy {
   projectIdToTitle: Record<number, string> = {};
   private searchSubject$ = new Subject<string>();
   private destroy$ = new Subject<void>();
-  projectsFromApi: ProjectOption[] = [];
+  /** Projects the freelancer is associated with (has tasks or accepted application). */
+  associatedProjects: ProjectOption[] = [];
   updatingStatus = false;
 
   addModalOpen = false;
@@ -47,6 +49,7 @@ export class MyTasks implements OnInit, OnDestroy {
     private taskService: TaskService,
     public auth: AuthService,
     private projectService: ProjectService,
+    private projectApplicationService: ProjectApplicationService,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef
   ) {
@@ -68,32 +71,50 @@ export class MyTasks implements OnInit, OnDestroy {
     this.filterForm = this.fb.group({ search: [''] });
   }
 
+  /** Projects the freelancer can add tasks to (only those they're associated with via tasks or accepted application). */
   get projectsForAdd(): ProjectOption[] {
     const fromTasks = [...new Set(this.tasks.map((t) => t.projectId).filter((id): id is number => id != null))]
-      .sort((a, b) => a - b)
       .map((id) => ({ id, title: this.getProjectTitle(id) }));
-    if (fromTasks.length > 0) return fromTasks;
-    return this.projectsFromApi;
+    const fromAccepted = this.associatedProjects
+      .filter((p) => !fromTasks.some((ft) => ft.id === p.id))
+      .map((p) => ({ id: p.id, title: this.getProjectTitle(p.id) || p.title }));
+    const merged = [...fromTasks, ...fromAccepted];
+    return merged.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''));
   }
 
   ngOnInit(): void {
     this.setupSearchDebounce();
     this.loadTasks();
-    this.projectService.getAllProjects().subscribe((projects) => {
-      projects.forEach((p) => {
+    this.projectService.getAllProjects().pipe(catchError(() => of([]))).subscribe((projects) => {
+      (projects ?? []).forEach((p) => {
         if (p.id != null) this.projectIdToTitle[p.id] = p.title?.trim() || `Project ${p.id}`;
       });
       this.cdr.detectChanges();
     });
     const userId = this.auth.getUserId();
     if (userId != null) {
-      this.projectService.getByFreelancerId(userId).pipe(catchError(() => of([]))).subscribe((projects) => {
-      const list = Array.isArray(projects) ? projects : [];
-      this.projectsFromApi = list
-        .filter((p): p is Project & { id: number } => p.id != null)
-        .map((p) => ({ id: p.id, title: p.title?.trim() || `Project ${p.id}` }));
-      this.cdr.detectChanges();
-    });
+      this.projectApplicationService
+        .getApplicationsByFreelance(userId)
+        .pipe(catchError(() => of([])))
+        .subscribe((applications) => {
+          const accepted = (applications ?? []).filter(
+            (a) => (a.status ?? '').toUpperCase() === 'ACCEPTED'
+          );
+          this.associatedProjects = accepted
+            .map((a) => {
+              const projectId = a.projectId ?? a.project?.id;
+              const title = a.project?.title ?? (projectId != null ? `Project ${projectId}` : '');
+              return projectId != null ? { id: projectId, title } : null;
+            })
+            .filter((p): p is ProjectOption => p != null);
+          const seen = new Set<number>();
+          this.associatedProjects = this.associatedProjects.filter((p) => {
+            if (seen.has(p.id)) return false;
+            seen.add(p.id);
+            return true;
+          });
+          this.cdr.detectChanges();
+        });
     }
   }
 
@@ -170,15 +191,28 @@ export class MyTasks implements OnInit, OnDestroy {
 
   updateStatus(t: Task, status: TaskStatus): void {
     if (!t.id || this.updatingStatus) return;
+    if (status === t.status) return;
     this.updatingStatus = true;
+    this.errorMessage = '';
+    // Optimistic update for immediate feedback
+    const idx = this.tasks.findIndex((x) => x.id === t.id);
+    if (idx >= 0) this.tasks[idx] = { ...this.tasks[idx], status };
+    this.cdr.detectChanges();
     this.taskService.patchStatus(t.id, status).subscribe({
-      next: () => {
+      next: (updated) => {
         this.updatingStatus = false;
-        this.loadTasks();
+        if (updated) {
+          if (idx >= 0) this.tasks[idx] = { ...this.tasks[idx], ...updated };
+        } else {
+          // API failed (catchError returned null) - revert optimistic update
+          if (idx >= 0) this.tasks[idx] = { ...this.tasks[idx], status: t.status };
+          this.errorMessage = 'Failed to update status.';
+        }
         this.cdr.detectChanges();
       },
       error: () => {
         this.updatingStatus = false;
+        if (idx >= 0) this.tasks[idx] = { ...this.tasks[idx], status: t.status };
         this.errorMessage = 'Failed to update status.';
         this.cdr.detectChanges();
       },
@@ -207,10 +241,17 @@ export class MyTasks implements OnInit, OnDestroy {
       this.addForm.markAllAsTouched();
       return;
     }
-    const userId = this.auth.getUserId();
     const v = this.addForm.getRawValue();
+    const projectId = Number(v.projectId);
+    const allowed = this.projectsForAdd.some((p) => p.id === projectId);
+    if (!allowed) {
+      this.errorMessage = 'You can only add tasks to projects you are associated with.';
+      this.cdr.detectChanges();
+      return;
+    }
+    const userId = this.auth.getUserId();
     const request: TaskRequest = {
-      projectId: Number(v.projectId),
+      projectId,
       title: v.title.trim(),
       description: v.description?.trim() || null,
       status: (v.status as TaskStatus) || 'TODO',

@@ -102,16 +102,23 @@ export class FreelancerHome implements OnInit {
       offers: this.offerService.getOffersByFreelancer(freelancerId).pipe(catchError(() => of([]))),
     }).subscribe({
       next: ({ applications, contracts, offers }) => {
-        this.myApplicationsCount = applications?.length ?? 0;
+        const count = applications?.length ?? 0;
         const active = contracts?.filter(c => c.status === 'ACTIVE' || c.status === 'PENDING_SIGNATURE') ?? [];
-        this.activeContractsCount = active.length;
-        this.myOffersCount = offers?.length ?? 0;
-        this.isLoadingStats = false;
-        this.cdr.detectChanges();
+        const offersCount = offers?.length ?? 0;
+        // Defer updates to avoid ExpressionChangedAfterItHasBeenCheckedError
+        setTimeout(() => {
+          this.myApplicationsCount = count;
+          this.activeContractsCount = active.length;
+          this.myOffersCount = offersCount;
+          this.isLoadingStats = false;
+          this.cdr.detectChanges();
+        }, 0);
       },
       error: () => {
-        this.isLoadingStats = false;
-        this.cdr.detectChanges();
+        setTimeout(() => {
+          this.isLoadingStats = false;
+          this.cdr.detectChanges();
+        }, 0);
       },
     });
   }
@@ -121,25 +128,36 @@ export class FreelancerHome implements OnInit {
     this.projectService.getRecommendedProjects(userId).pipe(
       catchError(() => of([]))
     ).subscribe((projects) => {
-      this.recommendedProjects = projects ?? [];
-      this.isLoadingRecommendations = false;
-      this.cdr.detectChanges();
+      // Defer updates to avoid ExpressionChangedAfterItHasBeenCheckedError
+      setTimeout(() => {
+        this.recommendedProjects = projects ?? [];
+        this.isLoadingRecommendations = false;
+        this.cdr.detectChanges();
+      }, 0);
     });
   }
 
   private loadAllProjects(): void {
+    const isAdmin = this.auth.getUserRole() === 'ADMIN';
     forkJoin({
       projects: this.projectService.getAllProjects(),
-      users: this.us.getAll(),
+      users: isAdmin ? this.us.getAll().pipe(catchError(() => of([]))) : of([]),
     }).subscribe({
       next: ({ projects, users }) => {
         const userMap = new Map<number, { firstName: string; lastName: string; avatarUrl?: string }>();
         (users ?? []).forEach((u) => userMap.set(u.id, { firstName: u.firstName, lastName: u.lastName, avatarUrl: u.avatarUrl }));
         const open = (projects ?? []).filter(p => !p.status || p.status === 'OPEN');
-        this.allProjects.set(open.map((p, i) => this.toFeed(p, i, userMap)));
-        this.isFetching.set(false);
+        const feeds = open.map((p, i) => this.toFeed(p, i, userMap));
+        // Defer updates to avoid ExpressionChangedAfterItHasBeenCheckedError
+        setTimeout(() => {
+          this.allProjects.set(feeds);
+          this.isFetching.set(false);
+          this.cdr.detectChanges();
+        }, 0);
       },
-      error: () => this.isFetching.set(false),
+      error: () => {
+        setTimeout(() => this.isFetching.set(false), 0);
+      },
     });
   }
 

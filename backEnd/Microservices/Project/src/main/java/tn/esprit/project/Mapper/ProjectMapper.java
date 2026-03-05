@@ -27,6 +27,7 @@ public class ProjectMapper {
                 p.getDeadline(),
                 p.getStatus().name(),
                 p.getCategory(),
+                p.getSkillIds(),
                 null
         );
     }

@@ -39,10 +39,6 @@ export interface ProjectApplication {
 
 @Injectable({ providedIn: 'root' })
 export class ProjectService {
-
-  private apiUrl = `${environment.apiGatewayUrl}/projects`;
-
-
   constructor(private http: HttpClient) {}
 
   getById(id: number): Observable<Project | null> {
@@ -56,9 +52,12 @@ export class ProjectService {
       timeout(REQUEST_TIMEOUT_MS)
     );
   }
-  getByFreelancerId(id: number) {
-  return this.http.get<Project[]>(`${this.apiUrl}/freelancer/${id}`);
-}
+  /** Get projects for a freelancer (uses recommended endpoint; backend has no /freelancer/{id}). */
+  getByFreelancerId(id: number): Observable<Project[]> {
+    return this.http.get<Project[]>(`${PROJECT_API}/recommended`, { params: { userId: id } }).pipe(
+      catchError(() => of([]))
+    );
+  }
 
   getApplicationsByFreelancer(freelancerId: number): Observable<ProjectApplication[]> {
     return this.http.get<ProjectApplication[]>(`${APPLICATIONS_API}/freelance/${freelancerId}`).pipe(
