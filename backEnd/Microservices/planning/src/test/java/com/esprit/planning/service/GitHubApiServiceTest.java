@@ -33,19 +33,19 @@ class GitHubApiServiceTest {
 
     @Test
     void isEnabled_whenDisabled_returnsFalse() {
-        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "token", false);
+        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "token", "", false);
         assertThat(service.isEnabled()).isFalse();
     }
 
     @Test
     void isEnabled_whenEnabledAndTokenSet_returnsTrue() {
-        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "token", true);
+        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "token", "", true);
         assertThat(service.isEnabled()).isTrue();
     }
 
     @Test
     void isEnabled_whenTokenHasSpaces_trimmedAndEnabled() {
-        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "  token  ", true);
+        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "  token  ", "", true);
         assertThat(service.isEnabled()).isTrue();
     }
 
@@ -64,7 +64,7 @@ class GitHubApiServiceTest {
         when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
                 .thenReturn(ResponseEntity.ok(List.of(branch)));
 
-        GitHubApiService service = new GitHubApiService(rt, "token", true);
+        GitHubApiService service = new GitHubApiService(rt, "token", "", true);
         List<GitHubBranchDto> result = service.getBranches("owner", "repo");
 
         assertThat(result).hasSize(1);
@@ -77,7 +77,7 @@ class GitHubApiServiceTest {
         when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
                 .thenReturn(ResponseEntity.ok(null));
 
-        GitHubApiService service = new GitHubApiService(rt, "token", true);
+        GitHubApiService service = new GitHubApiService(rt, "token", "", true);
         List<GitHubBranchDto> result = service.getBranches("o", "r");
 
         assertThat(result).isEmpty();
@@ -89,7 +89,7 @@ class GitHubApiServiceTest {
         when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
                 .thenThrow(new RestClientException("Network error"));
 
-        GitHubApiService service = new GitHubApiService(rt, "token", true);
+        GitHubApiService service = new GitHubApiService(rt, "token", "", true);
         List<GitHubBranchDto> result = service.getBranches("o", "r");
 
         assertThat(result).isEmpty();
@@ -110,7 +110,7 @@ class GitHubApiServiceTest {
         when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
                 .thenReturn(ResponseEntity.ok(List.of(commit)));
 
-        GitHubApiService service = new GitHubApiService(rt, "token", true);
+        GitHubApiService service = new GitHubApiService(rt, "token", "", true);
         GitHubCommitDto result = service.getLatestCommit("o", "r", "main");
 
         assertThat(result).isNotNull();
@@ -123,7 +123,7 @@ class GitHubApiServiceTest {
         when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
                 .thenReturn(ResponseEntity.ok(List.of()));
 
-        GitHubApiService service = new GitHubApiService(rt, "token", true);
+        GitHubApiService service = new GitHubApiService(rt, "token", "", true);
         GitHubCommitDto result = service.getLatestCommit("o", "r", null);
 
         assertThat(result).isNull();
@@ -144,7 +144,7 @@ class GitHubApiServiceTest {
         when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
                 .thenReturn(ResponseEntity.ok(List.of(c)));
 
-        GitHubApiService service = new GitHubApiService(rt, "token", true);
+        GitHubApiService service = new GitHubApiService(rt, "token", "", true);
         List<GitHubCommitDto> result = service.getCommits("o", "r", "main", 50);
 
         assertThat(result).hasSize(1);
@@ -160,14 +160,14 @@ class GitHubApiServiceTest {
 
     @Test
     void createIssue_whenTitleBlank_returnsNull() {
-        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "token", true);
+        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "token", "", true);
         GitHubIssueResponseDto result = service.createIssue("o", "r", new GitHubIssueRequest("  ", "Body"));
         assertThat(result).isNull();
     }
 
     @Test
     void createIssue_whenRequestNull_returnsNull() {
-        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "token", true);
+        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "token", "", true);
         GitHubIssueResponseDto result = service.createIssue("o", "r", null);
         assertThat(result).isNull();
     }
@@ -181,7 +181,7 @@ class GitHubApiServiceTest {
         when(rt.exchange(any(String.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(GitHubIssueResponseDto.class)))
                 .thenReturn(ResponseEntity.ok(created));
 
-        GitHubApiService service = new GitHubApiService(rt, "token", true);
+        GitHubApiService service = new GitHubApiService(rt, "token", "", true);
         GitHubIssueResponseDto result = service.createIssue("o", "r", new GitHubIssueRequest("Bug", "Desc"));
 
         assertThat(result).isNotNull();
@@ -194,7 +194,7 @@ class GitHubApiServiceTest {
         when(rt.exchange(any(String.class), eq(HttpMethod.POST), any(HttpEntity.class), eq(GitHubIssueResponseDto.class)))
                 .thenThrow(new RestClientException("Auth failed"));
 
-        GitHubApiService service = new GitHubApiService(rt, "token", true);
+        GitHubApiService service = new GitHubApiService(rt, "token", "", true);
         GitHubIssueResponseDto result = service.createIssue("o", "r", new GitHubIssueRequest("T", "B"));
 
         assertThat(result).isNull();

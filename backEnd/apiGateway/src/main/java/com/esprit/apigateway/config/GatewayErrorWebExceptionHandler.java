@@ -30,6 +30,9 @@ public class GatewayErrorWebExceptionHandler implements ErrorWebExceptionHandler
 
         if (status == HttpStatus.UNAUTHORIZED) {
             message = "Invalid or expired token. Please sign in again.";
+        } else if (isConnectionRefused(ex) || isConnectTimeout(ex)) {
+            message = "Upstream service unreachable. Ensure the microservice is running (Planning:8081, Project:8084, etc.). " +
+                    (message != null ? message : "");
         }
 
         exchange.getResponse().setStatusCode(status);
@@ -48,6 +51,30 @@ public class GatewayErrorWebExceptionHandler implements ErrorWebExceptionHandler
             String msg = t.getMessage();
             if ("JwtException".equals(name) || "JwtValidationException".equals(name)
                     || (msg != null && msg.toLowerCase().contains("jwt"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isConnectionRefused(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            String name = t.getClass().getSimpleName();
+            String msg = t.getMessage();
+            if ("ConnectException".equals(name) || "Connection refused".equals(msg)
+                    || (msg != null && msg.toLowerCase().contains("connection refused"))) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private static boolean isConnectTimeout(Throwable ex) {
+        for (Throwable t = ex; t != null; t = t.getCause()) {
+            String name = t.getClass().getSimpleName();
+            String msg = t.getMessage();
+            if ("ConnectTimeoutException".equals(name) || "Connection timed out".equals(msg)
+                    || (msg != null && msg.toLowerCase().contains("connection timed out"))) {
                 return true;
             }
         }

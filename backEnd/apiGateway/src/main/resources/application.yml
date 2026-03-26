@@ -62,13 +62,16 @@ spring:
             connect-timeout: 10000
 
 
-        # Planning: direct URL (no Eureka), same as project
+        # Planning: direct URL (no Eureka), port 8081 - ensure Planning microservice is running
         - id: planning
           uri: http://localhost:8081
           predicates:
             - Path=/planning/**
           filters:
             - StripPrefix=1
+          metadata:
+            response-timeout: 30000
+            connect-timeout: 5000
 
         # Review: direct URL so it works without Eureka (service runs on 8085)
         - id: review
