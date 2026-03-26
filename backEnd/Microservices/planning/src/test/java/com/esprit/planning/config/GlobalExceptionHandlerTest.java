@@ -74,6 +74,34 @@ class GlobalExceptionHandlerTest {
     }
 
     @Test
+    void handleValidation_mapsMultipleFieldErrors() {
+        MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+        BindingResult bindingResult = mock(BindingResult.class);
+        when(ex.getBindingResult()).thenReturn(bindingResult);
+        when(bindingResult.getFieldErrors()).thenReturn(List.of(
+                new FieldError("req", "a", "err a"),
+                new FieldError("req", "b", "err b")));
+
+        ResponseEntity<Map<String, Object>> result = handler.handleValidation(ex);
+
+        @SuppressWarnings("unchecked")
+        List<String> details = (List<String>) ((Map<String, Object>) result.getBody().get("error")).get("details");
+        assertThat(details).containsExactly("a: err a", "b: err b");
+    }
+
+    @Test
+    void handleEntityNotFound_withMessageOnlyConstructor_mapsTo404() {
+        EntityNotFoundException ex = new EntityNotFoundException("Resource missing");
+
+        ResponseEntity<Map<String, Object>> result = handler.handleEntityNotFound(ex);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        @SuppressWarnings("unchecked")
+        Map<String, Object> error = (Map<String, Object>) result.getBody().get("error");
+        assertThat(error.get("message")).isEqualTo("Resource missing");
+    }
+
+    @Test
     void handleIllegalArgument_returns400() {
         ResponseEntity<Map<String, Object>> result = handler.handleIllegalArgument(new IllegalArgumentException("bad id"));
 

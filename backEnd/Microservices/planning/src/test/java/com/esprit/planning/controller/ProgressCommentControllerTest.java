@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.*;
@@ -61,6 +62,26 @@ class ProgressCommentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].id").value(1))
                 .andExpect(jsonPath("$.totalElements").value(1));
+    }
+
+    @Test
+    void getAll_withSizeAbove100_capsAt100() throws Exception {
+        when(progressCommentService.findAllPaged(0, 100, null)).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/progress-comments").param("size", "500"))
+                .andExpect(status().isOk());
+
+        verify(progressCommentService).findAllPaged(0, 100, null);
+    }
+
+    @Test
+    void getAll_withSort_passesSortToService() throws Exception {
+        when(progressCommentService.findAllPaged(0, 20, "createdAt,desc")).thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/progress-comments").param("sort", "createdAt,desc"))
+                .andExpect(status().isOk());
+
+        verify(progressCommentService).findAllPaged(0, 20, "createdAt,desc");
     }
 
     @Test
@@ -142,6 +163,20 @@ class ProgressCommentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Unchanged"));
         verify(progressCommentService).findById(1L);
+    }
+
+    @Test
+    void patch_withExplicitNullMessage_returnsCurrentComment() throws Exception {
+        ProgressComment current = comment(1L, 1L, 5L, "Same");
+        when(progressCommentService.findById(1L)).thenReturn(current);
+
+        mockMvc.perform(patch("/api/progress-comments/1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"message\":null}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Same"));
+        verify(progressCommentService).findById(1L);
+        verify(progressCommentService, never()).update(anyLong(), any());
     }
 
     @Test

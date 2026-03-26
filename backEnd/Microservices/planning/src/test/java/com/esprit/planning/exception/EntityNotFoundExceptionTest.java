@@ -18,4 +18,11 @@ class EntityNotFoundExceptionTest {
         EntityNotFoundException ex = new EntityNotFoundException("ProgressUpdate", 42L);
         assertThat(ex.getMessage()).isEqualTo("ProgressUpdate not found with id: 42");
     }
+
+    @Test
+    void inheritsRuntimeExceptionStackTrace() {
+        EntityNotFoundException ex = new EntityNotFoundException("gone");
+        assertThat(ex.getStackTrace()).isNotEmpty();
+        assertThat(ex.fillInStackTrace()).isSameAs(ex);
+    }
 }

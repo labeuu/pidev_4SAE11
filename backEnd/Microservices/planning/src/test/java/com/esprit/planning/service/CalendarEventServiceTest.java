@@ -15,11 +15,9 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -329,6 +327,23 @@ class CalendarEventServiceTest {
         List<CalendarEventDto> result = calendarEventService.listEventsFromDb(now, now.plusMonths(1));
 
         assertThat(result).extracting(CalendarEventDto::getId).contains("task-1");
+    }
+
+    @Test
+    void listEventsFromDb_withUserId_hidesProjectDeadlineWhenNotClientNorAssignedFreelancer() {
+        LocalDateTime now = LocalDateTime.now();
+        ProjectDto p = new ProjectDto();
+        p.setId(2L);
+        p.setClientId(99L);
+        p.setTitle("Other");
+        p.setDeadline(now.plusDays(2));
+        when(progressUpdateRepository.findByNextUpdateDueBetween(any(), any())).thenReturn(List.of());
+        when(projectClient.getProjects()).thenReturn(List.of(p));
+        when(progressUpdateRepository.findDistinctProjectIdsByFreelancerId(5L)).thenReturn(List.of(1L));
+
+        List<CalendarEventDto> result = calendarEventService.listEventsFromDb(now, now.plusMonths(1), 5L, "FREELANCER");
+
+        assertThat(result).isEmpty();
     }
 
     @Test

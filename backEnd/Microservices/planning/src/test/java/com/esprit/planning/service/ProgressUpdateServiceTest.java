@@ -701,6 +701,21 @@ class ProgressUpdateServiceTest {
     }
 
     @Test
+    void getSummaryByContractIds_multipleContracts_mixedEmptyAndPopulated() {
+        ProgressUpdate u = progressUpdateWithContract(1L, 3L, 7L, 10L, "X", 55);
+        u.setUpdatedAt(LocalDateTime.now());
+        when(progressUpdateRepository.findByContractIdIn(List.of(5L, 7L))).thenReturn(List.of(u));
+
+        List<ProgressSummaryItemDto> result = progressUpdateService.getSummaryByContractIds(List.of(5L, 7L));
+
+        assertThat(result).hasSize(2);
+        assertThat(result.stream().filter(r -> r.getContractId().equals(5L)).findFirst())
+                .hasValueSatisfying(r -> assertThat(r.getCurrentProgressPercentage()).isNull());
+        assertThat(result.stream().filter(r -> r.getContractId().equals(7L)).findFirst())
+                .hasValueSatisfying(r -> assertThat(r.getCurrentProgressPercentage()).isEqualTo(55));
+    }
+
+    @Test
     void getFreelancerProjectsSummary_groupsByProjectWithLatestUpdate() {
         ProgressUpdate u1 = progressUpdate(1L, 10L, 5L, "Old", 20);
         u1.setUpdatedAt(LocalDateTime.now().minusDays(3));

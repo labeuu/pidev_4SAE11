@@ -229,6 +229,12 @@ class GitHubApiServiceTest {
     }
 
     @Test
+    void isEnabled_whenTokenPathIsDirectory_returnsFalse(@TempDir Path dir) {
+        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "", dir.toString(), true);
+        assertThat(service.isEnabled()).isFalse();
+    }
+
+    @Test
     void isEnabled_whenTokenFileOnlyWhitespace_returnsFalse(@TempDir Path dir) throws Exception {
         Path f = dir.resolve("ws.txt");
         Files.writeString(f, "  \n\t  ");

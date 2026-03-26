@@ -34,4 +34,19 @@ class ProgressSummaryItemDtoTest {
         assertThat(full.getProjectId()).isEqualTo(2L);
         assertThat(full.getContractId()).isEqualTo(3L);
     }
+
+    @Test
+    void settersAndGetters_mutateState() {
+        ProgressSummaryItemDto dto = new ProgressSummaryItemDto();
+        LocalDateTime at = LocalDateTime.of(2026, 6, 15, 9, 30);
+        dto.setProjectId(100L);
+        dto.setContractId(200L);
+        dto.setCurrentProgressPercentage(33);
+        dto.setLastUpdateAt(at);
+
+        assertThat(dto.getProjectId()).isEqualTo(100L);
+        assertThat(dto.getContractId()).isEqualTo(200L);
+        assertThat(dto.getCurrentProgressPercentage()).isEqualTo(33);
+        assertThat(dto.getLastUpdateAt()).isEqualTo(at);
+    }
 }
