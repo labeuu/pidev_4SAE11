@@ -20,6 +20,8 @@ import java.util.Set;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
@@ -279,5 +281,71 @@ class CalendarEventServiceTest {
         List<CalendarEventDto> result = calendarEventService.listEventsFromDb(now, now.plusMonths(1));
 
         assertThat(result).isEmpty();
+    }
+
+    @Test
+    void listEventsFromDb_twoArgOverload_delegatesWithNullUser() {
+        when(progressUpdateRepository.findByNextUpdateDueBetween(any(), any())).thenReturn(List.of());
+        when(projectClient.getProjects()).thenReturn(List.of());
+
+        LocalDateTime min = LocalDateTime.now();
+        LocalDateTime max = min.plusDays(7);
+        calendarEventService.listEventsFromDb(min, max);
+
+        verify(taskClient).getCalendarEvents(any(), any(), isNull());
+    }
+
+    @Test
+    void listEventsFromDb_whenGetProjectByIdThrows_excludesUpdateForFilteringUser() {
+        LocalDateTime now = LocalDateTime.now();
+        ProgressUpdate pu = new ProgressUpdate();
+        pu.setId(1L);
+        pu.setProjectId(10L);
+        pu.setFreelancerId(99L);
+        pu.setNextUpdateDue(now.plusDays(1));
+        when(progressUpdateRepository.findByNextUpdateDueBetween(any(), any())).thenReturn(List.of(pu));
+        when(projectClient.getProjects()).thenReturn(List.of());
+        when(projectClient.getProjectById(10L)).thenThrow(new RuntimeException("unavailable"));
+        when(progressUpdateRepository.findDistinctProjectIdsByFreelancerId(5L)).thenReturn(List.of());
+
+        List<CalendarEventDto> result = calendarEventService.listEventsFromDb(now, now.plusMonths(1), 5L, "CLIENT");
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void listEventsFromDb_mergesTaskServiceEvents() {
+        when(progressUpdateRepository.findByNextUpdateDueBetween(any(), any())).thenReturn(List.of());
+        when(projectClient.getProjects()).thenReturn(List.of());
+        CalendarEventDto taskEv = CalendarEventDto.builder()
+                .id("task-1")
+                .summary("Task due")
+                .start(LocalDateTime.now().plusDays(2))
+                .end(LocalDateTime.now().plusDays(2).plusHours(1))
+                .build();
+        when(taskClient.getCalendarEvents(any(), any(), isNull())).thenReturn(List.of(taskEv));
+
+        LocalDateTime now = LocalDateTime.now();
+        List<CalendarEventDto> result = calendarEventService.listEventsFromDb(now, now.plusMonths(1));
+
+        assertThat(result).extracting(CalendarEventDto::getId).contains("task-1");
+    }
+
+    @Test
+    void listEventsFromDb_whenTaskClientThrows_stillReturnsOtherEvents() {
+        ProgressUpdate pu = new ProgressUpdate();
+        pu.setId(1L);
+        pu.setProjectId(1L);
+        pu.setNextUpdateDue(LocalDateTime.now().plusDays(1));
+        pu.setTitle("U");
+        when(progressUpdateRepository.findByNextUpdateDueBetween(any(), any())).thenReturn(List.of(pu));
+        when(projectClient.getProjects()).thenReturn(List.of());
+        when(taskClient.getCalendarEvents(any(), any(), isNull())).thenThrow(new RuntimeException("task down"));
+
+        LocalDateTime now = LocalDateTime.now();
+        List<CalendarEventDto> result = calendarEventService.listEventsFromDb(now, now.plusMonths(1));
+
+        assertThat(result).isNotEmpty();
+        assertThat(result.get(0).getId()).startsWith("pu-");
     }
 }

@@ -142,6 +142,29 @@ class GitHubApiServiceTest {
     }
 
     @Test
+    void getLatestCommit_whenBlankBranch_doesNotAppendSha() {
+        RestTemplate rt = mock(RestTemplate.class);
+        when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
+                .thenReturn(ResponseEntity.ok(List.of()));
+
+        new GitHubApiService(rt, "token", "", true).getLatestCommit("o", "r", "   ");
+
+        verify(rt).exchange(org.mockito.ArgumentMatchers.argThat((String url) -> url != null && !url.contains("&sha=")),
+                eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class));
+    }
+
+    @Test
+    void getLatestCommit_whenApiThrows_returnsNull() {
+        RestTemplate rt = mock(RestTemplate.class);
+        when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
+                .thenThrow(new RestClientException("timeout"));
+
+        GitHubCommitDto result = new GitHubApiService(rt, "token", "", true).getLatestCommit("o", "r", "main");
+
+        assertThat(result).isNull();
+    }
+
+    @Test
     void getCommits_whenDisabled_returnsEmptyList() {
         GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "", "", false);
         List<GitHubCommitDto> result = service.getCommits("o", "r", null, 30);
@@ -161,6 +184,56 @@ class GitHubApiServiceTest {
 
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getSha()).isEqualTo("def");
+    }
+
+    @Test
+    void getCommits_whenApiThrows_returnsEmptyList() {
+        RestTemplate rt = mock(RestTemplate.class);
+        when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
+                .thenThrow(new RestClientException("bad gateway"));
+
+        List<GitHubCommitDto> result = new GitHubApiService(rt, "token", "", true).getCommits("o", "r", null, 10);
+
+        assertThat(result).isEmpty();
+    }
+
+    @Test
+    void getCommits_perPageZero_usesMinimumOne() {
+        RestTemplate rt = mock(RestTemplate.class);
+        when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
+                .thenReturn(ResponseEntity.ok(List.of()));
+
+        new GitHubApiService(rt, "token", "", true).getCommits("o", "r", null, 0);
+
+        verify(rt).exchange(org.mockito.ArgumentMatchers.argThat((String url) -> url != null && url.contains("per_page=1")),
+                eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class));
+    }
+
+    @Test
+    void getCommits_perPageAbove100_clampsTo100() {
+        RestTemplate rt = mock(RestTemplate.class);
+        when(rt.exchange(any(String.class), eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class)))
+                .thenReturn(ResponseEntity.ok(List.of()));
+
+        new GitHubApiService(rt, "token", "", true).getCommits("o", "r", null, 999);
+
+        verify(rt).exchange(org.mockito.ArgumentMatchers.argThat((String url) -> url != null && url.contains("per_page=100")),
+                eq(HttpMethod.GET), any(HttpEntity.class), any(ParameterizedTypeReference.class));
+    }
+
+    @Test
+    void isEnabled_whenTokenFileMissing_returnsFalse() {
+        GitHubApiService service = new GitHubApiService(
+                mock(RestTemplate.class), "", "/nonexistent/planning-test-token-xyz.txt", true);
+        assertThat(service.isEnabled()).isFalse();
+    }
+
+    @Test
+    void isEnabled_whenTokenFileOnlyWhitespace_returnsFalse(@TempDir Path dir) throws Exception {
+        Path f = dir.resolve("ws.txt");
+        Files.writeString(f, "  \n\t  ");
+        GitHubApiService service = new GitHubApiService(mock(RestTemplate.class), "", f.toAbsolutePath().toString(), true);
+        assertThat(service.isEnabled()).isFalse();
     }
 
     @Test

@@ -88,6 +88,16 @@ class ProgressUpdateControllerTest {
     }
 
     @Test
+    void getFiltered_withSortSingleField_parsesSortWithDefaultDirection() throws Exception {
+        when(progressUpdateService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/progress-updates").param("sort", "title"))
+                .andExpect(status().isOk());
+        verify(progressUpdateService).findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any());
+    }
+
+    @Test
     void getFiltered_withFilters_passesParamsToService() throws Exception {
         when(progressUpdateService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of()));

@@ -36,6 +36,7 @@ class GlobalExceptionHandlerTest {
         assertThat(error).containsEntry("code", "NOT_FOUND");
         assertThat(error.get("message")).asString().contains("ProgressUpdate not found");
         assertThat(error.get("message")).asString().contains("999");
+        assertThat(error.get("details")).isEqualTo(List.of());
     }
 
     @Test

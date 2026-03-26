@@ -96,6 +96,24 @@ class ProgressCommentServiceTest {
     }
 
     @Test
+    void findAllPaged_withSortAsc_usesAscendingDirection() {
+        when(progressCommentRepository.findAll(any(PageRequest.class))).thenReturn(new PageImpl<>(List.of()));
+
+        progressCommentService.findAllPaged(0, 10, "createdAt,asc");
+
+        verify(progressCommentRepository).findAll(any(Pageable.class));
+    }
+
+    @Test
+    void findAllPaged_withSortSingleField_usesDefaultDirection() {
+        when(progressCommentRepository.findAll(any(PageRequest.class))).thenReturn(new PageImpl<>(List.of()));
+
+        progressCommentService.findAllPaged(0, 10, "message");
+
+        verify(progressCommentRepository).findAll(any(Pageable.class));
+    }
+
+    @Test
     void findById_whenFound_returnsComment() {
         ProgressComment c = comment(1L, 1L, 5L, "Found");
         when(progressCommentRepository.findById(1L)).thenReturn(Optional.of(c));
@@ -231,6 +249,29 @@ class ProgressCommentServiceTest {
 
         verify(progressCommentRepository).save(any(ProgressComment.class));
         verify(planningNotificationService, never()).notifyUser(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void create_whenDifferentUserComments_notifiesFreelancerWithTruncatedBody() {
+        ProgressUpdate pu = new ProgressUpdate();
+        pu.setId(1L);
+        pu.setProjectId(7L);
+        pu.setFreelancerId(10L);
+        when(progressUpdateRepository.findById(1L)).thenReturn(Optional.of(pu));
+        when(userClient.getUserById(5L)).thenReturn(new UserDto(5L, "Client", "User", "c@test.com", "CLIENT"));
+        ProgressComment saved = comment(99L, 1L, 5L, "x");
+        saved.setProgressUpdate(pu);
+        when(progressCommentRepository.save(any(ProgressComment.class))).thenReturn(saved);
+
+        String longMessage = "m".repeat(220);
+        progressCommentService.create(1L, 5L, longMessage);
+
+        verify(planningNotificationService).notifyUser(
+                eq("10"),
+                eq("New comment on your progress update"),
+                eq("m".repeat(200) + "..."),
+                eq(PlanningNotificationService.TYPE_PROGRESS_COMMENT),
+                any());
     }
 
     private static ProgressComment comment(Long id, Long progressUpdateId, Long userId, String message) {

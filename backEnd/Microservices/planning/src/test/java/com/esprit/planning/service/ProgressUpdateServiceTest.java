@@ -282,6 +282,21 @@ class ProgressUpdateServiceTest {
     }
 
     @Test
+    void getMostActiveProjects_withDateRange_passesNonNullBoundsToRepository() {
+        when(progressUpdateRepository.findProjectIdAndUpdateCountOrderByCountDescBetween(any(), any(), any(PageRequest.class)))
+                .thenReturn(List.of());
+
+        LocalDate from = LocalDate.of(2026, 1, 1);
+        LocalDate to = LocalDate.of(2026, 1, 31);
+        progressUpdateService.getMostActiveProjects(5, Optional.of(from), Optional.of(to));
+
+        verify(progressUpdateRepository).findProjectIdAndUpdateCountOrderByCountDescBetween(
+                org.mockito.ArgumentMatchers.eq(from.atStartOfDay()),
+                org.mockito.ArgumentMatchers.eq(to.plusDays(1).atStartOfDay()),
+                any(PageRequest.class));
+    }
+
+    @Test
     void getProgressStatisticsByFreelancer_returnsDto() {
         ProgressUpdate u = progressUpdate(1L, 1L, 10L, "T", 50);
         u.setUpdatedAt(LocalDateTime.now());
@@ -387,6 +402,23 @@ class ProgressUpdateServiceTest {
 
         assertThat(result).isNotNull();
         verify(progressUpdateRepository).save(any(ProgressUpdate.class));
+    }
+
+    @Test
+    void update_withProgress100_triggersMilestoneCalendarAndFreelancerNotify() {
+        ProgressUpdate existing = progressUpdate(1L, 1L, 10L, "Almost", 90);
+        existing.setUpdatedAt(LocalDateTime.now().minusHours(1));
+        ProgressUpdate updated = progressUpdate(1L, 1L, 10L, "Done", 100);
+        when(progressUpdateRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(progressUpdateRepository.findByProjectId(1L)).thenReturn(List.of(existing));
+        when(progressUpdateRepository.save(any(ProgressUpdate.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(projectClient.getProjectById(1L)).thenReturn(new ProjectDto(1L, 500L, "P", null));
+
+        progressUpdateService.update(1L, updated);
+
+        verify(googleCalendarService).createEventAsync(isNull(), contains("100%"), any(), any(), anyString());
+        verify(planningNotificationService, atLeastOnce()).notifyUser(
+                eq("10"), eq("Milestone reached"), contains("100%"), eq(PlanningNotificationService.TYPE_CALENDAR_MILESTONE), any());
     }
 
     @Test
