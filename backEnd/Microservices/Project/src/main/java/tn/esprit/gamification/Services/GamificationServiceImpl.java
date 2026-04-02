@@ -15,6 +15,8 @@ public class GamificationServiceImpl implements GamificationService {
 
     @Autowired
     private UserAchievementService userAchievementService;
+    @Autowired
+    private UserLevelService UserLevelService;
 
     @Override
     public void handleProjectCompleted(Long userId) {
@@ -37,5 +39,9 @@ public class GamificationServiceImpl implements GamificationService {
         for (Achievement a : achievements) {
             userAchievementService.unlockAchievement(userId, a.getId());
         }
+    }
+    @Override
+    public void handleFastResponse(Long userId) {
+        UserLevelService.incrementFastResponderStreak(userId);
     }
 }

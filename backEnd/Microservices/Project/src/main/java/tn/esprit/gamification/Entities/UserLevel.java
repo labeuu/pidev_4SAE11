@@ -18,7 +18,10 @@ public class UserLevel {
     private Long id;
 
     private Long userId;
-
     private int xp = 0;
     private int level = 1;
+
+    // 🆕 Nouveaux champs
+    private int fastResponderStreak = 0;  // compteur de réponses rapides
+    private boolean isTopFreelancer = false; // badge actif ou non
 }

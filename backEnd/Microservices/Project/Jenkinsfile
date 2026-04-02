@@ -1,0 +1,144 @@
+pipeline {
+    agent any
+
+    environment {
+        // Docker Hub
+        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-credentials')
+        DOCKER_IMAGE           = 'ton-dockerhub-username/springboot-project'
+        DOCKER_TAG             = "${env.BUILD_NUMBER}"
+
+        // SonarQube
+        SONAR_HOST_URL         = 'http://localhost:9000'
+        SONAR_TOKEN            = credentials('sonar-token')
+
+        // Déploiement SSH (VPS)
+        DEPLOY_HOST            = 'user@your-vps-ip'
+        DEPLOY_DIR             = '/opt/springboot-project'
+    }
+
+    tools {
+        maven 'Maven-3.9'   // Nom configuré dans Jenkins > Global Tool Configuration
+        jdk   'JDK-17'      // Nom configuré dans Jenkins > Global Tool Configuration
+    }
+
+    stages {
+
+        // ─────────────────────────────────────────
+        // 1. CHECKOUT
+        // ─────────────────────────────────────────
+        stage('Checkout') {
+            steps {
+                checkout scm
+                echo "✅ Code récupéré depuis le dépôt."
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // 2. BUILD & TESTS
+        // ─────────────────────────────────────────
+        stage('Build & Tests') {
+            steps {
+                sh 'mvn clean package -DskipTests=false'
+            }
+            post {
+                always {
+                    junit '**/target/surefire-reports/*.xml'
+                    echo "✅ Build terminé. Rapports de tests publiés."
+                }
+                failure {
+                    echo "❌ Build ou tests échoués."
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // 3. ANALYSE SONARQUBE
+        // ─────────────────────────────────────────
+        stage('SonarQube Analysis') {
+            steps {
+                withSonarQubeEnv('SonarQube') {
+                    sh """
+                        mvn sonar:sonar \
+                            -Dsonar.projectKey=springboot-project \
+                            -Dsonar.projectName='Spring Boot Project' \
+                            -Dsonar.host.url=${SONAR_HOST_URL} \
+                            -Dsonar.token=${SONAR_TOKEN}
+                    """
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // 4. QUALITY GATE
+        // ─────────────────────────────────────────
+        stage('Quality Gate') {
+            steps {
+                timeout(time: 5, unit: 'MINUTES') {
+                    waitForQualityGate abortPipeline: true
+                }
+                echo "✅ Quality Gate passé avec succès."
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // 5. BUILD IMAGE DOCKER
+        // ─────────────────────────────────────────
+        stage('Docker Build') {
+            steps {
+                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -t ${DOCKER_IMAGE}:latest ."
+                echo "✅ Image Docker construite : ${DOCKER_IMAGE}:${DOCKER_TAG}"
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // 6. PUSH IMAGE SUR DOCKER HUB
+        // ─────────────────────────────────────────
+        stage('Docker Push') {
+            steps {
+                sh "echo ${DOCKER_HUB_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_CREDENTIALS_USR} --password-stdin"
+                sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                sh "docker push ${DOCKER_IMAGE}:latest"
+                echo "✅ Image poussée sur Docker Hub."
+            }
+            post {
+                always {
+                    sh "docker logout"
+                }
+            }
+        }
+
+        // ─────────────────────────────────────────
+        // 7. DÉPLOIEMENT VIA DOCKER COMPOSE
+        // ─────────────────────────────────────────
+        stage('Deploy') {
+            steps {
+                sshagent(['ssh-deploy-credentials']) {
+                    sh """
+                        ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} '
+                            cd ${DEPLOY_DIR} &&
+                            docker compose pull &&
+                            docker compose up -d --remove-orphans
+                        '
+                    """
+                }
+                echo "✅ Application déployée avec succès."
+            }
+        }
+    }
+
+    // ─────────────────────────────────────────
+    // NOTIFICATIONS POST-PIPELINE
+    // ─────────────────────────────────────────
+    post {
+        success {
+            echo "🎉 Pipeline terminé avec succès ! Image : ${DOCKER_IMAGE}:${DOCKER_TAG}"
+        }
+        failure {
+            echo "🚨 Pipeline échoué. Consulte les logs ci-dessus."
+        }
+        cleanup {
+            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
+            cleanWs()
+        }
+    }
+}

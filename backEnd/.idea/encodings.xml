@@ -11,6 +11,7 @@
     <file url="file://$PROJECT_DIR$/Microservices/Project/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/planning/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/review/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Microservices/task/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/user/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/apiGateway/src/main/java" charset="UTF-8" />
   </component>
