@@ -10,6 +10,11 @@ import { UserService } from '../../../core/services/user.service';
 import { ContractService } from '../../../core/services/contract.service';
 import { OfferService } from '../../../core/services/offer.service';
 import { ProjectApplicationService } from '../../../core/services/project-application.service';
+import {
+  GamificationService,
+  GamificationUserLevel,
+  isTopFreelancerFlag,
+} from '../../../core/services/gamification.service';
 import { ProjectsFeed } from '../../../shared/components/projects-feed/projects-feed.component';
 import { ProjectFeed } from '../../../shared/models/project-feed';
 
@@ -29,6 +34,7 @@ export class FreelancerHome implements OnInit {
   private contractService = inject(ContractService);
   private offerService = inject(OfferService);
   private applicationService = inject(ProjectApplicationService);
+  private gamificationService = inject(GamificationService);
   private cdr = inject(ChangeDetectorRef);
 
   displayName = '';
@@ -38,6 +44,7 @@ export class FreelancerHome implements OnInit {
   isLoadingStats = true;
   recommendedProjects: Project[] = [];
   isLoadingRecommendations = false;
+  gamificationLevel: GamificationUserLevel | null = null;
 
   // Feed state
   private allProjects = signal<ProjectFeed[]>([]);
@@ -100,8 +107,9 @@ export class FreelancerHome implements OnInit {
       applications: this.applicationService.getApplicationsByFreelance(freelancerId).pipe(catchError(() => of([]))),
       contracts: this.contractService.getByFreelancer(freelancerId).pipe(catchError(() => of([]))),
       offers: this.offerService.getOffersByFreelancer(freelancerId).pipe(catchError(() => of([]))),
+      gamification: this.gamificationService.getUserLevel(freelancerId).pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ applications, contracts, offers }) => {
+      next: ({ applications, contracts, offers, gamification }) => {
         const count = applications?.length ?? 0;
         const active = contracts?.filter(c => c.status === 'ACTIVE' || c.status === 'PENDING_SIGNATURE') ?? [];
         const offersCount = offers?.length ?? 0;
@@ -110,6 +118,7 @@ export class FreelancerHome implements OnInit {
           this.myApplicationsCount = count;
           this.activeContractsCount = active.length;
           this.myOffersCount = offersCount;
+          this.gamificationLevel = gamification;
           this.isLoadingStats = false;
           this.cdr.detectChanges();
         }, 0);
@@ -201,6 +210,17 @@ export class FreelancerHome implements OnInit {
     if (!s) return '';
     const arr = this.parseSkills(s);
     return arr.slice(0, 3).join(', ');
+  }
+
+  gamificationDisplayLevel(): number {
+    const l = this.gamificationLevel?.level;
+    if (l != null && l > 0) return l;
+    const xp = this.gamificationLevel?.xp ?? 0;
+    return Math.floor(xp / 100) + 1;
+  }
+
+  gamificationTopFreelancer(): boolean {
+    return isTopFreelancerFlag(this.gamificationLevel);
   }
 
   private timeAgo(dateStr?: string): string {

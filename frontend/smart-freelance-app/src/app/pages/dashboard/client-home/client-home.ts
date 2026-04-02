@@ -8,6 +8,11 @@ import { AuthService } from '../../../core/services/auth.service';
 import { ProjectService, Project } from '../../../core/services/project.service';
 import { UserService } from '../../../core/services/user.service';
 import { ContractService } from '../../../core/services/contract.service';
+import {
+  GamificationService,
+  GamificationUserLevel,
+  isTopFreelancerFlag,
+} from '../../../core/services/gamification.service';
 import { ProjectsFeed } from '../../../shared/components/projects-feed/projects-feed.component';
 import { ProjectFeed } from '../../../shared/models/project-feed';
 import { Card } from '../../../shared/components/card/card';
@@ -26,12 +31,14 @@ export class ClientHome implements OnInit {
   private auth = inject(AuthService);
   private us = inject(UserService);
   private contractService = inject(ContractService);
+  private gamificationService = inject(GamificationService);
   private cdr = inject(ChangeDetectorRef);
 
   displayName = '';
   myProjectsCount = 0;
   activeContractsCount = 0;
   isLoadingStats = true;
+  gamificationLevel: GamificationUserLevel | null = null;
 
   // Feed state
   private allProjects = signal<ProjectFeed[]>([]);
@@ -89,11 +96,13 @@ export class ClientHome implements OnInit {
     forkJoin({
       projects: this.projectService.getByClientId(clientId).pipe(catchError(() => of([]))),
       contracts: this.contractService.getByClient(clientId).pipe(catchError(() => of([]))),
+      gamification: this.gamificationService.getUserLevel(clientId).pipe(catchError(() => of(null))),
     }).subscribe({
-      next: ({ projects, contracts }) => {
+      next: ({ projects, contracts, gamification }) => {
         this.myProjectsCount = projects?.length ?? 0;
         const active = contracts?.filter(c => c.status === 'ACTIVE' || c.status === 'PENDING_SIGNATURE') ?? [];
         this.activeContractsCount = active.length;
+        this.gamificationLevel = gamification;
         this.isLoadingStats = false;
         this.cdr.detectChanges();
       },
@@ -155,6 +164,17 @@ export class ClientHome implements OnInit {
       return s.map((x) => (typeof x === 'object' && x && 'name' in x ? (x as { name: string }).name : String(x))).filter(Boolean);
     }
     return String(s).split(',').map(x => x.trim()).filter(Boolean);
+  }
+
+  gamificationDisplayLevel(): number {
+    const l = this.gamificationLevel?.level;
+    if (l != null && l > 0) return l;
+    const xp = this.gamificationLevel?.xp ?? 0;
+    return Math.floor(xp / 100) + 1;
+  }
+
+  gamificationTopFreelancer(): boolean {
+    return isTopFreelancerFlag(this.gamificationLevel);
   }
 
   private timeAgo(dateStr?: string): string {

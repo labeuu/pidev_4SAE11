@@ -3,7 +3,8 @@ package tn.esprit.gamification.Entities;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
-import org.apache.catalina.User;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -11,17 +12,16 @@ import org.apache.catalina.User;
 @AllArgsConstructor
 @NoArgsConstructor
 @FieldDefaults(level = AccessLevel.PRIVATE)
-public class UserLevel {
+public class UserAchievement {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    private Long userId;
-    private int xp = 0;
-    private int level = 1;
+    private Long userId; // important (pas relation directe)
 
-    // 🆕 Nouveaux champs
-    private int fastResponderStreak = 0;  // compteur de réponses rapides
-    private boolean isTopFreelancer = false; // badge actif ou non
+    @ManyToOne
+    private Achievement achievement;
+
+    private LocalDateTime unlockedAt;
 }

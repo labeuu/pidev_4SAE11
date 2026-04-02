@@ -17,6 +17,7 @@
         <option value="$PROJECT_DIR$/backEnd/Microservices/planning/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Portfolio/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Notification/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/gamification/pom.xml" />
       </list>
     </option>
   </component>

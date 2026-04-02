@@ -58,6 +58,7 @@ export class NotificationService {
    * REVIEW_RESPONSE → reviews/about-me (reviewee sees new response to their review).
    * PROGRESS_UPDATE / PROGRESS_COMMENT / PROGRESS_NEXT_DUE_OVERDUE → track-progress or progress-updates?projectId=X.
    * TASK_PRIORITY_ESCALATED → my-tasks (assignee).
+   * GAMIFICATION_* → gamification (Growth & achievements).
    */
   getNotificationRoute(
     n: NotificationItem,
@@ -75,6 +76,14 @@ export class NotificationService {
     if (type === 'TASK_PRIORITY_ESCALATED') {
       const route = '/dashboard/my-tasks';
       return projectId ? { route, queryParams: { projectId } } : { route, queryParams: {} };
+    }
+
+    if (
+      type === 'GAMIFICATION_FAST_RESPONDER' ||
+      type === 'GAMIFICATION_TOP_FREELANCER' ||
+      type === 'GAMIFICATION_TOP_FREELANCER_REVOKED'
+    ) {
+      return { route: '/dashboard/gamification', queryParams: {} };
     }
 
     if (type === 'PROGRESS_NEXT_DUE_OVERDUE') {

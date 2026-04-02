@@ -1,6 +1,7 @@
 package tn.esprit.gamification.Controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -37,12 +38,14 @@ public class GamificationController {
     }
 
     // 🆕 Déclencher manuellement les schedulers (pour tests)
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/trigger/top-freelancer")
     public String triggerTopFreelancer() {
         topFreelancerScheduler.detectAndRewardTopFreelancer();
         return "✅ Top Freelancer détecté et récompensé";
     }
 
+    @PreAuthorize("hasRole('ADMIN')")
     @PostMapping("/trigger/fast-responder")
     public String triggerFastResponder() {
         fastResponderScheduler.checkFastResponders();

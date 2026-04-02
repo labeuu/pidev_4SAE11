@@ -1,0 +1,88 @@
+<div class="achievement-management-page">
+  <h1>Achievements</h1>
+  <p class="subtitle">Define catalog achievements (admin only). These appear for all users on the Growth & achievements page.</p>
+
+  @if (listError) {
+    <div class="error-banner" role="alert">{{ listError }}</div>
+  }
+
+  <section class="panel panel--form" aria-labelledby="create-heading">
+    <h2 id="create-heading" class="panel-title">Create achievement</h2>
+    @if (formError) {
+      <div class="error-banner error-banner--compact" role="alert">{{ formError }}</div>
+    }
+    @if (successMessage) {
+      <div class="success-banner" role="status">{{ successMessage }}</div>
+    }
+    <form class="create-form" (ngSubmit)="submitCreate()">
+      <label class="field">
+        <span class="field-label">Title</span>
+        <input class="field-input" type="text" name="title" [(ngModel)]="formTitle" maxlength="200" required />
+      </label>
+      <label class="field">
+        <span class="field-label">Description</span>
+        <textarea class="field-input field-textarea" name="description" rows="3" [(ngModel)]="formDescription" maxlength="2000"></textarea>
+      </label>
+      <div class="field-row">
+        <label class="field field--narrow">
+          <span class="field-label">XP reward</span>
+          <input class="field-input" type="number" name="xpReward" [(ngModel)]="formXpReward" min="0" step="1" />
+        </label>
+        <label class="field field--grow">
+          <span class="field-label">Unlock condition</span>
+          <select class="field-input" name="conditionType" [(ngModel)]="formConditionType">
+            @for (opt of conditionOptions; track opt.value) {
+              <option [ngValue]="opt.value">{{ opt.label }}</option>
+            }
+          </select>
+        </label>
+      </div>
+      <div class="form-actions">
+        <button type="submit" class="btn-submit" [disabled]="saving">
+          {{ saving ? 'Creating…' : 'Create achievement' }}
+        </button>
+      </div>
+    </form>
+  </section>
+
+  <section class="panel" aria-labelledby="list-heading">
+    <div class="panel-head">
+      <h2 id="list-heading" class="panel-title">Catalog</h2>
+      <button type="button" class="btn-refresh" (click)="loadAchievements()" [disabled]="loading">
+        {{ loading ? 'Loading…' : 'Refresh' }}
+      </button>
+    </div>
+
+    @if (loading && achievements.length === 0) {
+      <p class="muted">Loading achievements…</p>
+    } @else if (achievements.length === 0) {
+      <p class="muted">No achievements yet. Create one above.</p>
+    } @else {
+      <div class="table-wrap">
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Title</th>
+              <th>Condition</th>
+              <th>XP</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (a of achievements; track a.id) {
+              <tr>
+                <td class="cell-id">{{ a.id }}</td>
+                <td>
+                  <div class="cell-title">{{ a.title }}</div>
+                  <div class="cell-desc">{{ a.description }}</div>
+                </td>
+                <td><span class="chip">{{ conditionLabel(a.conditionType) }}</span></td>
+                <td class="cell-xp">{{ a.xpReward }}</td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  </section>
+</div>

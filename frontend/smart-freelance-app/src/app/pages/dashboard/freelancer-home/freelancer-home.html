@@ -11,6 +11,22 @@
     </div>
   </section>
 
+  @if (!isLoadingStats && gamificationLevel) {
+    <section class="gamification-teaser" aria-label="Your level and achievements">
+      <a routerLink="/dashboard/gamification" class="gamification-teaser__link">
+        <div class="gamification-teaser__badge">{{ gamificationDisplayLevel() }}</div>
+        <div class="gamification-teaser__body">
+          <span class="gamification-teaser__title">Growth & achievements</span>
+          <span class="gamification-teaser__meta">{{ gamificationLevel.xp ?? 0 }} total XP</span>
+          @if (gamificationTopFreelancer()) {
+            <span class="gamification-teaser__pill">Top freelancer</span>
+          }
+        </div>
+        <span class="gamification-teaser__cta">View →</span>
+      </a>
+    </section>
+  }
+
   <!-- Recommended For You (skill-based, grouped and highlighted) -->
   <section class="recommendations-section">
     <div class="recommendations-group">

@@ -84,6 +84,7 @@ export class Sidebar {
           { label: 'Planning',  route: '/admin/planning',  icon: 'planning'  },
           { label: 'Calendar',  route: '/admin/calendar',  icon: 'planning'  },
           { label: 'GitHub',    route: '/admin/github',    icon: 'github'    },
+          { label: 'Achievements', route: '/admin/achievements', icon: 'star' },
         ]
       },
       {

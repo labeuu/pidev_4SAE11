@@ -14,15 +14,6 @@
         <module name="Contract" />
         <module name="Portfolio" />
       </profile>
-      <profile name="Annotation profile for Project" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
-        </processorPath>
-        <module name="Project" />
-      </profile>
       <profile name="Annotation profile for review" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
@@ -37,6 +28,16 @@
         <module name="user" />
         <module name="review" />
       </profile>
+      <profile name="Annotation profile for gamification" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+        </processorPath>
+        <module name="gamification" />
+        <module name="Project" />
+      </profile>
     </annotationProcessing>
   </component>
   <component name="JavacSettings">
@@ -49,6 +50,7 @@
       <module name="Portfolio" options="-parameters" />
       <module name="Project" options="-parameters" />
       <module name="apiGateway" options="-parameters" />
+      <module name="gamification" options="-parameters" />
       <module name="notification" options="-parameters" />
       <module name="planning" options="-parameters" />
       <module name="review" options="-parameters" />

@@ -171,6 +171,7 @@ export const routes: Routes = [
       },
       { path: 'my-portfolio', loadComponent: () => import('./pages/dashboard/portfolio-overview/portfolio-overview').then(m => m.PortfolioOverview) },
       { path: 'messages', redirectTo: '', pathMatch: 'full' },
+      { path: 'gamification', loadComponent: () => import('./pages/dashboard/gamification/gamification').then(m => m.GamificationPage), title: 'Growth & achievements' },
       { path: 'notifications', loadComponent: () => import('./pages/dashboard/notifications/notifications').then(m => m.Notifications) },
       { path: 'profile', loadComponent: () => import('./pages/dashboard/profile/profile').then(m => m.Profile) },
       { path: 'settings', redirectTo: 'profile', pathMatch: 'full' },
@@ -228,6 +229,7 @@ export const routes: Routes = [
       { path: 'contract-stats', loadComponent: () => import('./pages/admin/contract-stats/contract-stats').then(m => m.ContractStats) },
       { path: 'skills', loadComponent: () => import('./pages/admin/skill-management/skill-management').then(m => m.AdminSkillManagement) },
       { path: 'reviews', loadComponent: () => import('./pages/admin/review-management/review-management').then(m => m.ReviewManagement) },
+      { path: 'achievements', loadComponent: () => import('./pages/admin/achievement-management/achievement-management').then(m => m.AdminAchievementManagement), title: 'Achievements' },
       { path: 'settings', loadComponent: () => import('./pages/admin/admin-dashboard/admin-dashboard').then(m => m.AdminDashboard) },
     ]
   },

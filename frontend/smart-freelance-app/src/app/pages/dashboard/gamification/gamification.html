@@ -1,0 +1,74 @@
+<div class="gamification-page">
+  <header class="page-head">
+    <div>
+      <h1 class="page-title">Growth & achievements</h1>
+      <p class="page-sub">Level, XP, and badges synced from your activity on the platform.</p>
+    </div>
+    <a routerLink="/dashboard" class="back-link">← Dashboard</a>
+  </header>
+
+  <div class="state state--error" *ngIf="errorMessage && !loading">
+    <p>{{ errorMessage }}</p>
+  </div>
+
+  <div class="state state--loading" *ngIf="loading">
+    <p>Loading your progress…</p>
+  </div>
+
+  <ng-container *ngIf="!loading && !errorMessage && userId != null">
+    <section class="level-section">
+      <app-card class="level-card">
+        <div class="level-card__inner">
+          <div class="level-badge" aria-hidden="true">
+            <span class="level-badge__num">{{ displayLevel() }}</span>
+            <span class="level-badge__label">Level</span>
+          </div>
+          <div class="level-details">
+            <h2 class="level-details__title">Your progress</h2>
+            <p class="level-details__xp">
+              <strong>{{ totalXp() }}</strong> total XP
+            </p>
+            <div class="xp-bar" role="progressbar" [attr.aria-valuenow]="xpInTier()" aria-valuemin="0" aria-valuemax="100">
+              <div class="xp-bar__fill" [style.width.%]="xpInTier()"></div>
+            </div>
+            <p class="level-details__hint">{{ xpInTier() }} / 100 XP toward the next level</p>
+            <ul class="meta-chips">
+              <li class="meta-chip" *ngIf="streak() > 0">⚡ Fast responder streak: <strong>{{ streak() }}</strong></li>
+              <li class="meta-chip meta-chip--highlight" *ngIf="topFreelancer()">🏆 Top freelancer</li>
+            </ul>
+          </div>
+        </div>
+      </app-card>
+    </section>
+
+    <section class="achievements-section">
+      <h2 class="section-title">Achievements</h2>
+      <p class="section-sub">{{ unlocked.length }} unlocked of {{ catalog.length }}</p>
+
+      <div class="achievement-grid" *ngIf="catalog.length > 0">
+        <app-card
+          *ngFor="let a of catalog"
+          class="achievement-card"
+          [class.achievement-card--locked]="!isUnlocked(a.id)"
+        >
+          <div class="achievement-card__inner">
+            <div class="achievement-card__icon" [class.achievement-card__icon--locked]="!isUnlocked(a.id)">
+              {{ isUnlocked(a.id) ? '✓' : '○' }}
+            </div>
+            <h3 class="achievement-card__title">{{ a.title }}</h3>
+            <p class="achievement-card__desc">{{ a.description }}</p>
+            <div class="achievement-card__footer">
+              <span class="tag">{{ conditionLabel(a.conditionType) }}</span>
+              <span class="xp-pill">+{{ a.xpReward }} XP</span>
+            </div>
+            <p class="achievement-card__date" *ngIf="unlockedEntry(a.id) as row">
+              Unlocked {{ row.unlockedAt | date: 'mediumDate' }}
+            </p>
+          </div>
+        </app-card>
+      </div>
+
+      <p class="empty-catalog" *ngIf="catalog.length === 0">No achievements are defined yet.</p>
+    </section>
+  </ng-container>
+</div>

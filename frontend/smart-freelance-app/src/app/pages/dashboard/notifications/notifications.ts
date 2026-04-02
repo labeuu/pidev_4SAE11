@@ -120,6 +120,9 @@ export class Notifications implements OnInit {
     if (type === 'TASK_STATUS_UPDATE') return 'Task update';
     if (type === 'TASK_PRIORITY_ESCALATED') return 'Task priority';
     if (type === 'PROGRESS_NEXT_DUE_OVERDUE') return 'Progress due overdue';
+    if (type === 'GAMIFICATION_FAST_RESPONDER') return 'Achievement';
+    if (type === 'GAMIFICATION_TOP_FREELANCER') return 'Top freelancer';
+    if (type === 'GAMIFICATION_TOP_FREELANCER_REVOKED') return 'Rank update';
     return type || 'Notification';
   }
 }
