@@ -30,9 +30,24 @@ class TaskScheduledJobsTest {
     }
 
     @Test
+    void runEscalateOverduePriorities_whenTasksEscalated_entersInfoBranch() {
+        when(taskService.escalateOverduePriorities()).thenReturn(2);
+        taskScheduledJobs.runEscalateOverduePriorities();
+        verify(taskService).escalateOverduePriorities();
+    }
+
+    @Test
     void runPurgeOldCancelledTasks_usesConfiguredDays() {
         ReflectionTestUtils.setField(taskScheduledJobs, "purgeCancelledDays", 30);
         when(taskService.purgeOldCancelledTasks(any(LocalDateTime.class))).thenReturn(0);
+        taskScheduledJobs.runPurgeOldCancelledTasks();
+        verify(taskService).purgeOldCancelledTasks(any(LocalDateTime.class));
+    }
+
+    @Test
+    void runPurgeOldCancelledTasks_whenPurged_entersInfoBranch() {
+        ReflectionTestUtils.setField(taskScheduledJobs, "purgeCancelledDays", 90);
+        when(taskService.purgeOldCancelledTasks(any(LocalDateTime.class))).thenReturn(3);
         taskScheduledJobs.runPurgeOldCancelledTasks();
         verify(taskService).purgeOldCancelledTasks(any(LocalDateTime.class));
     }

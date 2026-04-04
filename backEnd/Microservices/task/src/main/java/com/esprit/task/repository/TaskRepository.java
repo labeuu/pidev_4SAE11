@@ -29,10 +29,6 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
     List<Task> findByContractIdOrderByProjectIdAscOrderIndexAsc(Long contractId);
 
-    List<Task> findByParentTaskId(Long parentTaskId);
-
-    List<Task> findByProjectIdAndParentTaskIdIsNullOrderByOrderIndexAsc(Long projectId);
-
     @Query("SELECT t FROM Task t WHERE t.dueDate IS NOT NULL AND t.dueDate < :today AND t.status NOT IN ('DONE', 'CANCELLED') ORDER BY t.projectId, t.orderIndex, t.createdAt DESC")
     List<Task> findOverdueTasks(@Param("today") LocalDate today);
 
@@ -48,12 +44,22 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
     @Query("SELECT t FROM Task t WHERE t.dueDate IS NOT NULL AND t.dueDate >= :start AND t.dueDate <= :end AND t.assigneeId = :userId ORDER BY t.projectId, t.orderIndex, t.createdAt DESC")
     List<Task> findByDueDateBetweenAndAssigneeId(@Param("start") LocalDate start, @Param("end") LocalDate end, @Param("userId") Long userId);
 
-    @Query("SELECT COALESCE(MAX(t.orderIndex), 0) FROM Task t WHERE t.projectId = :projectId AND t.parentTaskId IS NULL")
+    @Query("SELECT COALESCE(MAX(t.orderIndex), 0) FROM Task t WHERE t.projectId = :projectId")
     Integer findMaxOrderIndexByProject(@Param("projectId") Long projectId);
 
     long countByProjectId(Long projectId);
 
+    boolean existsByProjectIdAndAssigneeId(Long projectId, Long assigneeId);
+
     long countByProjectIdAndStatus(Long projectId, TaskStatus status);
 
     List<Task> findByStatusAndUpdatedAtBefore(TaskStatus status, LocalDateTime before);
+
+    @Query("SELECT t.projectId, MAX(t.updatedAt) FROM Task t WHERE t.assigneeId = :assigneeId GROUP BY t.projectId")
+    List<Object[]> findMaxTaskUpdatedByProjectForAssignee(@Param("assigneeId") Long assigneeId);
+
+    @Query("SELECT t.projectId, COUNT(t) FROM Task t WHERE t.assigneeId = :assigneeId "
+            + "AND t.status NOT IN (com.esprit.task.entity.TaskStatus.DONE, com.esprit.task.entity.TaskStatus.CANCELLED) "
+            + "GROUP BY t.projectId")
+    List<Object[]> countOpenTasksByProjectForAssignee(@Param("assigneeId") Long assigneeId);
 }

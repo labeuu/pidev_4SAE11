@@ -4,6 +4,7 @@ import com.esprit.task.client.NotificationClient;
 import com.esprit.task.client.ProjectClient;
 import com.esprit.task.dto.NotificationRequestDto;
 import com.esprit.task.dto.ProjectDto;
+import com.esprit.task.entity.Subtask;
 import com.esprit.task.entity.Task;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -54,6 +55,39 @@ public class TaskNotificationService {
         Map<String, String> data = new HashMap<>();
         data.put("projectId", String.valueOf(task.getProjectId()));
         data.put("taskId", String.valueOf(task.getId()));
+
+        notifyUser(userId, title, body, TYPE_TASK_STATUS_UPDATE, data);
+    }
+
+    /**
+     * Notify the project client when a subtask status was updated.
+     */
+    public void notifySubtaskStatusUpdate(Subtask subtask) {
+        if (subtask == null || subtask.getProjectId() == null) {
+            return;
+        }
+        ProjectDto project;
+        try {
+            project = projectClient.getProjectById(subtask.getProjectId());
+        } catch (Exception e) {
+            log.warn("Failed to load project {} for subtask status notification: {}", subtask.getProjectId(), e.getMessage());
+            return;
+        }
+        if (project == null || project.getClientId() == null) {
+            return;
+        }
+        String userId = String.valueOf(project.getClientId());
+        String subTitle = subtask.getTitle() != null ? subtask.getTitle() : "Subtask #" + subtask.getId();
+        String statusLabel = subtask.getStatus() != null ? subtask.getStatus().name().replace("_", " ") : "updated";
+        String title = "Subtask status updated";
+        String body = String.format("Subtask \"%s\" is now %s.", subTitle, statusLabel);
+
+        Map<String, String> data = new HashMap<>();
+        data.put("projectId", String.valueOf(subtask.getProjectId()));
+        if (subtask.getParent() != null) {
+            data.put("taskId", String.valueOf(subtask.getParent().getId()));
+        }
+        data.put("subtaskId", String.valueOf(subtask.getId()));
 
         notifyUser(userId, title, body, TYPE_TASK_STATUS_UPDATE, data);
     }

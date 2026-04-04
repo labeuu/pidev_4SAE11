@@ -19,18 +19,97 @@
 
     <section class="tasks-section" aria-labelledby="list-heading">
       <app-card class="card-list">
-        <div class="toolbar toolbar--flex">
-          <h2 id="list-heading" class="section-title">
-            <span class="section-title__icon">✅</span>
-            Your tasks
-          </h2>
-          <div class="toolbar-filters" [formGroup]="filterForm">
-            <input type="text" class="search-input" formControlName="search" placeholder="Search by title…" (input)="onSearchInput()" />
+        <div class="tasks-layout">
+          <div class="tasks-layout__sidebar">
+            <div class="toolbar toolbar--flex toolbar--stack toolbar--sidebar">
+              <h2 id="list-heading" class="section-title section-title--sidebar">
+                <span class="section-title__icon" aria-hidden="true">✅</span>
+                Your tasks
+              </h2>
+              <fieldset class="filter-panel" [formGroup]="filterForm">
+                <legend class="filter-panel__legend">Search &amp; filters</legend>
+                <p class="filter-panel__hint">Results update as you type (short delay).</p>
+                <div class="filter-panel__fields toolbar-filters toolbar-filters--grid">
+                  <div class="filter-panel__field">
+                    <label class="filter-panel__label" for="task-search">Search</label>
+                    <input
+                      id="task-search"
+                      type="search"
+                      class="search-input search-input--panel"
+                      formControlName="search"
+                      placeholder="Title or description…"
+                      autocomplete="off"
+                    />
+                  </div>
+                  <div class="filter-panel__field">
+                    <label class="filter-panel__label" for="task-filter-status">Status</label>
+                    <select id="task-filter-status" class="filter-select" formControlName="status">
+                      <option value="">All statuses</option>
+                      <option value="TODO">To do</option>
+                      <option value="IN_PROGRESS">In progress</option>
+                      <option value="IN_REVIEW">In review</option>
+                      <option value="DONE">Done</option>
+                      <option value="CANCELLED">Cancelled</option>
+                    </select>
+                  </div>
+                  <div class="filter-panel__field">
+                    <label class="filter-panel__label" for="task-filter-priority">Priority</label>
+                    <select id="task-filter-priority" class="filter-select" formControlName="priority">
+                      <option value="">All priorities</option>
+                      <option value="LOW">Low</option>
+                      <option value="MEDIUM">Medium</option>
+                      <option value="HIGH">High</option>
+                      <option value="URGENT">Urgent</option>
+                    </select>
+                  </div>
+                  <div class="filter-panel__field">
+                    <label class="filter-panel__label" for="task-filter-project">Project</label>
+                    <select id="task-filter-project" class="filter-select" formControlName="projectId">
+                      <option [ngValue]="null">All projects</option>
+                      @for (opt of filterProjectOptions; track opt.id) {
+                        <option [ngValue]="opt.id">{{ opt.title }}</option>
+                      }
+                    </select>
+                  </div>
+                  <div class="filter-panel__field">
+                    <label class="filter-panel__label" for="task-sort">Sort</label>
+                    <select id="task-sort" class="filter-select" formControlName="sort">
+                      <option value="createdAt,desc">Newest first</option>
+                      <option value="updatedAt,desc">Recently updated</option>
+                      <option value="dueDate,asc">Due date (soonest)</option>
+                      <option value="dueDate,desc">Due date (latest)</option>
+                      <option value="priority,desc">Priority (high first)</option>
+                    </select>
+                  </div>
+                </div>
+              </fieldset>
+              @if (projectsForAdd.length > 0) {
+                <div class="toolbar-actions toolbar-actions--sidebar" role="group" aria-label="Task actions">
+                  <button
+                    type="button"
+                    class="btn-add"
+                    (click)="openAdd()"
+                  >
+                    Add task
+                  </button>
+                  <button
+                    type="button"
+                    class="btn-ai"
+                    (click)="openAiProjectTasksWizard()"
+                    aria-label="Open AI assistant to suggest new tasks for a project"
+                  >
+                    <span class="btn-ai__icon" aria-hidden="true">✨</span>
+                    Suggest tasks with AI
+                  </button>
+                </div>
+              }
+            </div>
           </div>
-          @if (projectsForAdd.length > 0) {
-            <button type="button" class="btn-add" (click)="openAdd()">Add task</button>
-          }
-        </div>
+          <div
+            class="tasks-layout__main"
+            [class.tasks-layout__main--refreshing]="searching"
+            [attr.aria-busy]="loading || searching ? 'true' : 'false'"
+          >
         @if (totalPages > 0 || totalElements > 0) {
           <div class="toolbar toolbar--count">
             <span class="toolbar-count">{{ totalElements }} total · Page {{ page + 1 }} of {{ totalPages || 1 }}</span>
@@ -48,46 +127,177 @@
             <p class="state-box__hint">Add a task or wait for a client to assign you to a project.</p>
           </div>
         } @else {
-        <ul class="task-list">
-          @for (t of tasks; track t.id) {
-            <li class="task-item">
-              <div class="task-item__main">
-                <span class="task-item__title">{{ t.title }}</span>
-                <span class="task-item__meta">{{ getProjectTitle(t.projectId) }} · Due {{ formatDueDate(t.dueDate) }}</span>
-              </div>
-              <div class="task-item__status">
-                <span
-                  class="priority-badge priority-badge--{{ effectivePriority(t.priority) | lowercase }}"
-                  [attr.title]="'Priority: ' + formatPriorityLabel(t.priority)"
-                >{{ formatPriorityLabel(t.priority) }}</span>
-                <span class="badge badge--{{ t.status | lowercase }}">{{ t.status }}</span>
-                @if (t.status !== 'DONE' && t.status !== 'CANCELLED') {
-                  <div class="status-dropdown-wrap">
-                    <select class="status-dropdown" [value]="t.status" (change)="updateStatusFromSelect(t, $any($event).target.value)" [disabled]="updatingStatus">
-                      <option value="TODO">To Do</option>
-                      <option value="IN_PROGRESS">In Progress</option>
-                      <option value="IN_REVIEW">In Review</option>
-                      <option value="DONE">Done</option>
-                    </select>
-                    <span class="status-dropdown__chevron" aria-hidden="true"></span>
+        @for (g of projectTaskGroups; track g.projectId) {
+          <section class="project-panel" [attr.aria-labelledby]="'project-heading-' + g.projectId">
+            <div class="project-panel__head">
+              <h3 class="project-panel__title" [id]="'project-heading-' + g.projectId">{{ g.title }}</h3>
+              @if (formatProjectActivityHint(g.projectId)) {
+                <p class="project-panel__meta">{{ formatProjectActivityHint(g.projectId) }}</p>
+              }
+              <span class="project-panel__count" aria-live="polite">{{ g.tasks.length }} task(s) on this page</span>
+            </div>
+            <ul class="task-list" role="list">
+              @for (t of g.tasks; track t.id) {
+                <li class="task-block">
+                  <div class="task-item">
+                    <button
+                      type="button"
+                      class="btn-expand"
+                      (click)="toggleRootExpanded(t)"
+                      [attr.aria-expanded]="isRootExpanded(t.id)"
+                      [attr.aria-controls]="'subtasks-' + t.id"
+                      [attr.aria-label]="expandLabel(t)"
+                    >
+                      <span class="btn-expand__chevron" [class.btn-expand__chevron--open]="isRootExpanded(t.id)" aria-hidden="true"></span>
+                    </button>
+                    <div class="task-item__main">
+                      <span class="task-item__title">{{ t.title }}</span>
+                      <span class="task-item__meta">Due {{ formatDueDate(t.dueDate) }}</span>
+                      @if (subtaskProgressForTask(t.id); as prog) {
+                        @if (prog.total > 0) {
+                          <div
+                            class="task-progress"
+                            role="group"
+                            [attr.aria-label]="'Subtasks: ' + prog.completed + ' of ' + prog.total + ' completed'"
+                          >
+                            <div
+                              class="task-progress__track"
+                              role="progressbar"
+                              [attr.aria-valuemin]="0"
+                              [attr.aria-valuemax]="prog.total"
+                              [attr.aria-valuenow]="prog.completed"
+                            >
+                              <div class="task-progress__fill" [style.width.%]="subtaskProgressPercent(t.id)"></div>
+                            </div>
+                            <span class="task-progress__label" aria-hidden="true">{{ prog.completed }}/{{ prog.total }}</span>
+                          </div>
+                        } @else {
+                          <span class="task-progress__none" aria-hidden="true">No subtasks</span>
+                        }
+                      }
+                    </div>
+                    <div class="task-item__rail">
+                      <div class="task-item__controls">
+                        <span
+                          class="priority-badge priority-badge--{{ effectivePriority(t.priority) | lowercase }}"
+                          [attr.title]="'Priority: ' + formatPriorityLabel(t.priority)"
+                        >{{ formatPriorityLabel(t.priority) }}</span>
+                        @if (t.status !== 'DONE' && t.status !== 'CANCELLED') {
+                          <div class="status-dropdown-wrap">
+                            <label class="visually-hidden" [attr.for]="'task-status-' + t.id">Status for {{ t.title }}</label>
+                            <select
+                              class="status-dropdown"
+                              [id]="'task-status-' + t.id"
+                              [value]="t.status"
+                              (change)="updateStatusFromSelect(t, $any($event).target.value)"
+                              [disabled]="updatingStatus"
+                            >
+                              <option value="TODO">To Do</option>
+                              <option value="IN_PROGRESS">In Progress</option>
+                              <option value="IN_REVIEW">In Review</option>
+                              <option value="DONE">Done</option>
+                            </select>
+                            <span class="status-dropdown__chevron" aria-hidden="true"></span>
+                          </div>
+                        } @else {
+                          <span class="badge badge--{{ t.status | lowercase }}">{{ t.status }}</span>
+                        }
+                      </div>
+                      <div class="task-item__quick-actions" role="group" [attr.aria-label]="'Actions for ' + t.title">
+                        <button type="button" class="btn-task btn-task--edit" (click)="openEdit(t)">Edit</button>
+                        <button type="button" class="btn-task btn-task--delete" (click)="openDeleteModal(t)">Delete</button>
+                      </div>
+                    </div>
                   </div>
-                }
-                <button type="button" class="btn-action btn-edit" (click)="openEdit(t)">Edit</button>
-                <button type="button" class="btn-action btn-delete" (click)="openDeleteModal(t)">Delete</button>
-              </div>
-            </li>
-          }
-        </ul>
+                  @if (isRootExpanded(t.id)) {
+                    <div class="subtasks-region" [id]="'subtasks-' + t.id" role="region" [attr.aria-label]="'Subtasks for ' + t.title">
+                      @if (subtasksLoading[t.id!]) {
+                        <p class="subtasks-region__loading">Loading subtasks…</p>
+                      } @else {
+                        <div class="subtasks-region__toolbar">
+                          <button
+                            type="button"
+                            class="btn-subtask-add"
+                            (click)="openAddSubtask(t)"
+                            [attr.aria-label]="'Add subtask under ' + t.title"
+                          >
+                            + Add subtask
+                          </button>
+                          <button
+                            type="button"
+                            class="btn-subtask-ai"
+                            (click)="openAiSubtasksWizard(t)"
+                            aria-label="Suggest subtasks with AI for this task"
+                          >
+                            <span class="btn-subtask-ai__icon" aria-hidden="true">✨</span>
+                            Suggest with AI
+                          </button>
+                        </div>
+                        @if (subtasksFor(t.id).length === 0) {
+                          <p class="subtasks-region__empty">
+                            No subtasks yet. Use <strong>+ Add subtask</strong> or <strong>Suggest with AI</strong> above.
+                          </p>
+                        } @else {
+                          <ul class="subtask-list" role="list">
+                            @for (st of subtasksFor(t.id); track st.id) {
+                              <li class="subtask-item">
+                                <div class="subtask-item__main">
+                                  <span class="subtask-item__title">{{ st.title }}</span>
+                                  <span class="subtask-item__meta">Due {{ formatDueDate(st.dueDate) }}</span>
+                                </div>
+                                <div class="subtask-item__actions">
+                                  @if (st.status !== 'DONE' && st.status !== 'CANCELLED') {
+                                    <div class="status-dropdown-wrap">
+                                      <select
+                                        class="status-dropdown status-dropdown--sm"
+                                        [value]="st.status"
+                                        (change)="updateSubtaskStatusFromSelect(t.id!, st, $any($event).target.value)"
+                                        [disabled]="updatingSubtaskStatus"
+                                        [attr.aria-label]="'Status for subtask ' + st.title"
+                                      >
+                                        <option value="TODO">To Do</option>
+                                        <option value="IN_PROGRESS">In Progress</option>
+                                        <option value="IN_REVIEW">In Review</option>
+                                        <option value="DONE">Done</option>
+                                      </select>
+                                      <span class="status-dropdown__chevron" aria-hidden="true"></span>
+                                    </div>
+                                  } @else {
+                                    <span class="badge badge--{{ st.status | lowercase }}">{{ st.status }}</span>
+                                  }
+                                  <button
+                                    type="button"
+                                    class="btn-task btn-task--edit btn-task--sm"
+                                    (click)="openEditSubtask(t, st)"
+                                  >
+                                    Edit
+                                  </button>
+                                  <button type="button" class="btn-task btn-task--delete btn-task--sm" (click)="openDeleteSubtask(t.id!, st)">Delete</button>
+                                </div>
+                              </li>
+                            }
+                          </ul>
+                        }
+                      }
+                    </div>
+                  }
+                </li>
+              }
+            </ul>
+          </section>
+        }
         @if (totalPages > 1) {
           <nav class="pagination" aria-label="Tasks pagination">
-            <button type="button" class="btn-pagination" (click)="goToPage(0)" [disabled]="page === 0 || loading" aria-label="First page">First</button>
-            <button type="button" class="btn-pagination" (click)="goToPage(page - 1)" [disabled]="page === 0 || loading" aria-label="Previous">Prev</button>
+            <button type="button" class="btn-pagination" (click)="goToPage(0)" [disabled]="page === 0 || loading || searching" aria-label="First page">First</button>
+            <button type="button" class="btn-pagination" (click)="goToPage(page - 1)" [disabled]="page === 0 || loading || searching" aria-label="Previous">Prev</button>
             <span class="pagination-info">Page {{ page + 1 }} of {{ totalPages }}</span>
-            <button type="button" class="btn-pagination" (click)="goToPage(page + 1)" [disabled]="page >= totalPages - 1 || loading" aria-label="Next">Next</button>
-            <button type="button" class="btn-pagination" (click)="goToPage(totalPages - 1)" [disabled]="page >= totalPages - 1 || loading" aria-label="Last page">Last</button>
+            <button type="button" class="btn-pagination" (click)="goToPage(page + 1)" [disabled]="page >= totalPages - 1 || loading || searching" aria-label="Next">Next</button>
+            <button type="button" class="btn-pagination" (click)="goToPage(totalPages - 1)" [disabled]="page >= totalPages - 1 || loading || searching" aria-label="Last page">Last</button>
           </nav>
         }
         }
+          </div>
+        </div>
       </app-card>
     </section>
 
@@ -112,7 +322,22 @@
               <input id="add-title" formControlName="title" />
             </div>
             <div class="field">
-              <label for="add-description">Description (optional)</label>
+              <div class="field-label-row">
+                <label for="add-description">Description (optional)</label>
+                <button
+                  type="button"
+                  class="btn-ai-inline"
+                  (click)="suggestDescriptionFromAi()"
+                  [disabled]="
+                    suggestDescriptionLoading ||
+                    addForm.get('projectId')?.invalid ||
+                    !addForm.get('title')?.value?.trim()
+                  "
+                  aria-label="Suggest task description from title using AI"
+                >
+                  {{ suggestDescriptionLoading ? 'Suggesting…' : 'Suggest from title' }}
+                </button>
+              </div>
               <textarea id="add-description" formControlName="description" rows="3"></textarea>
             </div>
             <div class="field">
@@ -140,6 +365,58 @@
             <div class="modal-actions">
               <button type="button" class="btn-secondary" (click)="closeAdd()" [disabled]="adding">Cancel</button>
               <button type="submit" class="btn-primary" [disabled]="addForm.invalid || adding">{{ adding ? 'Creating…' : 'Create' }}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    }
+
+    @if (subtaskModalParent) {
+      <div class="modal-overlay" (click)="closeSubtaskModal()">
+        <div class="modal modal--form" (click)="$event.stopPropagation()" role="dialog" aria-modal="true" aria-labelledby="subtask-modal-title">
+          <div class="modal-header">
+            <h3 id="subtask-modal-title">{{ subtaskModalEditing ? 'Edit subtask' : 'Add subtask' }}</h3>
+            <p class="modal-hint">
+              Under parent task: <strong>{{ subtaskModalParent.title }}</strong>
+            </p>
+          </div>
+          <form [formGroup]="subtaskForm" (ngSubmit)="saveSubtask()">
+            <div class="field">
+              <label for="subtask-title">Title</label>
+              <input id="subtask-title" formControlName="title" autocomplete="off" />
+            </div>
+            <div class="field">
+              <label for="subtask-description">Description (optional)</label>
+              <textarea id="subtask-description" formControlName="description" rows="3"></textarea>
+            </div>
+            <div class="field">
+              <label for="subtask-status">Status</label>
+              <select id="subtask-status" formControlName="status">
+                <option value="TODO">TODO</option>
+                <option value="IN_PROGRESS">IN_PROGRESS</option>
+                <option value="IN_REVIEW">IN_REVIEW</option>
+                <option value="DONE">DONE</option>
+                <option value="CANCELLED">CANCELLED</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="subtask-priority">Priority</label>
+              <select id="subtask-priority" formControlName="priority">
+                <option value="LOW">LOW</option>
+                <option value="MEDIUM">MEDIUM</option>
+                <option value="HIGH">HIGH</option>
+                <option value="URGENT">URGENT</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="subtask-dueDate">Due date</label>
+              <input id="subtask-dueDate" type="date" formControlName="dueDate" />
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn-secondary" (click)="closeSubtaskModal()" [disabled]="savingSubtask">Cancel</button>
+              <button type="submit" class="btn-primary" [disabled]="subtaskForm.invalid || savingSubtask">
+                {{ savingSubtask ? 'Saving…' : subtaskModalEditing ? 'Save' : 'Create' }}
+              </button>
             </div>
           </form>
         </div>
@@ -189,6 +466,229 @@
               <button type="submit" class="btn-primary" [disabled]="editForm.invalid || saving">{{ saving ? 'Saving…' : 'Save' }}</button>
             </div>
           </form>
+        </div>
+      </div>
+    }
+
+    @if (aiWizardOpen) {
+      <div class="modal-overlay modal-overlay--ai" (click)="closeAiWizard()" role="presentation">
+        <div
+          class="modal modal--form modal--wide modal--ai-wizard"
+          (click)="$event.stopPropagation()"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="ai-wizard-heading"
+          aria-describedby="ai-wizard-desc"
+        >
+          <div class="modal-header modal-header--ai-wizard">
+            <div class="ai-wizard__head">
+              <div class="ai-wizard__icon-wrap" aria-hidden="true">
+                <span class="ai-wizard__icon-glow"></span>
+                <span class="ai-wizard__icon">✨</span>
+              </div>
+              <div class="ai-wizard__head-text">
+                <h3 id="ai-wizard-heading">
+                  @if (aiWizardMode === 'project-tasks') {
+                    Suggested tasks
+                  } @else {
+                    Suggested subtasks
+                  }
+                </h3>
+                <p id="ai-wizard-desc" class="modal-hint modal-hint--ai">
+                  @if (aiWizardMode === 'project-tasks') {
+                    Pick a project, run <strong>Generate</strong>, then edit rows and use <strong>Accept all</strong> or <strong>Regenerate</strong>.
+                  } @else {
+                    Run <strong>Generate</strong> to draft subtasks under your parent task. Edit fields, then accept or try again.
+                  }
+                </p>
+              </div>
+            </div>
+            <div
+              class="ai-live-status"
+              [class.ai-live-status--ok]="aiPipelineOk"
+              [class.ai-live-status--warn]="aiPipelineWarn"
+              [class.ai-live-status--bad]="aiPipelineBad"
+              [class.ai-live-status--pulse]="aiStatusRefreshing"
+              role="status"
+              aria-live="polite"
+              aria-atomic="true"
+            >
+              <span class="ai-live-status__dot" aria-hidden="true"></span>
+              <span class="ai-live-status__text">{{ aiPipelineStatusMessage }}</span>
+            </div>
+          </div>
+
+          <div class="ai-wizard__body">
+            @if (aiWizardMode === 'project-tasks') {
+              <div class="ai-wizard__section ai-wizard__section--controls">
+                <label class="ai-wizard__section-label" for="ai-project-select">Project</label>
+                <div class="ai-project-generate-row">
+                  <select id="ai-project-select" class="ai-wizard__select" [(ngModel)]="aiProjectSelectedId">
+                    <option [ngValue]="null" disabled>Select a project…</option>
+                    @for (p of projectsForAdd; track p.id) {
+                      <option [ngValue]="p.id">{{ p.title }}</option>
+                    }
+                  </select>
+                  <button
+                    type="button"
+                    class="btn-primary btn-generate-ai"
+                    (click)="generateAiProposalsClick()"
+                    [disabled]="aiWizardLoading || acceptingAi || aiProjectSelectedId == null"
+                    aria-label="Generate AI task suggestions for the selected project"
+                  >
+                    @if (aiWizardLoading) {
+                      <span class="btn-generate-ai__spinner" aria-hidden="true"></span>
+                      <span>Please wait</span>
+                    } @else {
+                      <span class="btn-generate-ai__bolt" aria-hidden="true">⚡</span>
+                      <span>Generate</span>
+                    }
+                  </button>
+                </div>
+                <p class="ai-wizard__helper">Suggestions use your project context. Generation may take up to a minute.</p>
+              </div>
+            }
+            @if (aiWizardMode === 'subtasks') {
+              <div class="ai-wizard__section ai-wizard__section--controls">
+                @if (aiSubtaskParent) {
+                  <div class="ai-context-card">
+                    <span class="ai-context-card__label">Parent task</span>
+                    <p class="ai-context-card__title">{{ aiSubtaskParent.title }}</p>
+                  </div>
+                }
+                <button
+                  type="button"
+                  class="btn-primary btn-generate-ai btn-generate-ai--full"
+                  (click)="generateAiProposalsClick()"
+                  [disabled]="aiWizardLoading || acceptingAi"
+                  aria-label="Generate AI subtask suggestions for the parent task"
+                >
+                  @if (aiWizardLoading) {
+                    <span class="btn-generate-ai__spinner" aria-hidden="true"></span>
+                    <span>Please wait</span>
+                  } @else {
+                    <span class="btn-generate-ai__bolt" aria-hidden="true">⚡</span>
+                    <span>Generate suggestions</span>
+                  }
+                </button>
+                <p class="ai-wizard__helper">Uses your project context and the parent task title. This can take a minute.</p>
+              </div>
+            }
+
+            @if (aiWizardLoading) {
+              <div class="ai-wizard-loading" role="status" aria-live="polite" aria-busy="true">
+                <div class="ai-wizard-loading__visual" aria-hidden="true">
+                  <div class="ai-wizard-loading__rings">
+                    <span class="ai-wizard-loading__ring ai-wizard-loading__ring--a"></span>
+                    <span class="ai-wizard-loading__ring ai-wizard-loading__ring--b"></span>
+                  </div>
+                </div>
+                <p class="ai-wizard-loading__title">Crafting suggestions</p>
+                <p class="ai-wizard-loading__subtitle">The model is writing tasks you can edit before saving.</p>
+                <div class="ai-wizard-loading__dots" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
+            }
+
+            @if (aiWizardError) {
+              <div class="ai-wizard-error error-banner" role="alert">{{ aiWizardError }}</div>
+            }
+
+            @if (!aiWizardLoading && aiProposalRows.length > 0) {
+              <div class="ai-wizard__review">
+                <div class="ai-proposals-head">
+                  <span class="ai-proposals-head__title">Review & edit</span>
+                  <span class="ai-proposals-head__count">{{ aiProposalRows.length }} {{ aiProposalRows.length === 1 ? 'item' : 'items' }}</span>
+                </div>
+                <div class="ai-proposals ai-proposals--cards">
+                @for (row of aiProposalRows; track $index) {
+                  <article class="ai-proposal-card">
+                    <div class="ai-proposal-card__top">
+                      <span class="ai-proposal-card__index" aria-hidden="true">{{ $index + 1 }}</span>
+                      <h4 class="ai-proposal-card__heading">Suggestion {{ $index + 1 }}</h4>
+                    </div>
+                    <div class="ai-proposal-card__grid">
+                      <div class="ai-proposal-field ai-proposal-field--full">
+                        <label class="ai-proposal-label" [attr.for]="'ai-prop-title-' + $index">Title</label>
+                        <input [id]="'ai-prop-title-' + $index" type="text" [(ngModel)]="row.title" autocomplete="off" />
+                      </div>
+                      <div class="ai-proposal-field ai-proposal-field--full">
+                        <label class="ai-proposal-label" [attr.for]="'ai-prop-desc-' + $index">Description</label>
+                        <textarea [id]="'ai-prop-desc-' + $index" rows="3" [(ngModel)]="row.description"></textarea>
+                      </div>
+                      <div class="ai-proposal-field">
+                        <label class="ai-proposal-label" [attr.for]="'ai-prop-prio-' + $index">Priority</label>
+                        <select [id]="'ai-prop-prio-' + $index" [(ngModel)]="row.suggestedPriority">
+                          <option ngValue="LOW">Low</option>
+                          <option ngValue="MEDIUM">Medium</option>
+                          <option ngValue="HIGH">High</option>
+                          <option ngValue="URGENT">Urgent</option>
+                        </select>
+                      </div>
+                      <div class="ai-proposal-field">
+                        <label class="ai-proposal-label" [attr.for]="'ai-prop-due-' + $index">Due date</label>
+                        <input [id]="'ai-prop-due-' + $index" type="date" [(ngModel)]="row.suggestedDueDate" />
+                      </div>
+                    </div>
+                  </article>
+                }
+                </div>
+              </div>
+            }
+          </div>
+
+          <div class="modal-actions modal-actions--wrap modal-actions--ai-wizard">
+            <button
+              type="button"
+              class="btn-secondary btn-secondary--ghost"
+              (click)="regenerateAiProposals()"
+              [disabled]="aiWizardLoading || acceptingAi || aiProposalRows.length === 0"
+              aria-label="Regenerate all AI suggestions"
+            >
+              <span class="btn-foot__icon" aria-hidden="true">↻</span>
+              Regenerate
+            </button>
+            <button
+              type="button"
+              class="btn-secondary"
+              (click)="declineAiProposals()"
+              [disabled]="acceptingAi"
+              aria-label="Close without saving suggestions"
+            >
+              Decline
+            </button>
+            <button
+              type="button"
+              class="btn-primary btn-primary--ai-accept"
+              (click)="acceptAiProposals()"
+              [disabled]="aiWizardLoading || acceptingAi || aiProposalRows.length === 0"
+              aria-label="Create all edited suggestions"
+            >
+              @if (acceptingAi) {
+                <span class="btn-generate-ai__spinner btn-generate-ai__spinner--light" aria-hidden="true"></span>
+                Creating…
+              } @else {
+                <span class="btn-foot__icon" aria-hidden="true">✓</span>
+                Accept all
+              }
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (subtaskToDelete) {
+      <div class="modal-overlay" (click)="closeDeleteSubtaskModal()">
+        <div class="modal modal--confirm" (click)="$event.stopPropagation()">
+          <div class="modal-header modal-header--danger">
+            <h3>Delete subtask</h3>
+          </div>
+          <p class="modal-message">Remove <strong>{{ subtaskToDelete.subtask.title }}</strong>? This cannot be undone.</p>
+          <div class="modal-actions">
+            <button type="button" class="btn-secondary" (click)="closeDeleteSubtaskModal()" [disabled]="deletingSubtask">Cancel</button>
+            <button type="button" class="btn-danger" (click)="doDeleteSubtask()" [disabled]="deletingSubtask">{{ deletingSubtask ? 'Deleting…' : 'Delete' }}</button>
+          </div>
         </div>
       </div>
     }

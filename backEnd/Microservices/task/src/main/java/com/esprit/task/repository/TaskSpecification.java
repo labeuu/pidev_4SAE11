@@ -19,13 +19,34 @@ public final class TaskSpecification {
     private TaskSpecification() {
     }
 
+    /**
+     * Open tasks with a due date between {@code from} and {@code to} (inclusive on both dates).
+     */
+    public static Specification<Task> dueSoon(
+            LocalDate from,
+            LocalDate to,
+            Optional<Long> projectId,
+            Optional<Long> assigneeId) {
+        return (Root<Task> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.isNotNull(root.get("dueDate")));
+            predicates.add(cb.greaterThanOrEqualTo(root.get("dueDate"), from));
+            predicates.add(cb.lessThanOrEqualTo(root.get("dueDate"), to));
+            predicates.add(cb.not(cb.or(
+                    cb.equal(root.get("status"), TaskStatus.DONE),
+                    cb.equal(root.get("status"), TaskStatus.CANCELLED))));
+            projectId.ifPresent(id -> predicates.add(cb.equal(root.get("projectId"), id)));
+            assigneeId.ifPresent(id -> predicates.add(cb.equal(root.get("assigneeId"), id)));
+            return cb.and(predicates.toArray(new Predicate[0]));
+        };
+    }
+
     public static Specification<Task> filtered(
             Optional<Long> projectId,
             Optional<Long> contractId,
             Optional<Long> assigneeId,
             Optional<TaskStatus> status,
             Optional<TaskPriority> priority,
-            Optional<Long> parentId,
             Optional<String> search,
             Optional<LocalDate> dueDateFrom,
             Optional<LocalDate> dueDateTo) {
@@ -37,7 +58,6 @@ public final class TaskSpecification {
             assigneeId.ifPresent(id -> predicates.add(cb.equal(root.get("assigneeId"), id)));
             status.ifPresent(s -> predicates.add(cb.equal(root.get("status"), s)));
             priority.ifPresent(p -> predicates.add(cb.equal(root.get("priority"), p)));
-            parentId.ifPresent(id -> predicates.add(cb.equal(root.get("parentTaskId"), id)));
 
             dueDateFrom.ifPresent(from -> predicates.add(cb.greaterThanOrEqualTo(root.get("dueDate"), from)));
             dueDateTo.ifPresent(to -> predicates.add(cb.lessThanOrEqualTo(root.get("dueDate"), to)));

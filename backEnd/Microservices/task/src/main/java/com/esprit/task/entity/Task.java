@@ -1,11 +1,15 @@
 package com.esprit.task.entity;
 
+import com.fasterxml.jackson.annotation.JsonIgnore;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.persistence.*;
 import lombok.*;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(name = "task")
@@ -14,7 +18,7 @@ import java.time.LocalDateTime;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@Schema(description = "A task or subtask within a project")
+@Schema(description = "A root task within a project (subtasks live in the subtask table)")
 public class Task {
 
     @Id
@@ -60,9 +64,18 @@ public class Task {
     @Schema(description = "Sort order index")
     private Integer orderIndex;
 
-    @Column
-    @Schema(description = "Parent task ID for subtasks")
-    private Long parentTaskId;
+    @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonIgnore
+    @Builder.Default
+    private List<Subtask> subtasks = new ArrayList<>();
+
+    /**
+     * When true, {@link #id} refers to a row in {@code subtask} (use subtask APIs), not {@code task}.
+     * Only set on synthetic views returned by overdue / due-soon style endpoints.
+     */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    private Boolean subtask;
 
     @Column
     @Schema(description = "Creator user ID")

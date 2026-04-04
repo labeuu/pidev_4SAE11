@@ -12,12 +12,14 @@ import com.esprit.planning.service.ProgressCommentService;
 import com.esprit.planning.service.ProgressUpdateService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.http.MediaType;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
@@ -27,6 +29,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -119,6 +122,32 @@ class ProgressUpdateControllerTest {
     }
 
     @Test
+    void getFiltered_capsPageSizeAt100() throws Exception {
+        when(progressUpdateService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/progress-updates").param("size", "500"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(progressUpdateService).findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(100);
+    }
+
+    @Test
+    void getFiltered_coercesMinimumPageSizeToOne() throws Exception {
+        when(progressUpdateService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of()));
+
+        mockMvc.perform(get("/api/progress-updates").param("size", "0"))
+                .andExpect(status().isOk());
+
+        ArgumentCaptor<Pageable> pageable = ArgumentCaptor.forClass(Pageable.class);
+        verify(progressUpdateService).findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), pageable.capture());
+        assertThat(pageable.getValue().getPageSize()).isEqualTo(1);
+    }
+
+    @Test
     void export_returnsCsv() throws Exception {
         when(progressUpdateService.findAllFilteredForExport(any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(List.of(progressUpdate(1L, 1L, 10L, "Title", 75)));
@@ -138,6 +167,18 @@ class ProgressUpdateControllerTest {
         mockMvc.perform(get("/api/progress-updates/export"))
                 .andExpect(status().isOk())
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("\"Title, with comma\"")));
+    }
+
+    @Test
+    void export_escapesNewlineInDescription() throws Exception {
+        ProgressUpdate u = progressUpdate(1L, 1L, 10L, "T", 40);
+        u.setDescription("line1\nline2");
+        when(progressUpdateService.findAllFilteredForExport(any(), any(), any(), any(), any(), any(), any(), any()))
+                .thenReturn(List.of(u));
+
+        mockMvc.perform(get("/api/progress-updates/export"))
+                .andExpect(status().isOk())
+                .andExpect(content().string(org.hamcrest.Matchers.containsString("\"line1")));
     }
 
     @Test
@@ -293,6 +334,20 @@ class ProgressUpdateControllerTest {
         mockMvc.perform(get("/api/progress-updates/trend/project/1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].progressPercentage").value(50));
+    }
+
+    @Test
+    void getProgressTrendByProject_withFromAndTo_passesDatesToService() throws Exception {
+        LocalDate from = LocalDate.of(2025, 6, 1);
+        LocalDate to = LocalDate.of(2025, 6, 30);
+        when(progressUpdateService.getProgressTrendByProject(1L, from, to)).thenReturn(List.of());
+
+        mockMvc.perform(get("/api/progress-updates/trend/project/1")
+                        .param("from", "2025-06-01")
+                        .param("to", "2025-06-30"))
+                .andExpect(status().isOk());
+
+        verify(progressUpdateService).getProgressTrendByProject(1L, from, to);
     }
 
     @Test

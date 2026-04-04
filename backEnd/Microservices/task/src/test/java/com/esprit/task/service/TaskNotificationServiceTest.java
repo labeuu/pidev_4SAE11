@@ -45,7 +45,7 @@ class TaskNotificationServiceTest {
     @Test
     void notifyTaskStatusUpdate_callsClientWithCorrectPayload() {
         Task t = task(1L);
-        ProjectDto project = new ProjectDto(1L, 100L, "Project A", null);
+        ProjectDto project = new ProjectDto(1L, 100L, "Project A", null, null);
         when(projectClient.getProjectById(1L)).thenReturn(project);
 
         ArgumentCaptor<com.esprit.task.dto.NotificationRequestDto> captor =
@@ -101,7 +101,7 @@ class TaskNotificationServiceTest {
     @Test
     void notifyTaskStatusUpdate_whenProjectClientIdNull_doesNotCallNotification() {
         Task t = task(1L);
-        ProjectDto project = new ProjectDto(1L, null, "Project A", null);
+        ProjectDto project = new ProjectDto(1L, null, "Project A", null, null);
         when(projectClient.getProjectById(1L)).thenReturn(project);
 
         taskNotificationService.notifyTaskStatusUpdate(t);
@@ -113,7 +113,7 @@ class TaskNotificationServiceTest {
     void notifyTaskStatusUpdate_whenTaskTitleNull_usesFallback() {
         Task t = task(1L);
         t.setTitle(null);
-        ProjectDto project = new ProjectDto(1L, 100L, "Project A", null);
+        ProjectDto project = new ProjectDto(1L, 100L, "Project A", null, null);
         when(projectClient.getProjectById(1L)).thenReturn(project);
 
         ArgumentCaptor<com.esprit.task.dto.NotificationRequestDto> captor =
@@ -149,9 +149,54 @@ class TaskNotificationServiceTest {
     }
 
     @Test
+    void notifyTaskPriorityEscalated_whenTaskNull_doesNotCallClient() {
+        taskNotificationService.notifyTaskPriorityEscalated(null);
+        verify(notificationClient, never()).create(any());
+    }
+
+    @Test
+    void notifyTaskStatusUpdate_whenStatusNull_usesUpdatedInBody() {
+        Task t = task(1L);
+        t.setStatus(null);
+        ProjectDto project = new ProjectDto(1L, 100L, "Project A", null, null);
+        when(projectClient.getProjectById(1L)).thenReturn(project);
+
+        ArgumentCaptor<com.esprit.task.dto.NotificationRequestDto> captor =
+                ArgumentCaptor.forClass(com.esprit.task.dto.NotificationRequestDto.class);
+        taskNotificationService.notifyTaskStatusUpdate(t);
+
+        verify(notificationClient).create(captor.capture());
+        assertThat(captor.getValue().getBody()).contains("updated");
+    }
+
+    @Test
+    void notifyTaskPriorityEscalated_whenTitleNull_usesFallbackInBody() {
+        Task t = task(5L);
+        t.setTitle(null);
+        t.setAssigneeId(9L);
+        ArgumentCaptor<com.esprit.task.dto.NotificationRequestDto> captor =
+                ArgumentCaptor.forClass(com.esprit.task.dto.NotificationRequestDto.class);
+
+        taskNotificationService.notifyTaskPriorityEscalated(t);
+
+        verify(notificationClient).create(captor.capture());
+        assertThat(captor.getValue().getBody()).contains("Task #5");
+    }
+
+    @Test
+    void notifyTaskPriorityEscalated_whenNotificationClientThrows_doesNotPropagate() {
+        Task t = task(1L);
+        t.setAssigneeId(7L);
+        when(notificationClient.create(any())).thenThrow(new RuntimeException("down"));
+
+        assertThatCode(() -> taskNotificationService.notifyTaskPriorityEscalated(t))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
     void notifyTaskStatusUpdate_whenNotificationClientThrows_doesNotPropagate() {
         Task t = task(1L);
-        ProjectDto project = new ProjectDto(1L, 100L, "Project A", null);
+        ProjectDto project = new ProjectDto(1L, 100L, "Project A", null, null);
         when(projectClient.getProjectById(1L)).thenReturn(project);
         when(notificationClient.create(any())).thenThrow(new RuntimeException("Service unavailable"));
 

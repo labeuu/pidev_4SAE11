@@ -49,4 +49,39 @@ describe('TaskService', () => {
     const req = httpMock.expectOne((r) => r.url.includes('/task/api/tasks'));
     expect(req.request.method).toBe('POST');
   });
+
+  it('getSubtaskProgress with no taskIds should not HTTP and return empty map', (done) => {
+    service.getSubtaskProgress(5, []).subscribe((m) => {
+      expect(m).toEqual({});
+      done();
+    });
+  });
+
+  it('getSubtaskProgress should GET with taskIds query and map rows by parentTaskId', () => {
+    let result: Record<number, { total: number; completed: number }> | undefined;
+    service.getSubtaskProgress(3, [10, 11]).subscribe((m) => (result = m));
+
+    const req = httpMock.expectOne(
+      (r) =>
+        r.url.includes('/task/api/tasks/assignee/3/subtask-progress') &&
+        r.params.get('taskIds') === '10,11'
+    );
+    expect(req.request.method).toBe('GET');
+    req.flush([
+      { parentTaskId: 10, total: 4, completed: 1 },
+      { parentTaskId: 11, total: 0, completed: 0 },
+    ]);
+
+    expect(result).toEqual({
+      10: { total: 4, completed: 1 },
+      11: { total: 0, completed: 0 },
+    });
+  });
+
+  it('getProjectActivity should GET assignee project-activity', () => {
+    service.getProjectActivity(8).subscribe();
+    const req = httpMock.expectOne((r) => r.url.includes('/task/api/tasks/assignee/8/project-activity'));
+    expect(req.request.method).toBe('GET');
+    req.flush([]);
+  });
 });

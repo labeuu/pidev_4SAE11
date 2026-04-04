@@ -405,6 +405,26 @@ class ProgressUpdateServiceTest {
     }
 
     @Test
+    void update_whenNextUpdateDueUnchanged_preservesNextDueOverdueNotified() {
+        LocalDateTime due = LocalDateTime.now().plusDays(2);
+        ProgressUpdate existing = progressUpdate(1L, 1L, 10L, "E", 50);
+        existing.setNextUpdateDue(due);
+        existing.setNextDueOverdueNotified(true);
+        ProgressUpdate payload = progressUpdate(1L, 1L, 10L, "E2", 60);
+        payload.setNextUpdateDue(due);
+        when(progressUpdateRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(progressUpdateRepository.findByProjectId(1L)).thenReturn(List.of(existing));
+        when(progressUpdateRepository.save(any(ProgressUpdate.class))).thenAnswer(inv -> inv.getArgument(0));
+        when(googleCalendarService.createEvent(isNull(), anyString(), eq(due), any(), anyString()))
+                .thenReturn(Optional.empty());
+        when(projectClient.getProjectById(1L)).thenReturn(new ProjectDto(1L, 500L, "P", null));
+
+        progressUpdateService.update(1L, payload);
+
+        assertThat(existing.getNextDueOverdueNotified()).isTrue();
+    }
+
+    @Test
     void update_withProgress100_triggersMilestoneCalendarAndFreelancerNotify() {
         ProgressUpdate existing = progressUpdate(1L, 1L, 10L, "Almost", 90);
         existing.setUpdatedAt(LocalDateTime.now().minusHours(1));
@@ -620,9 +640,11 @@ class ProgressUpdateServiceTest {
         when(googleCalendarService.createEvent(isNull(), anyString(), any(), any(), anyString()))
                 .thenReturn(Optional.of("new-event"));
         when(projectClient.getProjectById(1L)).thenReturn(new ProjectDto(1L, 400L, "P", null));
+        existing.setNextDueOverdueNotified(true);
 
         progressUpdateService.update(1L, payload);
 
+        assertThat(existing.getNextDueOverdueNotified()).isFalse();
         verify(googleCalendarService).deleteEventAsync(isNull(), eq("old-event"));
         verify(googleCalendarService).createEvent(isNull(), anyString(), eq(newDue), any(), anyString());
     }
