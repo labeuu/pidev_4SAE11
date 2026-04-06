@@ -22,6 +22,8 @@ describe('MyTasks', () => {
       'getFilteredTasks',
       'getSubtaskProgress',
       'getProjectActivity',
+      'getOverdueTasks',
+      'getExtendedStatsByFreelancer',
       'patchStatus',
       'createTask',
       'updateTask',
@@ -37,6 +39,8 @@ describe('MyTasks', () => {
     );
     taskSpy.getSubtaskProgress.and.returnValue(of({}));
     taskSpy.getProjectActivity.and.returnValue(of([]));
+    taskSpy.getOverdueTasks.and.returnValue(of([]));
+    taskSpy.getExtendedStatsByFreelancer.and.returnValue(of(null));
 
     const authStub = {
       getUserId: () => 1,
@@ -135,5 +139,69 @@ describe('MyTasks', () => {
     expect(component.subtaskModalEditing).toBe(st);
     expect(component.subtaskForm.get('title')?.value).toBe('Sub');
     expect(component.subtaskForm.get('status')?.value).toBe('IN_PROGRESS');
+  });
+
+  it('filterFingerprint should include openTasksOnly', () => {
+    component.filterOpenTasksOnly = true;
+    const fp = JSON.parse((component as unknown as { filterFingerprint(): string }).filterFingerprint());
+    expect(fp.openTasksOnly).toBe(true);
+  });
+
+  it('applyOverdueDrilldown should switch to overdue mode and load overdue tasks', () => {
+    taskService.getOverdueTasks.calls.reset();
+    component.applyOverdueDrilldown();
+    expect(component.listViewMode).toBe('overdue');
+    expect(component.statsFocusKey).toBe('overdue');
+    expect(taskService.getOverdueTasks).toHaveBeenCalledWith(null, 1);
+  });
+
+  it('applyActiveDrilldown should request openTasksOnly on paginated list', () => {
+    taskService.getFilteredTasks.calls.reset();
+    component.applyActiveDrilldown();
+    expect(component.listViewMode).toBe('paginated');
+    expect(component.filterOpenTasksOnly).toBe(true);
+    expect(component.statsFocusKey).toBe('active');
+    expect(taskService.getFilteredTasks).toHaveBeenCalled();
+    const args = taskService.getFilteredTasks.calls.mostRecent().args[0];
+    expect(args.openTasksOnly).toBe(true);
+    expect(args.status).toBeNull();
+  });
+
+  it('applyStatusDrilldown should set status filter and clear openTasksOnly', () => {
+    component.filterOpenTasksOnly = true;
+    taskService.getFilteredTasks.calls.reset();
+    component.applyStatusDrilldown('DONE');
+    expect(component.filterOpenTasksOnly).toBe(false);
+    expect(component.statsFocusKey).toBe('status_DONE');
+    expect(taskService.getFilteredTasks.calls.mostRecent().args[0]).toEqual(
+      jasmine.objectContaining({ status: 'DONE', openTasksOnly: null })
+    );
+  });
+
+  it('resetStatsListView should exit overdue drilldown and clear stat focus', () => {
+    component.applyOverdueDrilldown();
+    component.resetStatsListView();
+    expect(component.listViewMode).toBe('paginated');
+    expect(component.statsFocusKey).toBeNull();
+    expect(component.filterOpenTasksOnly).toBe(false);
+  });
+
+  it('showStatsDrilldownBanner should be true when stat drilldown is active', () => {
+    expect(component.showStatsDrilldownBanner).toBe(false);
+    component.applyPriorityDrilldown('HIGH');
+    expect(component.showStatsDrilldownBanner).toBe(true);
+    expect(component.statsDrilldownBannerMessage).toContain('priority');
+  });
+
+  it('isOverdueDueDate should be true for past date on open task', () => {
+    expect(component.isOverdueDueDate('2020-06-01', 'TODO')).toBe(true);
+  });
+
+  it('isOverdueDueDate should be false for completed tasks', () => {
+    expect(component.isOverdueDueDate('2020-06-01', 'DONE')).toBe(false);
+  });
+
+  it('dueDateDisplayLine should mention overdue when past due', () => {
+    expect(component.dueDateDisplayLine('2020-06-01', 'IN_PROGRESS')).toContain('overdue');
   });
 });

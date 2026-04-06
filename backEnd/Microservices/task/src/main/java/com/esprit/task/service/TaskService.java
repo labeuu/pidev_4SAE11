@@ -6,7 +6,9 @@ import com.esprit.task.dto.ProjectDto;
 import com.esprit.task.dto.SubtaskProgressDto;
 import com.esprit.task.dto.TaskBoardDto;
 import com.esprit.task.dto.TaskCalendarEventDto;
+import com.esprit.task.dto.TaskPriorityCountDto;
 import com.esprit.task.dto.TaskStatsDto;
+import com.esprit.task.dto.TaskStatsExtendedDto;
 import com.esprit.task.entity.Subtask;
 import com.esprit.task.entity.Task;
 import com.esprit.task.entity.TaskPriority;
@@ -46,8 +48,9 @@ public class TaskService {
     public Page<Task> findAllFiltered(Optional<Long> projectId, Optional<Long> contractId, Optional<Long> assigneeId,
                                       Optional<TaskStatus> status, Optional<TaskPriority> priority,
                                       Optional<String> search, Optional<LocalDate> dueDateFrom, Optional<LocalDate> dueDateTo,
+                                      Optional<Boolean> openTasksOnly,
                                       Pageable pageable) {
-        var spec = TaskSpecification.filtered(projectId, contractId, assigneeId, status, priority, search, dueDateFrom, dueDateTo);
+        var spec = TaskSpecification.filtered(projectId, contractId, assigneeId, status, priority, search, dueDateFrom, dueDateTo, openTasksOnly);
         return taskRepository.findAll(spec, pageable);
     }
 
@@ -177,7 +180,7 @@ public class TaskService {
     public TaskStatsDto getStatsByFreelancer(Long freelancerId, Optional<LocalDate> from, Optional<LocalDate> to) {
         var spec = TaskSpecification.filtered(
                 Optional.empty(), Optional.empty(), Optional.of(freelancerId),
-                Optional.empty(), Optional.empty(), Optional.empty(), from, to);
+                Optional.empty(), Optional.empty(), Optional.empty(), from, to, Optional.empty());
         List<Task> tasks = taskRepository.findAll(spec);
         List<Subtask> subtasks = subtaskRepository.findByAssigneeId(freelancerId).stream()
                 .filter(s -> matchesDateRange(s.getDueDate(), from, to))
@@ -187,7 +190,6 @@ public class TaskService {
                 + subtasks.stream().filter(s -> s.getStatus() == TaskStatus.DONE).count();
         long inProgress = tasks.stream().filter(t -> t.getStatus() == TaskStatus.IN_PROGRESS || t.getStatus() == TaskStatus.IN_REVIEW).count()
                 + subtasks.stream().filter(s -> s.getStatus() == TaskStatus.IN_PROGRESS || s.getStatus() == TaskStatus.IN_REVIEW).count();
-        LocalDate today = LocalDate.now();
         long overdue = tasks.stream().filter(t -> isOverdueOpen(t.getDueDate(), t.getStatus())).count()
                 + subtasks.stream().filter(s -> isOverdueOpen(s.getDueDate(), s.getStatus())).count();
         double completionPercentage = total > 0 ? (100.0 * done / total) : 0.0;
@@ -214,10 +216,14 @@ public class TaskService {
     }
 
     private static boolean isOverdueOpen(LocalDate due, TaskStatus status) {
+        return isOverdueOpen(due, status, LocalDate.now());
+    }
+
+    private static boolean isOverdueOpen(LocalDate due, TaskStatus status, LocalDate asOf) {
         if (due == null || status == TaskStatus.DONE || status == TaskStatus.CANCELLED) {
             return false;
         }
-        return due.isBefore(LocalDate.now());
+        return due.isBefore(asOf);
     }
 
     @Transactional(readOnly = true)
@@ -238,6 +244,306 @@ public class TaskService {
                 .overdueCount(overdueCount)
                 .completionPercentage(total > 0 ? (100.0 * doneCount / total) : 0.0)
                 .build();
+    }
+
+    @Transactional(readOnly = true)
+    public TaskStatsExtendedDto getExtendedStatsByProject(Long projectId) {
+        return buildExtendedStatsForProject(projectId, LocalDate.now(), Optional.empty(), Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public TaskStatsExtendedDto getExtendedStatsByFreelancer(
+            Long freelancerId,
+            Optional<LocalDate> dueDateFrom,
+            Optional<LocalDate> dueDateTo,
+            Optional<LocalDate> activityFrom,
+            Optional<LocalDate> activityTo) {
+        var spec = TaskSpecification.filtered(
+                Optional.empty(), Optional.empty(), Optional.of(freelancerId),
+                Optional.empty(), Optional.empty(), Optional.empty(), dueDateFrom, dueDateTo, Optional.empty());
+        List<Task> tasks = taskRepository.findAll(spec);
+        List<Subtask> subtasks = subtaskRepository.findByAssigneeId(freelancerId).stream()
+                .filter(s -> matchesDateRange(s.getDueDate(), dueDateFrom, dueDateTo))
+                .toList();
+        return extendedFromTaskAndSubtaskLists(tasks, subtasks, LocalDate.now(), activityFrom, activityTo);
+    }
+
+    @Transactional(readOnly = true)
+    public TaskStatsExtendedDto getExtendedStatsDashboard() {
+        return buildExtendedStatsGlobal(LocalDate.now(), Optional.empty(), Optional.empty());
+    }
+
+    /**
+     * Builds extended stats for a weekly report: full scoped workload, activity counts for the inclusive week,
+     * overdue as of {@code weekEnd}.
+     */
+    @Transactional(readOnly = true)
+    public TaskStatsExtendedDto getExtendedStatsForWeeklyWindow(
+            Optional<Long> projectId,
+            Optional<Long> freelancerId,
+            LocalDate weekStartInclusive,
+            LocalDate weekEndInclusive) {
+        LocalDate overdueAsOf = weekEndInclusive;
+        Optional<LocalDate> activityFrom = Optional.of(weekStartInclusive);
+        Optional<LocalDate> activityTo = Optional.of(weekEndInclusive);
+        if (projectId.isPresent() && freelancerId.isPresent()) {
+            List<Task> tasks = taskRepository.findByProjectIdOrderByOrderIndexAsc(projectId.get()).stream()
+                    .filter(t -> freelancerId.get().equals(t.getAssigneeId()))
+                    .toList();
+            List<Subtask> subtasks = subtaskRepository.findByProjectIdOrderByParent_IdAscOrderIndexAsc(projectId.get()).stream()
+                    .filter(s -> freelancerId.get().equals(s.getAssigneeId()))
+                    .toList();
+            return extendedFromTaskAndSubtaskLists(tasks, subtasks, overdueAsOf, activityFrom, activityTo);
+        }
+        if (projectId.isPresent()) {
+            return buildExtendedStatsForProject(projectId.get(), overdueAsOf, activityFrom, activityTo);
+        }
+        if (freelancerId.isPresent()) {
+            Long fid = freelancerId.get();
+            var spec = TaskSpecification.filtered(
+                    Optional.empty(), Optional.empty(), Optional.of(fid),
+                    Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+            List<Task> tasks = taskRepository.findAll(spec);
+            List<Subtask> subtasks = subtaskRepository.findByAssigneeId(fid);
+            return extendedFromTaskAndSubtaskLists(tasks, subtasks, overdueAsOf, activityFrom, activityTo);
+        }
+        return buildExtendedStatsGlobal(overdueAsOf, activityFrom, activityTo);
+    }
+
+    public List<String> getHighPriorityOpenLinesForReport(
+            Optional<Long> projectId,
+            Optional<Long> freelancerId,
+            int maxLines) {
+        List<Task> tasks;
+        List<Subtask> subtasks;
+        if (projectId.isPresent() && freelancerId.isPresent()) {
+            tasks = taskRepository.findHighPriorityOpenForProject(projectId.get()).stream()
+                    .filter(t -> freelancerId.get().equals(t.getAssigneeId()))
+                    .toList();
+            subtasks = subtaskRepository.findHighPriorityOpenForProject(projectId.get()).stream()
+                    .filter(s -> freelancerId.get().equals(s.getAssigneeId()))
+                    .toList();
+        } else if (projectId.isPresent()) {
+            tasks = taskRepository.findHighPriorityOpenForProject(projectId.get());
+            subtasks = subtaskRepository.findHighPriorityOpenForProject(projectId.get());
+        } else if (freelancerId.isPresent()) {
+            tasks = taskRepository.findHighPriorityOpenForAssignee(freelancerId.get());
+            subtasks = subtaskRepository.findHighPriorityOpenForAssignee(freelancerId.get());
+        } else {
+            tasks = taskRepository.findHighPriorityOpenAll();
+            subtasks = subtaskRepository.findHighPriorityOpenAll();
+        }
+        List<String> lines = new ArrayList<>();
+        for (Task t : tasks) {
+            if (lines.size() >= maxLines) {
+                break;
+            }
+            lines.add(String.format("[Task] %s (%s)", t.getTitle() != null ? t.getTitle() : "#" + t.getId(), t.getPriority()));
+        }
+        for (Subtask s : subtasks) {
+            if (lines.size() >= maxLines) {
+                break;
+            }
+            lines.add(String.format("[Subtask] %s (%s)", s.getTitle() != null ? s.getTitle() : "#" + s.getId(), s.getPriority()));
+        }
+        return lines;
+    }
+
+    private TaskStatsExtendedDto buildExtendedStatsForProject(
+            Long projectId,
+            LocalDate overdueAsOf,
+            Optional<LocalDate> activityFrom,
+            Optional<LocalDate> activityTo) {
+        Map<TaskStatus, Long> byStatus = mergedStatusCounts(
+                taskRepository.countGroupByStatusForProject(projectId),
+                subtaskRepository.countGroupByStatusForProject(projectId));
+        Map<TaskPriority, Long> byPriority = mergedPriorityCounts(
+                taskRepository.countGroupByPriorityForProject(projectId),
+                subtaskRepository.countGroupByPriorityForProject(projectId));
+        long taskTotal = taskRepository.countByProjectId(projectId);
+        long subTotal = subtaskRepository.countByProjectId(projectId);
+        long total = taskTotal + subTotal;
+        long done = byStatus.getOrDefault(TaskStatus.DONE, 0L);
+        long overdue = taskRepository.findOverdueTasksByProject(projectId, overdueAsOf).size()
+                + subtaskRepository.findOverdueSubtasksByProject(projectId, overdueAsOf).size();
+        long unassigned = taskRepository.countByProjectIdAndAssigneeIdIsNull(projectId)
+                + subtaskRepository.countByProjectIdAndAssigneeIdIsNull(projectId);
+        long[] range = activityRangeCountsForProject(projectId, activityFrom, activityTo);
+        return toExtendedDto(byStatus, byPriority, total, done, overdue, unassigned, range[0], range[1]);
+    }
+
+    private TaskStatsExtendedDto buildExtendedStatsGlobal(
+            LocalDate overdueAsOf,
+            Optional<LocalDate> activityFrom,
+            Optional<LocalDate> activityTo) {
+        Map<TaskStatus, Long> byStatus = mergedStatusCounts(
+                taskRepository.countGroupByStatusAll(),
+                subtaskRepository.countGroupByStatusAll());
+        Map<TaskPriority, Long> byPriority = mergedPriorityCounts(
+                taskRepository.countGroupByPriorityAll(),
+                subtaskRepository.countGroupByPriorityAll());
+        long taskTotal = taskRepository.count();
+        long subTotal = subtaskRepository.count();
+        long total = taskTotal + subTotal;
+        long done = byStatus.getOrDefault(TaskStatus.DONE, 0L);
+        long overdue = taskRepository.findOverdueTasks(overdueAsOf).size()
+                + subtaskRepository.findOverdueSubtasks(overdueAsOf).size();
+        long unassigned = taskRepository.countByAssigneeIdIsNull() + subtaskRepository.countByAssigneeIdIsNull();
+        long[] range = activityRangeCountsGlobal(activityFrom, activityTo);
+        return toExtendedDto(byStatus, byPriority, total, done, overdue, unassigned, range[0], range[1]);
+    }
+
+    private long[] activityRangeCountsForProject(
+            Long projectId,
+            Optional<LocalDate> activityFrom,
+            Optional<LocalDate> activityTo) {
+        if (activityFrom.isEmpty() || activityTo.isEmpty()) {
+            return new long[] {0, 0};
+        }
+        LocalDateTime start = activityFrom.get().atStartOfDay();
+        LocalDateTime endExclusive = activityTo.get().plusDays(1).atStartOfDay();
+        long created = taskRepository.countCreatedInRangeForProject(projectId, start, endExclusive)
+                + subtaskRepository.countCreatedInRangeForProject(projectId, start, endExclusive);
+        long completed = taskRepository.countCompletedInRangeForProject(projectId, start, endExclusive)
+                + subtaskRepository.countCompletedInRangeForProject(projectId, start, endExclusive);
+        return new long[] {created, completed};
+    }
+
+    private long[] activityRangeCountsGlobal(Optional<LocalDate> activityFrom, Optional<LocalDate> activityTo) {
+        if (activityFrom.isEmpty() || activityTo.isEmpty()) {
+            return new long[] {0, 0};
+        }
+        LocalDateTime start = activityFrom.get().atStartOfDay();
+        LocalDateTime endExclusive = activityTo.get().plusDays(1).atStartOfDay();
+        long created = taskRepository.countCreatedInRangeAll(start, endExclusive)
+                + subtaskRepository.countCreatedInRangeAll(start, endExclusive);
+        long completed = taskRepository.countCompletedInRangeAll(start, endExclusive)
+                + subtaskRepository.countCompletedInRangeAll(start, endExclusive);
+        return new long[] {created, completed};
+    }
+
+    private static Map<TaskStatus, Long> mergedStatusCounts(List<Object[]> taskRows, List<Object[]> subRows) {
+        Map<TaskStatus, Long> map = new EnumMap<>(TaskStatus.class);
+        for (TaskStatus s : TaskStatus.values()) {
+            map.put(s, 0L);
+        }
+        accumulateStatusRows(map, taskRows);
+        accumulateStatusRows(map, subRows);
+        return map;
+    }
+
+    private static void accumulateStatusRows(Map<TaskStatus, Long> map, List<Object[]> rows) {
+        for (Object[] row : rows) {
+            TaskStatus st = (TaskStatus) row[0];
+            long c = ((Number) row[1]).longValue();
+            map.merge(st, c, Long::sum);
+        }
+    }
+
+    private static Map<TaskPriority, Long> mergedPriorityCounts(List<Object[]> taskRows, List<Object[]> subRows) {
+        Map<TaskPriority, Long> map = new EnumMap<>(TaskPriority.class);
+        for (TaskPriority p : TaskPriority.values()) {
+            map.put(p, 0L);
+        }
+        accumulatePriorityRows(map, taskRows);
+        accumulatePriorityRows(map, subRows);
+        return map;
+    }
+
+    private static void accumulatePriorityRows(Map<TaskPriority, Long> map, List<Object[]> rows) {
+        for (Object[] row : rows) {
+            TaskPriority p = (TaskPriority) row[0];
+            long c = ((Number) row[1]).longValue();
+            map.merge(p, c, Long::sum);
+        }
+    }
+
+    private static TaskStatsExtendedDto toExtendedDto(
+            Map<TaskStatus, Long> byStatus,
+            Map<TaskPriority, Long> byPriority,
+            long total,
+            long done,
+            long overdue,
+            long unassigned,
+            long createdInRange,
+            long completedInRange) {
+        List<TaskPriorityCountDto> breakdown = Arrays.stream(TaskPriority.values())
+                .map(p -> TaskPriorityCountDto.builder()
+                        .priority(p)
+                        .count(byPriority.getOrDefault(p, 0L))
+                        .build())
+                .toList();
+        double pct = total > 0 ? (100.0 * done / total) : 0.0;
+        return TaskStatsExtendedDto.builder()
+                .totalTasks(total)
+                .doneCount(done)
+                .inProgressCount(byStatus.getOrDefault(TaskStatus.IN_PROGRESS, 0L))
+                .inReviewCount(byStatus.getOrDefault(TaskStatus.IN_REVIEW, 0L))
+                .todoCount(byStatus.getOrDefault(TaskStatus.TODO, 0L))
+                .cancelledCount(byStatus.getOrDefault(TaskStatus.CANCELLED, 0L))
+                .overdueCount(overdue)
+                .completionPercentage(pct)
+                .unassignedCount(unassigned)
+                .createdInRangeCount(createdInRange)
+                .completedInRangeCount(completedInRange)
+                .priorityBreakdown(new ArrayList<>(breakdown))
+                .build();
+    }
+
+    private TaskStatsExtendedDto extendedFromTaskAndSubtaskLists(
+            List<Task> tasks,
+            List<Subtask> subtasks,
+            LocalDate overdueAsOf,
+            Optional<LocalDate> activityFrom,
+            Optional<LocalDate> activityTo) {
+        Map<TaskStatus, Long> byStatus = new EnumMap<>(TaskStatus.class);
+        for (TaskStatus s : TaskStatus.values()) {
+            byStatus.put(s, 0L);
+        }
+        Map<TaskPriority, Long> byPriority = new EnumMap<>(TaskPriority.class);
+        for (TaskPriority p : TaskPriority.values()) {
+            byPriority.put(p, 0L);
+        }
+        long unassigned = 0;
+        for (Task t : tasks) {
+            byStatus.merge(t.getStatus(), 1L, Long::sum);
+            byPriority.merge(t.getPriority(), 1L, Long::sum);
+            if (t.getAssigneeId() == null) {
+                unassigned++;
+            }
+        }
+        for (Subtask s : subtasks) {
+            byStatus.merge(s.getStatus(), 1L, Long::sum);
+            byPriority.merge(s.getPriority(), 1L, Long::sum);
+            if (s.getAssigneeId() == null) {
+                unassigned++;
+            }
+        }
+        long total = tasks.size() + subtasks.size();
+        long done = byStatus.getOrDefault(TaskStatus.DONE, 0L);
+        long overdue = tasks.stream().filter(t -> isOverdueOpen(t.getDueDate(), t.getStatus(), overdueAsOf)).count()
+                + subtasks.stream().filter(s -> isOverdueOpen(s.getDueDate(), s.getStatus(), overdueAsOf)).count();
+        long createdInRange = 0;
+        long completedInRange = 0;
+        if (activityFrom.isPresent() && activityTo.isPresent()) {
+            LocalDateTime start = activityFrom.get().atStartOfDay();
+            LocalDateTime endExclusive = activityTo.get().plusDays(1).atStartOfDay();
+            createdInRange = tasks.stream()
+                    .filter(t -> !t.getCreatedAt().isBefore(start) && t.getCreatedAt().isBefore(endExclusive))
+                    .count()
+                    + subtasks.stream()
+                    .filter(s -> !s.getCreatedAt().isBefore(start) && s.getCreatedAt().isBefore(endExclusive))
+                    .count();
+            completedInRange = tasks.stream()
+                    .filter(t -> t.getStatus() == TaskStatus.DONE
+                            && !t.getUpdatedAt().isBefore(start) && t.getUpdatedAt().isBefore(endExclusive))
+                    .count()
+                    + subtasks.stream()
+                    .filter(s -> s.getStatus() == TaskStatus.DONE
+                            && !s.getUpdatedAt().isBefore(start) && s.getUpdatedAt().isBefore(endExclusive))
+                    .count();
+        }
+        return toExtendedDto(byStatus, byPriority, total, done, overdue, unassigned, createdInRange, completedInRange);
     }
 
     @Transactional(readOnly = true)
@@ -428,6 +734,45 @@ public class TaskService {
         return escalated;
     }
 
+    /**
+     * Notifies each freelancer who has overdue root tasks or subtasks assigned to them.
+     * Runs daily via scheduler; sends one in-app notification per assignee with a summary list.
+     *
+     * @return number of assignees notified
+     */
+    @Transactional(readOnly = true)
+    public int sendDailyOverdueReminders() {
+        LocalDate today = LocalDate.now();
+        List<Task> overdueRoots = taskRepository.findOverdueTasks(today).stream()
+                .filter(t -> t.getAssigneeId() != null)
+                .toList();
+        List<Subtask> overdueSubs = subtaskRepository.findOverdueSubtasks(today).stream()
+                .filter(s -> s.getAssigneeId() != null)
+                .toList();
+        if (overdueRoots.isEmpty() && overdueSubs.isEmpty()) {
+            return 0;
+        }
+        Map<Long, List<String>> linesByAssignee = new LinkedHashMap<>();
+        for (Task t : overdueRoots) {
+            String title = t.getTitle() != null ? t.getTitle() : "Task #" + t.getId();
+            String line = String.format("Task: %s — due %s", title, t.getDueDate());
+            linesByAssignee.computeIfAbsent(t.getAssigneeId(), k -> new ArrayList<>()).add(line);
+        }
+        for (Subtask s : overdueSubs) {
+            String title = s.getTitle() != null ? s.getTitle() : "Subtask #" + s.getId();
+            String line = String.format("Subtask: %s — due %s", title, s.getDueDate());
+            linesByAssignee.computeIfAbsent(s.getAssigneeId(), k -> new ArrayList<>()).add(line);
+        }
+        int notified = 0;
+        for (Map.Entry<Long, List<String>> e : linesByAssignee.entrySet()) {
+            List<String> lines = new ArrayList<>(e.getValue());
+            Collections.sort(lines);
+            taskNotificationService.notifyFreelancerDailyOverdueReminder(e.getKey(), lines);
+            notified++;
+        }
+        return notified;
+    }
+
     @Transactional
     public int purgeOldCancelledTasks(LocalDateTime cutoff) {
         List<Task> candidates = taskRepository.findByStatusAndUpdatedAtBefore(TaskStatus.CANCELLED, cutoff);
@@ -512,6 +857,9 @@ public class TaskService {
         Task t = new Task();
         t.setSubtask(true);
         t.setId(s.getId());
+        if (s.getParent() != null) {
+            t.setParentTaskId(s.getParent().getId());
+        }
         t.setProjectId(s.getProjectId());
         t.setContractId(null);
         t.setTitle(s.getTitle());

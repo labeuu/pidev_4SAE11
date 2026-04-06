@@ -79,13 +79,17 @@ public class TaskController {
             @Parameter(description = "Filter by priority") @RequestParam(required = false) TaskPriority priority,
             @Parameter(description = "Search in title and description") @RequestParam(required = false) String search,
             @Parameter(description = "Due date from (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dueDateFrom,
-            @Parameter(description = "Due date to (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dueDateTo) {
+            @Parameter(description = "Due date to (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dueDateTo,
+            @Parameter(description = "When true and status is not set, exclude DONE and CANCELLED (open root tasks only)")
+            @RequestParam(required = false) Boolean openTasksOnly) {
         Sort sortObj = parseSort(sort);
         Pageable pageable = buildPageRequest(page, size, sortObj);
+        Optional<Boolean> openOnly = Boolean.TRUE.equals(openTasksOnly) ? Optional.of(true) : Optional.empty();
         Page<Task> result = taskService.findAllFiltered(
                 Optional.ofNullable(projectId), Optional.ofNullable(contractId), Optional.ofNullable(assigneeId),
                 Optional.ofNullable(status), Optional.ofNullable(priority),
                 Optional.ofNullable(search), Optional.ofNullable(dueDateFrom), Optional.ofNullable(dueDateTo),
+                openOnly,
                 pageable);
         return ResponseEntity.ok(result);
     }

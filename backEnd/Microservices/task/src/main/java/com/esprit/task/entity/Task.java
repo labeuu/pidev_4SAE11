@@ -77,6 +77,14 @@ public class Task {
     @JsonInclude(JsonInclude.Include.NON_NULL)
     private Boolean subtask;
 
+    /**
+     * Root task id when {@link #subtask} is true; for API consumers editing synthetic overdue/due-soon rows.
+     */
+    @Transient
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    @Schema(description = "Parent root task id when subtask is true (synthetic views only)", accessMode = Schema.AccessMode.READ_ONLY)
+    private Long parentTaskId;
+
     @Column
     @Schema(description = "Creator user ID")
     private Long createdBy;

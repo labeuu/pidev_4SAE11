@@ -12,6 +12,8 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import java.util.List;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.mockito.ArgumentMatchers.any;
@@ -202,5 +204,29 @@ class TaskNotificationServiceTest {
 
         assertThatCode(() -> taskNotificationService.notifyTaskStatusUpdate(t))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void notifyFreelancerDailyOverdueReminder_callsClientWithDigest() {
+        ArgumentCaptor<com.esprit.task.dto.NotificationRequestDto> captor =
+                ArgumentCaptor.forClass(com.esprit.task.dto.NotificationRequestDto.class);
+        taskNotificationService.notifyFreelancerDailyOverdueReminder(15L,
+                List.of("Task: A — due 2026-01-01", "Subtask: B — due 2026-01-02"));
+
+        verify(notificationClient).create(captor.capture());
+        var dto = captor.getValue();
+        assertThat(dto.getUserId()).isEqualTo("15");
+        assertThat(dto.getType()).isEqualTo(TaskNotificationService.TYPE_TASK_OVERDUE_DAILY_REMINDER);
+        assertThat(dto.getBody()).contains("2 overdue").contains("Task: A").contains("Subtask: B");
+        assertThat(dto.getData()).containsEntry("overdueCount", "2").containsEntry("reminderKind", "OVERDUE_DAILY");
+        verify(projectClient, never()).getProjectById(any());
+    }
+
+    @Test
+    void notifyFreelancerDailyOverdueReminder_whenEmpty_doesNotCallClient() {
+        taskNotificationService.notifyFreelancerDailyOverdueReminder(1L, List.of());
+        taskNotificationService.notifyFreelancerDailyOverdueReminder(1L, null);
+        taskNotificationService.notifyFreelancerDailyOverdueReminder(null, List.of("x"));
+        verify(notificationClient, never()).create(any());
     }
 }

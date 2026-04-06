@@ -2,6 +2,8 @@ package com.esprit.task.repository;
 
 import com.esprit.task.entity.Subtask;
 import com.esprit.task.entity.TaskStatus;
+
+import java.time.LocalDateTime;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -61,4 +63,64 @@ public interface SubtaskRepository extends JpaRepository<Subtask, Long> {
 
     @Query("SELECT t.projectId, MAX(s.updatedAt) FROM Subtask s JOIN s.parent t WHERE t.assigneeId = :assigneeId GROUP BY t.projectId")
     List<Object[]> findMaxSubtaskUpdatedByProjectForAssignee(@Param("assigneeId") Long assigneeId);
+
+    @Query("SELECT s.status, COUNT(s) FROM Subtask s WHERE s.projectId = :projectId GROUP BY s.status")
+    List<Object[]> countGroupByStatusForProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT s.priority, COUNT(s) FROM Subtask s WHERE s.projectId = :projectId GROUP BY s.priority")
+    List<Object[]> countGroupByPriorityForProject(@Param("projectId") Long projectId);
+
+    long countByProjectIdAndAssigneeIdIsNull(Long projectId);
+
+    @Query("SELECT s.status, COUNT(s) FROM Subtask s GROUP BY s.status")
+    List<Object[]> countGroupByStatusAll();
+
+    @Query("SELECT s.priority, COUNT(s) FROM Subtask s GROUP BY s.priority")
+    List<Object[]> countGroupByPriorityAll();
+
+    long countByAssigneeIdIsNull();
+
+    @Query("SELECT COUNT(s) FROM Subtask s WHERE s.projectId = :projectId AND s.createdAt >= :start AND s.createdAt < :endExclusive")
+    long countCreatedInRangeForProject(@Param("projectId") Long projectId,
+            @Param("start") LocalDateTime start,
+            @Param("endExclusive") LocalDateTime endExclusive);
+
+    @Query("SELECT COUNT(s) FROM Subtask s WHERE s.projectId = :projectId AND s.status = com.esprit.task.entity.TaskStatus.DONE "
+            + "AND s.updatedAt >= :start AND s.updatedAt < :endExclusive")
+    long countCompletedInRangeForProject(@Param("projectId") Long projectId,
+            @Param("start") LocalDateTime start,
+            @Param("endExclusive") LocalDateTime endExclusive);
+
+    @Query("SELECT COUNT(s) FROM Subtask s WHERE s.createdAt >= :start AND s.createdAt < :endExclusive")
+    long countCreatedInRangeAll(@Param("start") LocalDateTime start, @Param("endExclusive") LocalDateTime endExclusive);
+
+    @Query("SELECT COUNT(s) FROM Subtask s WHERE s.status = com.esprit.task.entity.TaskStatus.DONE "
+            + "AND s.updatedAt >= :start AND s.updatedAt < :endExclusive")
+    long countCompletedInRangeAll(@Param("start") LocalDateTime start, @Param("endExclusive") LocalDateTime endExclusive);
+
+    @Query("SELECT COUNT(s) FROM Subtask s WHERE s.assigneeId = :assigneeId AND s.createdAt >= :start AND s.createdAt < :endExclusive")
+    long countCreatedInRangeForAssignee(@Param("assigneeId") Long assigneeId,
+            @Param("start") LocalDateTime start,
+            @Param("endExclusive") LocalDateTime endExclusive);
+
+    @Query("SELECT COUNT(s) FROM Subtask s WHERE s.assigneeId = :assigneeId AND s.status = com.esprit.task.entity.TaskStatus.DONE "
+            + "AND s.updatedAt >= :start AND s.updatedAt < :endExclusive")
+    long countCompletedInRangeForAssignee(@Param("assigneeId") Long assigneeId,
+            @Param("start") LocalDateTime start,
+            @Param("endExclusive") LocalDateTime endExclusive);
+
+    @Query("SELECT s FROM Subtask s WHERE s.projectId = :projectId AND s.priority IN (com.esprit.task.entity.TaskPriority.HIGH, com.esprit.task.entity.TaskPriority.URGENT) "
+            + "AND s.status NOT IN (com.esprit.task.entity.TaskStatus.DONE, com.esprit.task.entity.TaskStatus.CANCELLED) "
+            + "ORDER BY s.priority DESC, s.orderIndex ASC")
+    List<Subtask> findHighPriorityOpenForProject(@Param("projectId") Long projectId);
+
+    @Query("SELECT s FROM Subtask s WHERE s.priority IN (com.esprit.task.entity.TaskPriority.HIGH, com.esprit.task.entity.TaskPriority.URGENT) "
+            + "AND s.status NOT IN (com.esprit.task.entity.TaskStatus.DONE, com.esprit.task.entity.TaskStatus.CANCELLED) "
+            + "ORDER BY s.priority DESC, s.orderIndex ASC")
+    List<Subtask> findHighPriorityOpenAll();
+
+    @Query("SELECT s FROM Subtask s WHERE s.assigneeId = :assigneeId AND s.priority IN (com.esprit.task.entity.TaskPriority.HIGH, com.esprit.task.entity.TaskPriority.URGENT) "
+            + "AND s.status NOT IN (com.esprit.task.entity.TaskStatus.DONE, com.esprit.task.entity.TaskStatus.CANCELLED) "
+            + "ORDER BY s.priority DESC, s.orderIndex ASC")
+    List<Subtask> findHighPriorityOpenForAssignee(@Param("assigneeId") Long assigneeId);
 }

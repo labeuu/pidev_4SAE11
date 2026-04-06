@@ -35,4 +35,13 @@ public class TaskScheduledJobs {
             log.info("Purged {} old CANCELLED task(s)", n);
         }
     }
+
+    /** Daily in-app reminders to freelancers with overdue assigned tasks or subtasks. */
+    @Scheduled(cron = "${task.scheduler.overdue-reminder-cron:0 0 8 * * ?}")
+    public void runDailyOverdueReminders() {
+        int n = taskService.sendDailyOverdueReminders();
+        if (n > 0) {
+            log.info("Sent daily overdue reminder(s) to {} freelancer(s)", n);
+        }
+    }
 }

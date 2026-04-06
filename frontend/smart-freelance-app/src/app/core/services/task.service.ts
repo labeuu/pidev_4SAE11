@@ -22,6 +22,8 @@ export interface Task {
    * When true (overdue / due-soon merged rows), {@link id} refers to a subtask; use subtask APIs.
    */
   subtask?: boolean | null;
+  /** Root task id when {@link subtask} is true (synthetic API rows). */
+  parentTaskId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -98,6 +100,8 @@ export interface TaskFilterParams {
   search?: string | null;
   dueDateFrom?: string | null;
   dueDateTo?: string | null;
+  /** When true and status omitted, API excludes DONE and CANCELLED (open root tasks). */
+  openTasksOnly?: boolean | null;
 }
 
 /** Spring Data Page response. */
@@ -116,6 +120,28 @@ export interface TaskStatsDto {
   inProgressCount: number;
   overdueCount: number;
   completionPercentage: number;
+}
+
+/** Count per priority (extended stats). */
+export interface TaskPriorityCountDto {
+  priority: TaskPriority;
+  count: number;
+}
+
+/** Extended task stats: root tasks + subtasks, status split and priority breakdown. */
+export interface TaskStatsExtendedDto {
+  totalTasks: number;
+  doneCount: number;
+  inProgressCount: number;
+  inReviewCount: number;
+  todoCount: number;
+  cancelledCount: number;
+  overdueCount: number;
+  completionPercentage: number;
+  unassignedCount: number;
+  createdInRangeCount?: number;
+  completedInRangeCount?: number;
+  priorityBreakdown?: TaskPriorityCountDto[];
 }
 
 /** Kanban board: tasks grouped by status. */
@@ -198,6 +224,7 @@ export class TaskService {
     if (params.search?.trim()) query.set('search', params.search.trim());
     if (params.dueDateFrom?.trim()) query.set('dueDateFrom', params.dueDateFrom.trim());
     if (params.dueDateTo?.trim()) query.set('dueDateTo', params.dueDateTo.trim());
+    if (params.openTasksOnly === true) query.set('openTasksOnly', 'true');
     const qs = query.toString();
     const url = qs ? `${TASK_API}/tasks?${qs}` : `${TASK_API}/tasks`;
     return this.http.get<PageResponse<Task>>(url).pipe(
@@ -291,6 +318,21 @@ export class TaskService {
     return this.http.get<TaskStatsDto>(url).pipe(
       catchError(() => of(null))
     );
+  }
+
+  getExtendedStatsByFreelancer(
+    freelancerId: number,
+    options?: { from?: string | null; to?: string | null }
+  ): Observable<TaskStatsExtendedDto | null> {
+    const query = new URLSearchParams();
+    const from = options?.from?.trim();
+    const to = options?.to?.trim();
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
+    const qs = query.toString();
+    const base = `${TASK_API}/tasks/stats/extended/freelancer/${freelancerId}`;
+    const url = qs ? `${base}?${qs}` : base;
+    return this.http.get<TaskStatsExtendedDto>(url).pipe(catchError(() => of(null)));
   }
 
   getStatsDashboard(): Observable<TaskStatsDto | null> {
@@ -419,5 +461,38 @@ export class TaskService {
       map((res) => res.status >= 200 && res.status < 300),
       catchError(() => of(false))
     );
+  }
+
+  /**
+   * PDF work report. With lastDays + periodEnd, uses a rolling inclusive window ending that day
+   * (e.g. lastDays=7 → 7 calendar days). Otherwise behaves as ISO week (weekStart).
+   */
+  downloadWorkReportPdf(params: {
+    freelancerId: number;
+    lastDays?: number;
+    periodEnd?: string;
+    projectId?: number | null;
+    weekStart?: string | null;
+  }): Observable<Blob> {
+    const q = new URLSearchParams();
+    q.set('freelancerId', String(params.freelancerId));
+    if (params.lastDays != null) q.set('lastDays', String(params.lastDays));
+    if (params.periodEnd?.trim()) q.set('periodEnd', params.periodEnd.trim());
+    if (params.projectId != null) q.set('projectId', String(params.projectId));
+    if (params.weekStart?.trim()) q.set('weekStart', params.weekStart.trim());
+    return this.http.get(`${TASK_API}/tasks/reports/weekly.pdf?${q.toString()}`, { responseType: 'blob' });
+  }
+
+  /** Trigger browser download for a Blob (e.g. PDF). */
+  saveBlobAsFile(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }
