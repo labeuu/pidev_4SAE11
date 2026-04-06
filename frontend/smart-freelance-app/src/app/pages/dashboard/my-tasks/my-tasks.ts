@@ -222,6 +222,21 @@ export class MyTasks implements OnInit, OnDestroy {
     return merged.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''));
   }
 
+  /**
+   * Accepted applications (associated projects) where the freelancer has no assigned tasks/subtasks yet.
+   * Uses extended stats from the task service (full assignee scope, not the current list page).
+   */
+  get associatedProjectsAwaitingTasks(): ProjectOption[] {
+    const raw = this.extendedStats?.projectIdsWithAssignedWork;
+    if (raw == null) {
+      return [];
+    }
+    const ids = new Set(raw);
+    return this.associatedProjects
+      .filter((p) => !ids.has(p.id))
+      .sort((a, b) => (a.title ?? '').localeCompare(b.title ?? '', undefined, { sensitivity: 'base' }));
+  }
+
   ngOnInit(): void {
     this.setupTaskLoadStream();
     this.filterForm.valueChanges

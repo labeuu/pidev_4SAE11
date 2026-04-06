@@ -23,6 +23,7 @@
           <h2 id="task-stats-heading" class="task-stats-overview__title">Workload overview</h2>
           <p class="task-stats-overview__hint">
             Totals include every task and subtask assigned to you. Filters on the list only change the table, not these numbers.
+            Accepted projects where you have no assignments yet are listed at the bottom of this overview.
           </p>
         </div>
         <button
@@ -219,6 +220,23 @@
           <p class="task-stats-unassigned" role="status">
             {{ extendedStats.unassignedCount }} item(s) in your workload have no assignee — worth checking with the client if that shows up here.
           </p>
+        }
+
+        @if (associatedProjectsAwaitingTasks.length > 0) {
+          <div class="task-stats-idle-projects" role="region" aria-labelledby="idle-projects-heading">
+            <h3 id="idle-projects-heading" class="task-stats-idle-projects__title">Accepted projects — no tasks assigned yet</h3>
+            <p class="task-stats-idle-projects__hint">
+              You are associated with these projects (accepted application), but nothing is assigned to you yet. Ask the client to assign tasks or add one if you have access.
+            </p>
+            <ul class="task-stats-idle-projects__list">
+              @for (p of associatedProjectsAwaitingTasks; track p.id) {
+                <li class="task-stats-idle-projects__item">
+                  <span class="task-stats-idle-projects__name">{{ getProjectTitle(p.id) || p.title }}</span>
+                  <span class="task-stats-idle-projects__meta">Project #{{ p.id }}</span>
+                </li>
+              }
+            </ul>
+          </div>
         }
       }
     </section>

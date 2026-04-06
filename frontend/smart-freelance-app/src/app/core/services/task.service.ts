@@ -142,6 +142,8 @@ export interface TaskStatsExtendedDto {
   createdInRangeCount?: number;
   completedInRangeCount?: number;
   priorityBreakdown?: TaskPriorityCountDto[];
+  /** Projects where you have at least one assigned task/subtask (from task service). */
+  projectIdsWithAssignedWork?: number[];
 }
 
 /** Kanban board: tasks grouped by status. */
@@ -333,6 +335,12 @@ export class TaskService {
     const base = `${TASK_API}/tasks/stats/extended/freelancer/${freelancerId}`;
     const url = qs ? `${base}?${qs}` : base;
     return this.http.get<TaskStatsExtendedDto>(url).pipe(catchError(() => of(null)));
+  }
+
+  getExtendedStatsByProject(projectId: number): Observable<TaskStatsExtendedDto | null> {
+    return this.http
+      .get<TaskStatsExtendedDto>(`${TASK_API}/tasks/stats/extended/project/${projectId}`)
+      .pipe(catchError(() => of(null)));
   }
 
   getStatsDashboard(): Observable<TaskStatsDto | null> {

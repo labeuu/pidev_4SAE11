@@ -124,6 +124,13 @@ describe('TaskService', () => {
     req.flush(null);
   });
 
+  it('getExtendedStatsByProject should GET extended stats URL for project', () => {
+    service.getExtendedStatsByProject(42).subscribe();
+    const req = httpMock.expectOne((r) => r.url.includes('/task/api/tasks/stats/extended/project/42'));
+    expect(req.request.method).toBe('GET');
+    req.flush({ totalTasks: 0, doneCount: 0, priorityBreakdown: [] });
+  });
+
   it('downloadWorkReportPdf should GET weekly.pdf with rolling window params', () => {
     service.downloadWorkReportPdf({ freelancerId: 5, lastDays: 7, periodEnd: '2026-04-10' }).subscribe();
     const req = httpMock.expectOne(

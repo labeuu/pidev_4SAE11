@@ -24,6 +24,7 @@ import java.util.Optional;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -139,5 +140,149 @@ class SubtaskServiceTest {
         subtaskService.patchStatus(3L, TaskStatus.DONE);
 
         verify(taskNotificationService).notifySubtaskStatusUpdate(any(Subtask.class));
+    }
+
+    @Test
+    void findEntityById_returnsEntity() {
+        Subtask s = Subtask.builder()
+                .id(4L)
+                .parent(parent(1L))
+                .projectId(7L)
+                .title("e")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .orderIndex(0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(subtaskRepository.findById(4L)).thenReturn(Optional.of(s));
+
+        assertThat(subtaskService.findEntityById(4L).getId()).isEqualTo(4L);
+    }
+
+    @Test
+    void findEntityById_whenMissing_throws() {
+        when(subtaskRepository.findById(4L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> subtaskService.findEntityById(4L))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    void update_whenStatusUnchanged_doesNotNotify() {
+        Subtask s = Subtask.builder()
+                .id(3L)
+                .parent(parent(1L))
+                .projectId(7L)
+                .title("x")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .orderIndex(0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(subtaskRepository.findById(3L)).thenReturn(Optional.of(s));
+        when(subtaskRepository.save(any(Subtask.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SubtaskRequest req = SubtaskRequest.builder()
+                .title("  t2  ")
+                .status(TaskStatus.TODO)
+                .build();
+        subtaskService.update(3L, req);
+
+        verify(taskNotificationService, never()).notifySubtaskStatusUpdate(any());
+    }
+
+    @Test
+    void update_whenStatusChanges_notifies() {
+        Subtask s = Subtask.builder()
+                .id(3L)
+                .parent(parent(1L))
+                .projectId(7L)
+                .title("x")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .orderIndex(0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(subtaskRepository.findById(3L)).thenReturn(Optional.of(s));
+        when(subtaskRepository.save(any(Subtask.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SubtaskRequest req = SubtaskRequest.builder().status(TaskStatus.DONE).build();
+        subtaskService.update(3L, req);
+
+        verify(taskNotificationService).notifySubtaskStatusUpdate(any(Subtask.class));
+    }
+
+    @Test
+    void patchDueDate_updatesField() {
+        Subtask s = Subtask.builder()
+                .id(3L)
+                .parent(parent(1L))
+                .projectId(7L)
+                .title("x")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .orderIndex(0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(subtaskRepository.findById(3L)).thenReturn(Optional.of(s));
+        LocalDate d = LocalDate.of(2026, 8, 1);
+        when(subtaskRepository.save(any(Subtask.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        SubtaskResponse r = subtaskService.patchDueDate(3L, d);
+
+        assertThat(r.getDueDate()).isEqualTo(d);
+    }
+
+    @Test
+    void deleteById_removes() {
+        Subtask s = Subtask.builder()
+                .id(8L)
+                .parent(parent(1L))
+                .projectId(7L)
+                .title("x")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .orderIndex(0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(subtaskRepository.findById(8L)).thenReturn(Optional.of(s));
+
+        subtaskService.deleteById(8L);
+
+        verify(subtaskRepository).delete(s);
+    }
+
+    @Test
+    void deleteById_whenMissing_throws() {
+        when(subtaskRepository.findById(8L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> subtaskService.deleteById(8L))
+                .isInstanceOf(EntityNotFoundException.class);
+    }
+
+    @Test
+    void patchStatus_whenUnchanged_doesNotNotify() {
+        Subtask s = Subtask.builder()
+                .id(3L)
+                .parent(parent(1L))
+                .projectId(7L)
+                .title("x")
+                .status(TaskStatus.TODO)
+                .priority(TaskPriority.MEDIUM)
+                .orderIndex(0)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        when(subtaskRepository.findById(3L)).thenReturn(Optional.of(s));
+        when(subtaskRepository.save(any(Subtask.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        subtaskService.patchStatus(3L, TaskStatus.TODO);
+
+        verify(taskNotificationService, never()).notifySubtaskStatusUpdate(any());
     }
 }

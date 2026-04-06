@@ -369,7 +369,7 @@ public class TaskService {
         long unassigned = taskRepository.countByProjectIdAndAssigneeIdIsNull(projectId)
                 + subtaskRepository.countByProjectIdAndAssigneeIdIsNull(projectId);
         long[] range = activityRangeCountsForProject(projectId, activityFrom, activityTo);
-        return toExtendedDto(byStatus, byPriority, total, done, overdue, unassigned, range[0], range[1]);
+        return toExtendedDto(byStatus, byPriority, total, done, overdue, unassigned, range[0], range[1], List.of());
     }
 
     private TaskStatsExtendedDto buildExtendedStatsGlobal(
@@ -390,7 +390,7 @@ public class TaskService {
                 + subtaskRepository.findOverdueSubtasks(overdueAsOf).size();
         long unassigned = taskRepository.countByAssigneeIdIsNull() + subtaskRepository.countByAssigneeIdIsNull();
         long[] range = activityRangeCountsGlobal(activityFrom, activityTo);
-        return toExtendedDto(byStatus, byPriority, total, done, overdue, unassigned, range[0], range[1]);
+        return toExtendedDto(byStatus, byPriority, total, done, overdue, unassigned, range[0], range[1], List.of());
     }
 
     private long[] activityRangeCountsForProject(
@@ -466,7 +466,8 @@ public class TaskService {
             long overdue,
             long unassigned,
             long createdInRange,
-            long completedInRange) {
+            long completedInRange,
+            List<Long> projectIdsWithAssignedWork) {
         List<TaskPriorityCountDto> breakdown = Arrays.stream(TaskPriority.values())
                 .map(p -> TaskPriorityCountDto.builder()
                         .priority(p)
@@ -474,6 +475,9 @@ public class TaskService {
                         .build())
                 .toList();
         double pct = total > 0 ? (100.0 * done / total) : 0.0;
+        List<Long> projectIds = projectIdsWithAssignedWork == null
+                ? new ArrayList<>()
+                : new ArrayList<>(projectIdsWithAssignedWork);
         return TaskStatsExtendedDto.builder()
                 .totalTasks(total)
                 .doneCount(done)
@@ -487,6 +491,7 @@ public class TaskService {
                 .createdInRangeCount(createdInRange)
                 .completedInRangeCount(completedInRange)
                 .priorityBreakdown(new ArrayList<>(breakdown))
+                .projectIdsWithAssignedWork(projectIds)
                 .build();
     }
 
@@ -543,7 +548,20 @@ public class TaskService {
                             && !s.getUpdatedAt().isBefore(start) && s.getUpdatedAt().isBefore(endExclusive))
                     .count();
         }
-        return toExtendedDto(byStatus, byPriority, total, done, overdue, unassigned, createdInRange, completedInRange);
+        SortedSet<Long> projectIds = new TreeSet<>();
+        for (Task t : tasks) {
+            if (t.getProjectId() != null) {
+                projectIds.add(t.getProjectId());
+            }
+        }
+        for (Subtask s : subtasks) {
+            if (s.getProjectId() != null) {
+                projectIds.add(s.getProjectId());
+            }
+        }
+        return toExtendedDto(
+                byStatus, byPriority, total, done, overdue, unassigned, createdInRange, completedInRange,
+                new ArrayList<>(projectIds));
     }
 
     @Transactional(readOnly = true)

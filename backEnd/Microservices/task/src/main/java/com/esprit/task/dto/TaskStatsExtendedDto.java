@@ -56,4 +56,9 @@ public class TaskStatsExtendedDto {
     @Schema(description = "Counts per priority (all enum values listed, zero when none)")
     @Builder.Default
     private List<TaskPriorityCountDto> priorityBreakdown = new ArrayList<>();
+
+    /** Distinct project IDs where this freelancer has at least one assigned root task or subtask (freelancer extended stats only). */
+    @Schema(description = "Projects in which the freelancer has assigned tasks/subtasks; empty for non-freelancer scopes")
+    @Builder.Default
+    private List<Long> projectIdsWithAssignedWork = new ArrayList<>();
 }
