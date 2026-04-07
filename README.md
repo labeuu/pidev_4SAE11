@@ -35,11 +35,11 @@ A microservices-based platform connecting freelancers and clients for project co
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌───────────────────────────────────────────────────┐
-│   Angular   │──── │ API Gateway  │──── │              Microservices (Eureka)              │
-│  Frontend   │     │   (8078)     │     │ User │ Project │ Offer │ Contract │ Portfolio   │ │
-│  (4200)     │     └──────────────┘     │ Review │ Planning │ Notification │ Task │ Keycloak │ │
-└─────────────┘            │             └───────────────────────────────────────────────────┘
+┌─────────────┐     ┌──────────────┐     ┌────────────────────────────────────────────────────────────┐
+│   Angular   │──── │ API Gateway  │──── │ User │ Project │ Offer │ Contract │ Portfolio │ Review  │
+│  Frontend   │     │   (8078)     │     │ Planning │ Notification │ Task │ Gamification │ Vendor │
+│  (4200)     │     └──────────────┘     │ Ticket │ AImodel (Node) │ Keycloak auth MS              │
+└─────────────┘            │             └────────────────────────────────────────────────────────────┘
                            │
                     ┌──────┴──────┐
                     │   Config    │
@@ -70,7 +70,7 @@ A microservices-based platform connecting freelancers and clients for project co
 - **Java 17**
 - **Maven 3.8+**
 - **Node.js 18+** and **npm**
-- **MySQL 8** on `localhost:3306`
+- **MySQL 8** — repos use `localhost:3306` and/or `3307` depending on the service (see [Documentation/services-and-ports.md](Documentation/services-and-ports.md))
 - **Keycloak** (standalone) on `localhost:8080` with realm `smart-freelance`
 
 ### Service Ports
@@ -89,17 +89,21 @@ A microservices-based platform connecting freelancers and clients for project co
 | Review | 8085 | `reviewdb` |
 | Portfolio | 8086 | `portfolio_db` |
 | Notification | 8087 | Firebase |
+| Gamification | 8088 | `gamificationdb` |
 | Task | 8091 | `taskdb` |
+| AImodel (Node) | 8092 | — (Ollama) |
+| Vendor | 8093 | `gestion_vendor_db` |
+| Ticket | 8094 | `ticketdb` |
 
 ### Startup Order
 
 1. MySQL  
 2. **Eureka** → `backEnd/Eureka`  
-3. **Config Server** → `backEnd/ConfigServer` *(optional; services work without it)*  
+3. **Config Server** → `backEnd/ConfigServer` *(required for **Offer** and **Vendor**; optional for others)*  
 4. **API Gateway** → `backEnd/apiGateway`  
 5. **Keycloak** (standalone) — [see Keycloak setup](backEnd/KeyCloak/README.md)  
 6. **Keycloak Auth** → `backEnd/KeyCloak`  
-7. **Microservices** — User, Project, Offer, Contract, Portfolio, Review, Planning, Notification, Task  
+7. **Microservices** — User, Project, Offer, Contract, Portfolio, Review, Planning, Notification, Task, Gamification, Vendor, Ticket, **AImodel** (Node + Ollama if using AI)  
 
 ### Run the Backend
 
@@ -125,8 +129,11 @@ Open **http://localhost:4200**
 
 ### API Documentation
 
-Swagger UI is available via the Gateway for services that expose it:
-- **http://localhost:8078/{service-name}/swagger-ui.html**
+Swagger UI is available via the Gateway for services that expose it (use the gateway path prefix in the URL).
+
+Example: `http://localhost:8078/user/swagger-ui.html`
+
+Full route and port reference: [Documentation/api-gateway.md](Documentation/api-gateway.md).
 
 ---
 
@@ -143,14 +150,18 @@ Swagger UI is available via the Gateway for services that expose it:
 │       ├── Notification/    # Push notifications (Firebase)
 │       ├── Offer/           # Offers & applications
 │       ├── planning/        # Calendar, GitHub sync, progress updates
-│       ├── task/            # Tasks, subtasks, calendar integration
+│       ├── task/            # Tasks, subtasks, AI-assisted endpoints
+│       ├── gamification/    # Achievements, levels, XP
+│       ├── Vendor/          # Vendor / agrément workflows
+│       ├── ticket-service/   # Support tickets
+│       ├── AImodel/         # Node + Ollama LLM API
 │       ├── Portfolio/       # Portfolio, skills, AI verification
 │       ├── Project/         # Project management
 │       ├── review/          # Reviews & ratings (sends notifications on response)
 │       └── user/            # User profiles
 ├── frontend/
 │   └── smart-freelance-app/ # Angular SPA
-├── Documentation/           # Test plans, specs
+├── Documentation/           # Architecture, gateway, per-service docs (see README there)
 └── plans/                   # Implementation specs
 ```
 
@@ -171,6 +182,7 @@ All credential files are gitignored. See [credentials/README.md](credentials/REA
 
 ## Documentation
 
+- **[Documentation hub](Documentation/README.md)** — architecture, gateway, frontend guide, per-service pages
 - [Keycloak Setup](backEnd/KeyCloak/README.md) — Auth & realm configuration
 - [Credentials Setup](credentials/README.md) — GitHub token, Google Calendar, Firebase
 - [Portfolio Test Plan](Documentation/TEST_PLAN_PORTFOLIO.md)
