@@ -6,6 +6,8 @@ import org.springframework.stereotype.Service;
 import tn.esprit.project.Entities.Project;
 import tn.esprit.project.Repository.ProjectRepository;
 import tn.esprit.project.Client.SkillClient;
+import tn.esprit.project.Dto.response.JointProjectItem;
+import tn.esprit.project.Dto.response.JointProjectsResponse;
 import tn.esprit.project.Dto.response.ProjectResponse;
 import tn.esprit.project.Dto.Skills;
 import tn.esprit.project.Entities.Enums.ProjectStatus;
@@ -116,6 +118,23 @@ public class ProjectService implements IProjectService{
 
     public List<Project> getProjectsByClientId(Long clientId) {
         return projectRepository.findByClientId(clientId);
+    }
+
+    @Override
+    public JointProjectsResponse getJointProjects(Long clientId, Long freelancerId) {
+        List<Project> list = projectRepository.findJointProjects(clientId, freelancerId);
+        List<JointProjectItem> items = list.stream()
+                .map(p -> JointProjectItem.builder()
+                        .id(p.getId())
+                        .title(p.getTitle())
+                        .status(p.getStatus() != null ? p.getStatus().name() : null)
+                        .category(p.getCategory())
+                        .build())
+                .toList();
+        return JointProjectsResponse.builder()
+                .sharedProjectCount(items.size())
+                .projects(items)
+                .build();
     }
 
     @Override

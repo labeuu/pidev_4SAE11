@@ -1,6 +1,8 @@
 package tn.esprit.project.Repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 import tn.esprit.project.Entities.Enums.ApplicationStatus;
 import tn.esprit.project.Entities.Enums.ProjectStatus;
@@ -13,5 +15,9 @@ import java.util.List;
 public interface ProjectRepository extends JpaRepository<Project, Long> {
 
     List<Project> findByClientId(Long clientId);
+
+    /** Projets du client pour lesquels le freelancer a au moins une candidature. */
+    @Query("SELECT DISTINCT p FROM Project p JOIN p.applications a WHERE p.clientId = :clientId AND a.freelanceId = :freelancerId")
+    List<Project> findJointProjects(@Param("clientId") Long clientId, @Param("freelancerId") Long freelancerId);
     List<Project> findByStatus(ProjectStatus status);
 }

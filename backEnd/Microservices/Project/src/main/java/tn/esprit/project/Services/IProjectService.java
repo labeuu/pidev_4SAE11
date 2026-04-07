@@ -1,5 +1,6 @@
 package tn.esprit.project.Services;
 
+import tn.esprit.project.Dto.response.JointProjectsResponse;
 import tn.esprit.project.Dto.response.ProjectResponse;
 import tn.esprit.project.Entities.Project;
 
@@ -19,6 +20,9 @@ public interface IProjectService {
     ProjectResponse getProjectResponse(Long id);
 
     List<Project> getProjectsByClientId(Long clientId);
+
+    /** Projets du client où le freelancer a candidaté (lien historique pour décision agrément). */
+    JointProjectsResponse getJointProjects(Long clientId, Long freelancerId);
 
     List<ProjectResponse> getRecommendedProjects(Long freelancerId);
 

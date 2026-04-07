@@ -32,6 +32,7 @@
     "angularx-qrcode": "^21.0.4",
     "bootstrap": "^5.3.8",
     "chart.js": "^4.5.1",
+    "jspdf": "^3.0.4",
     "ng2-charts": "^8.0.0",
     "rxjs": "~7.8.0",
     "tslib": "^2.3.0"

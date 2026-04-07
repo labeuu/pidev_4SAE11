@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 // ── Domain types ────────────────────────────────────────────────────────────
 export type ContractStatus =
@@ -74,7 +75,7 @@ export interface Contract {
 // ── Service ─────────────────────────────────────────────────────────────────
 @Injectable({ providedIn: 'root' })
 export class ContractService {
-  private readonly base = 'http://localhost:8078/contract/api';
+  private readonly base = `${environment.apiGatewayUrl}/contract/api`;
 
   constructor(private http: HttpClient) {}
 

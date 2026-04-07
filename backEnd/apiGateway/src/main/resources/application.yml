@@ -126,3 +126,11 @@ spring:
             - Path=/task/**
           filters:
             - StripPrefix=1
+
+        # Vendor Management (port 8092)
+        - id: vendor
+          uri: http://localhost:8092
+          predicates:
+            - Path=/vendor/**
+          filters:
+            - StripPrefix=1

@@ -7,26 +7,13 @@
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
+        <module name="Offer" />
+        <module name="Portfolio" />
         <module name="apiGateway" />
         <module name="ConfigServer" />
+        <module name="Vendor" />
         <module name="Eureka" />
-        <module name="Offer" />
         <module name="Contract" />
-        <module name="Portfolio" />
-      </profile>
-      <profile name="Annotation profile for review" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
-        </processorPath>
-        <module name="notification" />
-        <module name="planning" />
-        <module name="task" />
-        <module name="KeyCloak" />
-        <module name="user" />
-        <module name="review" />
       </profile>
       <profile name="Annotation profile for gamification" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
@@ -36,7 +23,29 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
         </processorPath>
         <module name="gamification" />
+      </profile>
+      <profile name="Annotation profile for Project" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/unknown/lombok-unknown.jar" />
+        </processorPath>
         <module name="Project" />
+      </profile>
+      <profile name="Annotation profile for user" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
+        </processorPath>
+        <module name="planning" />
+        <module name="notification" />
+        <module name="task" />
+        <module name="KeyCloak" />
+        <module name="user" />
+        <module name="review" />
       </profile>
     </annotationProcessing>
   </component>
@@ -49,6 +58,7 @@
       <module name="Offer" options="-parameters" />
       <module name="Portfolio" options="-parameters" />
       <module name="Project" options="-parameters" />
+      <module name="Vendor" options="-parameters" />
       <module name="apiGateway" options="-parameters" />
       <module name="gamification" options="-parameters" />
       <module name="notification" options="-parameters" />

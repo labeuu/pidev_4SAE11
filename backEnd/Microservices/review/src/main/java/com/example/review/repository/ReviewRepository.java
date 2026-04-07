@@ -22,6 +22,9 @@ public interface ReviewRepository extends JpaRepository<Review, Long>, JpaSpecif
 
     List<Review> findByRevieweeIdAndProjectId(Long revieweeId, Long projectId);
 
+    /** Avis où le reviewer (client) note le reviewee (freelancer) — couple précis. */
+    List<Review> findByReviewerIdAndRevieweeIdOrderByCreatedAtDesc(Long reviewerId, Long revieweeId);
+
     /** Returns pairs (rating, count) for stats. Pass null for global stats. */
     @Query("SELECT r.rating, COUNT(r) FROM Review r WHERE (:reviewerId IS NULL OR r.reviewerId = :reviewerId) AND (:revieweeId IS NULL OR r.revieweeId = :revieweeId) GROUP BY r.rating")
     List<Object[]> ratingCountsByReviewerAndReviewee(@Param("reviewerId") Long reviewerId, @Param("revieweeId") Long revieweeId);

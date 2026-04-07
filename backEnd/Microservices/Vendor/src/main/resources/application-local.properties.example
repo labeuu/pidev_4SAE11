@@ -1,0 +1,5 @@
+# Copier en application-local.properties (non versionne).
+# Surcharge VENDOR.properties du Config Server.
+
+# spring.datasource.url=jdbc:mysql://localhost:3306/gestion_vendor_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+# spring.datasource.password=votre_mot_de_passe
