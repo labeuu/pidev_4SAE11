@@ -1,6 +1,7 @@
 package tn.esprit.project.Client;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import tn.esprit.project.Dto.Skills;
 
@@ -11,9 +12,10 @@ import java.util.List;
  * Fallback when the Portfolio microservice is unavailable.
  * Returns empty lists so recommendations and project enrichment degrade gracefully.
  */
-@Slf4j
 @Component
 public class SkillClientFallback implements SkillClient {
+
+    private static final Logger log = LoggerFactory.getLogger(SkillClientFallback.class);
 
     @Override
     public List<Skills> getSkillsByIds(List<Long> ids) {
