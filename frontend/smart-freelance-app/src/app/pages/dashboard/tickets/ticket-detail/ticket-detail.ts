@@ -6,6 +6,9 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { AuthService } from '../../../../core/services/auth.service';
 import { Ticket, TicketService } from '../../../../core/services/ticket.service';
 import { ReplyService, TicketReply } from '../../../../core/services/reply.service';
+import { ToastService } from '../../../../core/services/toast.service';
+import { toastSuccessWithOptionalFilterNote } from '../../../../core/utils/content-sanitized-notice.util';
+import { messageFromHttpError } from '../../../../core/utils/http-error.util';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -35,6 +38,7 @@ export class TicketDetail implements OnInit {
     private ticketService: TicketService,
     private replyService: ReplyService,
     private auth: AuthService,
+    private toast: ToastService,
     private cdr: ChangeDetectorRef
   ) {
     this.replyForm = this.fb.group({
@@ -60,16 +64,13 @@ export class TicketDetail implements OnInit {
     this.ticketService.getById(id).subscribe({
       next: (t) => {
         this.ticket = t;
-        if (!t) {
-          this.errorMessage = 'Ticket not found.';
-          this.loading = false;
-          this.cdr.detectChanges();
-          return;
-        }
+        this.updateReplyFormDisabledState();
         this.loadReplies(t.id);
       },
-      error: () => {
-        this.errorMessage = 'Failed to load ticket.';
+      error: (err: unknown) => {
+        this.ticket = null;
+        this.errorMessage = messageFromHttpError(err, 'Failed to load ticket.');
+        this.toast.error(this.errorMessage);
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -79,12 +80,14 @@ export class TicketDetail implements OnInit {
   loadReplies(ticketId: number): void {
     this.replyService.getByTicketId(ticketId).subscribe({
       next: (r) => {
-        this.replies = r ?? [];
+        this.replies = r;
         this.loading = false;
+        this.updateReplyFormDisabledState();
         this.cdr.detectChanges();
       },
-      error: () => {
-        this.errorMessage = 'Failed to load replies.';
+      error: (err: unknown) => {
+        this.errorMessage = messageFromHttpError(err, 'Failed to load replies.');
+        this.toast.error(this.errorMessage);
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -96,24 +99,38 @@ export class TicketDetail implements OnInit {
       this.replyForm.markAllAsTouched();
       return;
     }
-    const msg = String(this.replyForm.value.message || '').trim();
+    const msg = String(this.replyForm.getRawValue().message || '').trim();
     if (!msg) return;
     this.sending = true;
+    this.updateReplyFormDisabledState();
     this.replyService.create({ ticketId: this.ticket.id, message: msg }).subscribe({
-      next: (created) => {
+      next: (reply) => {
         this.sending = false;
-        if (created) {
-          this.replyForm.reset({ message: '' });
-          this.load(this.ticket!.id);
-        } else this.errorMessage = 'Failed to send reply.';
-        this.cdr.detectChanges();
+        this.replyForm.reset({ message: '' });
+        this.updateReplyFormDisabledState();
+        toastSuccessWithOptionalFilterNote(this.toast, msg, reply.message, 'Reply sent.');
+        this.load(this.ticket!.id);
       },
-      error: () => {
+      error: (err: unknown) => {
         this.sending = false;
-        this.errorMessage = 'Failed to send reply.';
+        this.updateReplyFormDisabledState();
+        this.errorMessage = messageFromHttpError(err, 'Failed to send reply.');
+        this.toast.error(this.errorMessage);
         this.cdr.detectChanges();
       },
     });
+  }
+
+  /** Avoid [disabled] on reactive form controls (Angular dev mode warning). */
+  private updateReplyFormDisabledState(): void {
+    const c = this.replyForm.get('message');
+    if (!c) return;
+    const block = this.sending || this.ticket?.status === 'CLOSED';
+    if (block) {
+      c.disable({ emitEvent: false });
+    } else {
+      c.enable({ emitEvent: false });
+    }
   }
 
   canEditReply(r: TicketReply): boolean {
@@ -140,15 +157,14 @@ export class TicketDetail implements OnInit {
     this.replyService.update(this.editingReplyId, { message: msg }).subscribe({
       next: (updated) => {
         this.savingEdit = false;
-        if (updated && this.ticket?.id) {
-          this.editingReplyId = null;
-          this.load(this.ticket.id);
-        } else this.errorMessage = 'Failed to update reply.';
-        this.cdr.detectChanges();
+        this.editingReplyId = null;
+        toastSuccessWithOptionalFilterNote(this.toast, msg, updated.message, 'Reply updated.');
+        if (this.ticket?.id) this.load(this.ticket.id);
       },
-      error: () => {
+      error: (err: unknown) => {
         this.savingEdit = false;
-        this.errorMessage = 'Failed to update reply.';
+        this.errorMessage = messageFromHttpError(err, 'Failed to update reply.');
+        this.toast.error(this.errorMessage);
         this.cdr.detectChanges();
       },
     });
@@ -158,28 +174,35 @@ export class TicketDetail implements OnInit {
     if (!this.canEditReply(r)) return;
     this.deletingReplyId = r.id;
     this.replyService.delete(r.id).subscribe({
-      next: (ok) => {
+      next: () => {
         this.deletingReplyId = null;
-        if (ok && this.ticket?.id) this.load(this.ticket.id);
-        else this.errorMessage = 'Failed to delete reply.';
-        this.cdr.detectChanges();
+        this.toast.success('Reply deleted.');
+        if (this.ticket?.id) this.load(this.ticket.id);
       },
-      error: () => {
+      error: (err: unknown) => {
         this.deletingReplyId = null;
-        this.errorMessage = 'Failed to delete reply.';
+        this.errorMessage = messageFromHttpError(err, 'Failed to delete reply.');
+        this.toast.error(this.errorMessage);
         this.cdr.detectChanges();
       },
     });
   }
 
-  statusBadge(status: string): string {
-    return status === 'OPEN' ? 'bg-success' : 'bg-danger';
+  badgeStatusClasses(status: string): Record<string, boolean> {
+    return {
+      'tk-pill': true,
+      'tk-pill--open': status === 'OPEN',
+      'tk-pill--closed': status !== 'OPEN',
+    };
   }
 
-  priorityBadge(p: string): string {
-    if (p === 'HIGH') return 'bg-danger';
-    if (p === 'MEDIUM') return 'bg-warning text-dark';
-    return 'bg-primary';
+  badgePriorityClasses(p: string): Record<string, boolean> {
+    return {
+      'tk-pill': true,
+      'tk-pill--high': p === 'HIGH',
+      'tk-pill--medium': p === 'MEDIUM',
+      'tk-pill--low': p === 'LOW' || (p !== 'HIGH' && p !== 'MEDIUM'),
+    };
   }
 
   isMine(r: TicketReply): boolean {
@@ -187,4 +210,3 @@ export class TicketDetail implements OnInit {
     return myId != null && r.authorUserId === myId;
   }
 }
-

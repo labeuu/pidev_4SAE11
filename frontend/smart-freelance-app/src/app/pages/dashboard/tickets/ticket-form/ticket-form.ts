@@ -2,8 +2,13 @@ import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
+import { finalize } from 'rxjs/operators';
 
+import { AuthService } from '../../../../core/services/auth.service';
 import { Ticket, TicketService } from '../../../../core/services/ticket.service';
+import { ToastService } from '../../../../core/services/toast.service';
+import { toastSuccessWithOptionalFilterNote } from '../../../../core/utils/content-sanitized-notice.util';
+import { messageFromHttpError } from '../../../../core/utils/http-error.util';
 
 @Component({
   selector: 'app-ticket-form',
@@ -16,6 +21,7 @@ export class TicketForm implements OnInit {
   form: FormGroup;
   loading = false;
   saving = false;
+  syncingProfile = false;
   errorMessage = '';
 
   editingTicket: Ticket | null = null;
@@ -25,6 +31,8 @@ export class TicketForm implements OnInit {
     private ticketService: TicketService,
     private route: ActivatedRoute,
     private router: Router,
+    private auth: AuthService,
+    private toast: ToastService,
     private cdr: ChangeDetectorRef
   ) {
     this.form = this.fb.group({
@@ -37,8 +45,32 @@ export class TicketForm implements OnInit {
     const idParam = this.route.snapshot.paramMap.get('id');
     if (idParam) {
       const id = Number(idParam);
-      if (id) this.loadTicket(id);
+      if (id) {
+        this.loadTicket(id);
+        return;
+      }
     }
+    this.ensureProfileForCreate();
+  }
+
+  /** Ticket-service resolves the user via user-service using JWT email; frontend userId must match for list UX. */
+  private ensureProfileForCreate(): void {
+    if (this.auth.getUserId() != null) return;
+    this.syncingProfile = true;
+    this.errorMessage = '';
+    this.auth
+      .fetchUserProfile()
+      .pipe(finalize(() => {
+        this.syncingProfile = false;
+        this.cdr.detectChanges();
+      }))
+      .subscribe((profile) => {
+        if (!profile?.id) {
+          this.errorMessage =
+            'Your profile could not be loaded. Sign out, sign in again, then create a ticket.';
+          this.toast.error(this.errorMessage);
+        }
+      });
   }
 
   loadTicket(id: number): void {
@@ -47,11 +79,6 @@ export class TicketForm implements OnInit {
       next: (t) => {
         this.loading = false;
         this.editingTicket = t;
-        if (!t) {
-          this.errorMessage = 'Ticket not found.';
-          this.cdr.detectChanges();
-          return;
-        }
         this.form.patchValue({
           subject: t.subject,
           priority: t.priority,
@@ -59,9 +86,10 @@ export class TicketForm implements OnInit {
         if (t.status === 'CLOSED') this.form.disable();
         this.cdr.detectChanges();
       },
-      error: () => {
+      error: (err: unknown) => {
         this.loading = false;
-        this.errorMessage = 'Failed to load ticket.';
+        this.errorMessage = messageFromHttpError(err, 'Failed to load ticket.');
+        this.toast.error(this.errorMessage);
         this.cdr.detectChanges();
       },
     });
@@ -76,6 +104,36 @@ export class TicketForm implements OnInit {
     const priority = this.form.value.priority as 'LOW' | 'MEDIUM' | 'HIGH' | null;
     if (!subject) return;
 
+    if (!this.auth.getToken()) {
+      this.errorMessage = 'You are not signed in.';
+      this.toast.error(this.errorMessage);
+      return;
+    }
+
+    if (!this.editingTicket?.id && this.auth.getUserId() == null) {
+      this.syncingProfile = true;
+      this.auth
+        .fetchUserProfile()
+        .pipe(finalize(() => {
+          this.syncingProfile = false;
+          this.cdr.detectChanges();
+        }))
+        .subscribe((profile) => {
+          if (!profile?.id) {
+            this.errorMessage =
+              'Your profile could not be loaded. Sign out and sign in again, then retry.';
+            this.toast.error(this.errorMessage);
+            return;
+          }
+          this.runSave(subject, priority);
+        });
+      return;
+    }
+
+    this.runSave(subject, priority);
+  }
+
+  private runSave(subject: string, priority: 'LOW' | 'MEDIUM' | 'HIGH' | null): void {
     this.saving = true;
     this.errorMessage = '';
 
@@ -83,13 +141,13 @@ export class TicketForm implements OnInit {
       this.ticketService.update(this.editingTicket.id, { subject, priority }).subscribe({
         next: (t) => {
           this.saving = false;
-          if (t) this.router.navigate(['/dashboard/tickets', t.id]);
-          else this.errorMessage = 'Failed to update ticket.';
-          this.cdr.detectChanges();
+          toastSuccessWithOptionalFilterNote(this.toast, subject, t.subject, 'Ticket updated.');
+          this.router.navigate(['/dashboard/tickets', t.id]);
         },
-        error: () => {
+        error: (err: unknown) => {
           this.saving = false;
-          this.errorMessage = 'Failed to update ticket.';
+          this.errorMessage = messageFromHttpError(err, 'Failed to update ticket.');
+          this.toast.error(this.errorMessage);
           this.cdr.detectChanges();
         },
       });
@@ -99,16 +157,15 @@ export class TicketForm implements OnInit {
     this.ticketService.create({ subject }).subscribe({
       next: (t) => {
         this.saving = false;
-        if (t) this.router.navigate(['/dashboard/tickets', t.id]);
-        else this.errorMessage = 'Failed to create ticket.';
-        this.cdr.detectChanges();
+        toastSuccessWithOptionalFilterNote(this.toast, subject, t.subject, 'Ticket created.');
+        this.router.navigate(['/dashboard/tickets', t.id]);
       },
-      error: () => {
+      error: (err: unknown) => {
         this.saving = false;
-        this.errorMessage = 'Failed to create ticket.';
+        this.errorMessage = messageFromHttpError(err, 'Failed to create ticket.');
+        this.toast.error(this.errorMessage);
         this.cdr.detectChanges();
       },
     });
   }
 }
-

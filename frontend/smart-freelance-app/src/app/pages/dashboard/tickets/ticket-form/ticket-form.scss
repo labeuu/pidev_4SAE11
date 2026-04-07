@@ -1,4 +1,228 @@
-.card {
-  max-width: 840px;
+@use '../../../../../styles/variables' as *;
+@use '../../../../../styles/ticket-shell' as tk;
+
+:host {
+  display: block;
 }
 
+.ticket-form-host {
+  @include tk.ticket-page-host;
+  background: linear-gradient(180deg, $neutral-50 0%, $white 12%, $neutral-50 100%);
+}
+
+.ticket-form-page {
+  max-width: min($container-xl, 48rem);
+  margin: 0 auto;
+  padding: $spacing-xl $spacing-lg $spacing-3xl;
+}
+
+.ticket-form-card {
+  background: $white;
+  border: 1px solid $neutral-200;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-md;
+  overflow: hidden;
+}
+
+.ticket-form-card__head {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-md;
+  padding: $spacing-xl $spacing-lg;
+  background: linear-gradient(135deg, rgba(227, 126, 51, 0.08) 0%, rgba(226, 61, 89, 0.06) 100%);
+  border-bottom: 1px solid $neutral-200;
+}
+
+.ticket-form-badge {
+  display: inline-block;
+  padding: $spacing-xs $spacing-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $primary-600;
+  background: rgba(227, 126, 51, 0.14);
+  border-radius: $radius-md;
+  margin-bottom: $spacing-sm;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ticket-form-title {
+  margin: 0 0 $spacing-sm;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  color: $neutral-900;
+  letter-spacing: $letter-spacing-tight;
+  line-height: $line-height-tight;
+}
+
+.ticket-form-lead {
+  margin: 0;
+  font-size: $font-size-sm;
+  color: $neutral-600;
+  max-width: 32rem;
+  line-height: $line-height-relaxed;
+}
+
+.ticket-form-back {
+  flex-shrink: 0;
+  padding: $spacing-sm $spacing-md;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $neutral-700;
+  text-decoration: none;
+  border: 1.5px solid $neutral-300;
+  border-radius: $radius-lg;
+  background: $white;
+  transition: all $transition-base;
+
+  &:hover {
+    border-color: $primary-100;
+    background: $gradient-soft;
+    color: $primary-600;
+  }
+}
+
+.ticket-form-card__body {
+  padding: $spacing-xl $spacing-lg;
+}
+
+.ticket-form-alert {
+  padding: $spacing-md $spacing-md;
+  border-radius: $radius-lg;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-lg;
+
+  &--danger {
+    background: $error-50;
+    border: 1px solid $error-200;
+    color: $error-700;
+  }
+}
+
+.ticket-form-loading {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  color: $neutral-600;
+  font-size: $font-size-sm;
+  padding: $spacing-lg 0;
+
+  &--subtle {
+    padding: $spacing-md 0 0;
+  }
+}
+
+.ticket-form-spinner {
+  @include tk.tk-spinner(1.125rem);
+
+  &--btn {
+    display: inline-block;
+    margin-right: $spacing-sm;
+    vertical-align: middle;
+  }
+}
+
+@include tk.tk-spin-keyframes;
+
+.ticket-form-fields {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-lg;
+}
+
+.ticket-field {
+  display: flex;
+  flex-direction: column;
+  gap: $spacing-xs;
+}
+
+.ticket-label-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: $spacing-md;
+}
+
+.ticket-label {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $neutral-800;
+}
+
+.ticket-char-count {
+  font-size: $font-size-xs;
+  color: $neutral-500;
+  font-variant-numeric: tabular-nums;
+}
+
+.ticket-input,
+.ticket-select {
+  font-family: $font-family;
+  font-size: $font-size-base;
+  padding: $spacing-sm $spacing-md;
+  border: 1.5px solid $neutral-300;
+  border-radius: $radius-lg;
+  background: $white;
+  color: $neutral-900;
+  transition: border-color $transition-fast, box-shadow $transition-fast;
+
+  &:focus {
+    outline: none;
+    border-color: $primary-500;
+    box-shadow: 0 0 0 3px rgba(227, 126, 51, 0.2);
+  }
+
+  &::placeholder {
+    color: $neutral-400;
+  }
+}
+
+.ticket-select {
+  cursor: pointer;
+}
+
+.ticket-hint {
+  margin: 0;
+  font-size: $font-size-xs;
+  color: $neutral-500;
+
+  &--error {
+    color: $error-600;
+  }
+}
+
+.ticket-form-actions {
+  display: flex;
+  justify-content: flex-end;
+  padding-top: $spacing-sm;
+}
+
+.ticket-btn-primary {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  padding: $spacing-md $spacing-xl;
+  font-family: $font-family;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $white;
+  background: $gradient-primary;
+  border: none;
+  border-radius: $radius-lg;
+  cursor: pointer;
+  box-shadow: $shadow-sm;
+  transition: background $transition-base, box-shadow $transition-base, transform 0.1s ease;
+
+  &:hover:not(:disabled) {
+    background: $gradient-primary-hover;
+    box-shadow: $shadow-primary;
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+}

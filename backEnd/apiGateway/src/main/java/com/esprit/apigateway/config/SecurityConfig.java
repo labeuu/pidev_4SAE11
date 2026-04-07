@@ -35,6 +35,7 @@ public class SecurityConfig {
                                 || path.startsWith("/portfolio/")
                                 || path.startsWith("/contract/")
                                 || path.startsWith("/vendor/")
+                                || path.startsWith("/ticket/")
                                 || path.startsWith("/keycloak-auth/")
                                 || path.startsWith("/user/api/users/email/")
                                 || path.startsWith("/user/api/users/avatars/")
