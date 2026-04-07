@@ -312,7 +312,8 @@
         <textarea [(ngModel)]="newCommentText[cf.id]" rows="2" class="comment-textarea"
                   [placeholder]="isTranscribing[cf.id] ? 'Transcribing…' : 'Write a message…'"></textarea>
         <div class="comment-actions-row">
-          <!-- Mic button -->
+          @if (showAiUi) {
+          <!-- Mic button (dictée) -->
           @if (!isRecording[cf.id] && !isTranscribing[cf.id]) {
             <button class="btn-mic" (click)="startRecording(cf.id)" title="Record voice message">
               🎤
@@ -325,6 +326,7 @@
           }
           @if (isTranscribing[cf.id]) {
             <span class="transcribing-indicator">Converting…</span>
+          }
           }
           <!-- Send button -->
           <button class="btn-post-comment" (click)="postComment(cf.id)"

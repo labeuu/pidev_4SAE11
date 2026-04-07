@@ -96,6 +96,13 @@ public class Offer {
     @Column(nullable = false)
     private Boolean isActive = true;
 
+    /**
+     * Si true : seuls les clients ayant un agrément fournisseur actif avec ce freelancer peuvent postuler
+     * (vérif. via microservice Vendor + domaine de l'offre).
+     */
+    @Column(nullable = false)
+    private Boolean requiresVendorApproval = false;
+
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -62,6 +62,8 @@ export interface OfferRequest {
   tags?: string;
   imageUrl?: string;
   isFeatured?: boolean;
+  /** Réservé aux freelancers avec agrément fournisseur (client). */
+  requiresVendorApproval?: boolean;
 }
 
 export interface OfferFilterRequest {

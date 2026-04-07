@@ -8,7 +8,7 @@
   <div class="header">
     <h2>My Skills</h2>
     <div class="header-actions">
-      <button class="btn-outline" (click)="openHistoryModal()">
+      <button *ngIf="showAiUi" class="btn-outline" (click)="openHistoryModal()">
         <span>📋</span>
         <span>Test History</span>
       </button>
@@ -76,7 +76,7 @@
 
           <!-- Footer action -->
           <div class="card-footer">
-            <button *ngIf="!skill.verified" class="verify-btn" (click)="verifySkill(skill.id!)">
+            <button *ngIf="showAiUi && !skill.verified" class="verify-btn" (click)="verifySkill(skill.id!)">
               <svg width="13" height="13" viewBox="0 0 24 24" fill="currentColor">
                 <path d="M12 2l1.9 5.8L20 9.2l-5.3 3.9 1.9 5.8L12 15l-4.6 3.9 1.9-5.8L4 9.2l6.1-1.4z"/>
               </svg>
@@ -216,7 +216,7 @@
   <!-- ════════════════════════════════════════
        AI Test Modal
        ════════════════════════════════════════ -->
-  <div class="modal" *ngIf="showTestModal" (click)="!isGeneratingTest && !currentTest ? closeTestModal() : null">
+  <div class="modal" *ngIf="showAiUi && showTestModal" (click)="!isGeneratingTest && !currentTest ? closeTestModal() : null">
     <div class="modal-content test-content" (click)="$event.stopPropagation()">
 
       <!-- ── Loading State ── -->
@@ -311,7 +311,7 @@
   <!-- ════════════════════════════════════════
        Test History Modal
        ════════════════════════════════════════ -->
-  <div class="modal" *ngIf="showHistoryModal" (click)="closeHistoryModal()">
+  <div class="modal" *ngIf="showAiUi && showHistoryModal" (click)="closeHistoryModal()">
     <div class="modal-content history-content" (click)="$event.stopPropagation()">
       <h3>📋 My Test History</h3>
 

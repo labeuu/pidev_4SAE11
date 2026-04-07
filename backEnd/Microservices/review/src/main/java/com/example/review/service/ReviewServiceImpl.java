@@ -136,6 +136,18 @@ public class ReviewServiceImpl implements ReviewService {
         return buildStatsFromCounts(reviewRepository.ratingCountsByReviewerAndReviewee(null, revieweeId));
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public ReviewStats getStatsByReviewerAndReviewee(Long reviewerId, Long revieweeId) {
+        return buildStatsFromCounts(reviewRepository.ratingCountsByReviewerAndReviewee(reviewerId, revieweeId));
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Review> getReviewsByReviewerAndReviewee(Long reviewerId, Long revieweeId) {
+        return reviewRepository.findByReviewerIdAndRevieweeIdOrderByCreatedAtDesc(reviewerId, revieweeId);
+    }
+
     private static ReviewStats buildStatsFromCounts(List<Object[]> rows) {
         Map<Integer, Long> countByRating = new HashMap<>();
         for (int i = 1; i <= 5; i++) {
