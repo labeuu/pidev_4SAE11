@@ -96,6 +96,15 @@ export const routes: Routes = [
       { path: 'my-offer-applications', loadComponent: () => import('./pages/dashboard/my-offer-applications/my-offer-applications').then(m => m.MyOfferApplications) },
       { path: 'design-brief', loadComponent: () => import('./pages/dashboard/design-brief/design-brief').then(m => m.DesignBrief), title: 'Design Brief Builder' },
       {
+        path: 'tickets',
+        children: [
+          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/dashboard/tickets/ticket-user/ticket-user').then(m => m.TicketUser) },
+          { path: 'new', loadComponent: () => import('./pages/dashboard/tickets/ticket-form/ticket-form').then(m => m.TicketForm) },
+          { path: ':id', loadComponent: () => import('./pages/dashboard/tickets/ticket-detail/ticket-detail').then(m => m.TicketDetail) },
+          { path: ':id/edit', loadComponent: () => import('./pages/dashboard/tickets/ticket-form/ticket-form').then(m => m.TicketForm) },
+        ]
+      },
+      {
         path: 'reviews',
         children: [
           { path: '', pathMatch: 'full', loadComponent: () => import('./pages/dashboard/reviews/my-reviews/my-reviews').then(m => m.MyReviews) },
@@ -222,6 +231,13 @@ export const routes: Routes = [
 
       { path: 'planning', loadComponent: () => import('./pages/admin/planning-management/planning-management').then(m => m.PlanningManagement) },
       { path: 'tasks', loadComponent: () => import('./pages/admin/task-management/task-management').then(m => m.TaskManagement) },
+      {
+        path: 'tickets',
+        children: [
+          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/admin/ticket-management/ticket-list/ticket-list').then(m => m.AdminTicketList) },
+          { path: ':id', loadComponent: () => import('./pages/admin/ticket-management/ticket-detail/ticket-detail').then(m => m.AdminTicketDetail) },
+        ]
+      },
       { path: 'calendar', loadComponent: () => import('./pages/dashboard/calendar/calendar').then(m => m.Calendar), title: 'Calendar' },
       { path: 'github', loadComponent: () => import('./pages/dashboard/github/github').then(m => m.Github), title: 'GitHub' },
       { path: 'evaluations', loadComponent: () => import('./pages/admin/admin-dashboard/admin-dashboard').then(m => m.AdminDashboard) },

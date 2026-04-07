@@ -1,0 +1,82 @@
+<div class="container py-4" *ngIf="ticket as t">
+  <div class="d-flex align-items-start justify-content-between gap-3 mb-3">
+    <div>
+      <div class="text-muted mb-1">Ticket #{{ t.id }}</div>
+      <h2 class="mb-2">{{ t.subject }}</h2>
+      <div class="d-flex gap-2 align-items-center">
+        <span class="badge" [ngClass]="statusBadge(t.status)">{{ t.status }}</span>
+        <span class="badge" [ngClass]="priorityBadge(t.priority)">{{ t.priority }}</span>
+        <span class="text-muted">Last activity: {{ t.lastActivityAt | date:'medium' }}</span>
+      </div>
+    </div>
+    <div class="d-flex gap-2">
+      <a class="btn btn-outline-secondary" routerLink="/dashboard/tickets">Back</a>
+      <a class="btn btn-outline-primary" *ngIf="t.status === 'OPEN'" [routerLink]="['/dashboard/tickets', t.id, 'edit']">
+        Edit
+      </a>
+    </div>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+
+  <div class="chat card mb-3">
+    <div class="card-body">
+      <div *ngFor="let r of replies" class="bubble-row" [class.mine]="isMine(r)">
+        <div class="bubble">
+          <div class="bubble-meta">
+            <span class="sender">{{ r.sender }}</span>
+            <span class="time text-muted">{{ r.createdAt | date:'short' }}</span>
+          </div>
+          <div class="bubble-text">{{ r.message }}</div>
+          <div class="bubble-actions mt-2" *ngIf="canEditReply(r)">
+            <button class="btn btn-sm btn-outline-secondary me-2" (click)="startEdit(r)" *ngIf="editingReplyId !== r.id">
+              Edit
+            </button>
+            <button class="btn btn-sm btn-outline-danger" (click)="deleteReply(r)" [disabled]="deletingReplyId === r.id">
+              Delete
+            </button>
+          </div>
+
+          <div class="mt-2" *ngIf="editingReplyId === r.id">
+            <form [formGroup]="editForm" (ngSubmit)="saveEdit()">
+              <textarea class="form-control mb-2" rows="3" formControlName="message"></textarea>
+              <div class="d-flex gap-2 justify-content-end">
+                <button class="btn btn-sm btn-outline-secondary" type="button" (click)="cancelEdit()">Cancel</button>
+                <button class="btn btn-sm btn-primary" type="submit" [disabled]="savingEdit">Save</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+      <div *ngIf="replies.length === 0" class="text-muted">No replies yet.</div>
+    </div>
+  </div>
+
+  <form [formGroup]="replyForm" class="card" (ngSubmit)="sendReply()">
+    <div class="card-body">
+      <div class="mb-2">
+        <textarea
+          class="form-control"
+          rows="3"
+          placeholder="Type a reply…"
+          formControlName="message"
+          [disabled]="sending || t.status === 'CLOSED'"></textarea>
+      </div>
+      <div class="d-flex justify-content-between align-items-center">
+        <div class="text-muted small" *ngIf="t.status === 'CLOSED'">Ticket is closed. Replies are disabled.</div>
+        <button class="btn btn-primary ms-auto" type="submit" [disabled]="sending || t.status === 'CLOSED'">
+          Send
+        </button>
+      </div>
+    </div>
+  </form>
+</div>
+
+<div class="container py-4" *ngIf="!ticket && !loading">
+  <div class="alert alert-warning mb-0">Ticket not found.</div>
+</div>
+
+<div class="container py-4" *ngIf="loading">
+  <div class="text-muted">Loading…</div>
+</div>
+

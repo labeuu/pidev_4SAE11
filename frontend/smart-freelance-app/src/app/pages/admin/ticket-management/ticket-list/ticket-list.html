@@ -1,0 +1,44 @@
+<div class="container py-4">
+  <div class="d-flex align-items-center justify-content-between mb-3">
+    <h2 class="mb-0">Support tickets</h2>
+    <button class="btn btn-outline-secondary" (click)="loadTickets()" [disabled]="loading">Refresh</button>
+  </div>
+
+  <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+
+  <div *ngIf="loading" class="text-muted">Loading…</div>
+
+  <div *ngIf="!loading && tickets.length === 0" class="alert alert-info mb-0">
+    No tickets found.
+  </div>
+
+  <div *ngIf="!loading && tickets.length > 0" class="table-responsive">
+    <table class="table align-middle">
+      <thead>
+        <tr>
+          <th>ID</th>
+          <th>Subject</th>
+          <th>User</th>
+          <th>Status</th>
+          <th>Priority</th>
+          <th>Last activity</th>
+          <th></th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr *ngFor="let t of tickets">
+          <td>#{{ t.id }}</td>
+          <td class="text-truncate" style="max-width: 420px">{{ t.subject }}</td>
+          <td>{{ t.userId }}</td>
+          <td><span class="badge" [ngClass]="badgeClassStatus(t.status)">{{ t.status }}</span></td>
+          <td><span class="badge" [ngClass]="badgeClassPriority(t.priority)">{{ t.priority }}</span></td>
+          <td class="text-muted">{{ t.lastActivityAt | date:'medium' }}</td>
+          <td class="text-end">
+            <button class="btn btn-sm btn-primary" (click)="openTicket(t)">Open</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
+

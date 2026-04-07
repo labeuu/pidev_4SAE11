@@ -123,6 +123,14 @@ spring:
           filters:
             - StripPrefix=1
 
+        # Ticket: support tickets (port 8093)
+        - id: ticket
+          uri: http://localhost:8093
+          predicates:
+            - Path=/ticket/**
+          filters:
+            - StripPrefix=1
+
         # Task AI: match first — metadata response-timeout in milliseconds (4h) for slow Ollama.
         - id: task-ai
           uri: http://localhost:8091
