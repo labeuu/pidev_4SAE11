@@ -1,0 +1,45 @@
+.chat {
+  max-height: 520px;
+  overflow: auto;
+}
+
+.bubble-row {
+  display: flex;
+  justify-content: flex-start;
+  margin-bottom: 12px;
+}
+
+.bubble-row.mine {
+  justify-content: flex-end;
+}
+
+.bubble {
+  max-width: 720px;
+  background: var(--bg-hover);
+  border: 1px solid var(--border-light);
+  border-radius: 14px;
+  padding: 10px 12px;
+  box-shadow: var(--shadow-sm);
+}
+
+.bubble-row.mine .bubble {
+  background: var(--primary-light);
+}
+
+.bubble-meta {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  margin-bottom: 6px;
+  font-size: 12px;
+}
+
+.sender {
+  font-weight: 600;
+}
+
+.bubble-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
