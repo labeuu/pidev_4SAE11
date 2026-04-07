@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, map, of } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 const TICKET_API = `${environment.apiGatewayUrl}/ticket`;
@@ -31,35 +31,31 @@ export interface UpdateTicketRequest {
 export class TicketService {
   constructor(private http: HttpClient) {}
 
-  create(body: CreateTicketRequest): Observable<Ticket | null> {
-    return this.http.post<Ticket>(`${TICKET_API}/tickets`, body).pipe(catchError(() => of(null)));
+  create(body: CreateTicketRequest): Observable<Ticket> {
+    return this.http.post<Ticket>(`${TICKET_API}/tickets`, body);
   }
 
   getAll(): Observable<Ticket[]> {
-    return this.http.get<Ticket[]>(`${TICKET_API}/tickets`).pipe(catchError(() => of([])));
+    return this.http.get<Ticket[]>(`${TICKET_API}/tickets`);
   }
 
-  getById(id: number): Observable<Ticket | null> {
-    return this.http.get<Ticket>(`${TICKET_API}/tickets/${id}`).pipe(catchError(() => of(null)));
+  getById(id: number): Observable<Ticket> {
+    return this.http.get<Ticket>(`${TICKET_API}/tickets/${id}`);
   }
 
   getByUserId(userId: number): Observable<Ticket[]> {
-    return this.http.get<Ticket[]>(`${TICKET_API}/tickets/user/${userId}`).pipe(catchError(() => of([])));
+    return this.http.get<Ticket[]>(`${TICKET_API}/tickets/user/${userId}`);
   }
 
-  update(id: number, body: UpdateTicketRequest): Observable<Ticket | null> {
-    return this.http.put<Ticket>(`${TICKET_API}/tickets/${id}`, body).pipe(catchError(() => of(null)));
+  update(id: number, body: UpdateTicketRequest): Observable<Ticket> {
+    return this.http.put<Ticket>(`${TICKET_API}/tickets/${id}`, body);
   }
 
-  close(id: number): Observable<Ticket | null> {
-    return this.http.put<Ticket>(`${TICKET_API}/tickets/${id}/close`, {}).pipe(catchError(() => of(null)));
+  close(id: number): Observable<Ticket> {
+    return this.http.put<Ticket>(`${TICKET_API}/tickets/${id}/close`, {});
   }
 
-  delete(id: number): Observable<boolean> {
-    return this.http.delete<void>(`${TICKET_API}/tickets/${id}`).pipe(
-      map(() => true),
-      catchError(() => of(false))
-    );
+  delete(id: number): Observable<void> {
+    return this.http.delete<void>(`${TICKET_API}/tickets/${id}`);
   }
 }
-

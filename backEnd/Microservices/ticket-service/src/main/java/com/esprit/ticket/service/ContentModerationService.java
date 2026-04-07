@@ -1,13 +1,24 @@
 package com.esprit.ticket.service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpEntity;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpMethod;
+import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriUtils;
+import org.springframework.web.util.UriComponentsBuilder;
 
-import java.nio.charset.StandardCharsets;
+import java.net.URI;
 
+/**
+ * Profanity filtering via PurgoMalum ({@code GET /plain}) — one round-trip; returns censored plain text.
+ *
+ * @see <a href="https://www.purgomalum.com">PurgoMalum</a>
+ */
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ContentModerationService {
@@ -17,24 +28,34 @@ public class ContentModerationService {
     @Value("${app.moderation.base-url}")
     private String moderationBaseUrl;
 
+    @Value("${app.moderation.enabled:true}")
+    private boolean moderationEnabled;
+
     public String censorIfProfane(String input) {
-        if (input == null || input.isBlank()) return input;
+        if (!moderationEnabled || input == null || input.isBlank()) {
+            return input;
+        }
         try {
             String base = moderationBaseUrl.replaceAll("/$", "");
-            String encoded = UriUtils.encodeQueryParam(input, StandardCharsets.UTF_8);
-            String containsUrl = base + "/containsprofanity?text=" + encoded;
-            String contains = restTemplate.getForObject(containsUrl, String.class);
-            if (contains == null) return input;
-            boolean profane = "true".equalsIgnoreCase(contains.trim());
-            if (!profane) return input;
+            URI uri = UriComponentsBuilder.fromUriString(base + "/plain")
+                    .queryParam("text", input)
+                    .build()
+                    .toUri();
 
-            String plainUrl = base + "/plain?text=" + encoded;
-            String censored = restTemplate.getForObject(plainUrl, String.class);
-            return (censored == null || censored.isBlank()) ? input : censored;
+            HttpHeaders headers = new HttpHeaders();
+            headers.set(HttpHeaders.USER_AGENT, "FreelanciaTicketService/1.0");
+            ResponseEntity<String> response = restTemplate.exchange(
+                    uri, HttpMethod.GET, new HttpEntity<>(headers), String.class);
+
+            if (!response.getStatusCode().is2xxSuccessful() || response.getBody() == null) {
+                log.warn("Moderation service returned {} or empty body; skipping filter.", response.getStatusCode());
+                return input;
+            }
+            String filtered = response.getBody().trim();
+            return filtered.isEmpty() ? input : filtered;
         } catch (Exception e) {
-            // Best-effort moderation: never fail ticket creation due to moderation outage.
+            log.warn("Profanity filter skipped (moderation unreachable): {}", e.toString());
             return input;
         }
     }
 }
-

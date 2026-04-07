@@ -202,6 +202,14 @@
 
         }
 
+        @if (auth.isClient() || auth.isFreelancer()) {
+          <a routerLink="/dashboard/tickets"
+             class="nav-direct"
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{ exact: false }"
+             (click)="closeDropdown()">Support</a>
+        }
+
         <!-- Reviews dropdown (both roles) -->
         <div class="nav-group" role="none">
           <button class="nav-trigger"
@@ -506,6 +514,9 @@
 
         <div class="mobile-section">
           <span class="mobile-section-label">Community</span>
+          @if (auth.isClient() || auth.isFreelancer()) {
+            <a routerLink="/dashboard/tickets" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Support</a>
+          }
           <a routerLink="/dashboard/reviews" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Reviews</a>
         </div>
 

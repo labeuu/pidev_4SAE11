@@ -123,9 +123,9 @@ spring:
           filters:
             - StripPrefix=1
 
-        # Ticket: support tickets (port 8093)
+        # Ticket: support tickets (must match ticket-service server.port)
         - id: ticket
-          uri: http://localhost:8093
+          uri: http://localhost:8094
           predicates:
             - Path=/ticket/**
           filters:

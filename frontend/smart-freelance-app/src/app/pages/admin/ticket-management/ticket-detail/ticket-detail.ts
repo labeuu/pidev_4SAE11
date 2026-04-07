@@ -6,6 +6,10 @@ import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angula
 import { AuthService } from '../../../../core/services/auth.service';
 import { Ticket, TicketService } from '../../../../core/services/ticket.service';
 import { ReplyService, TicketReply } from '../../../../core/services/reply.service';
+import { UserService } from '../../../../core/services/user.service';
+import { ToastService } from '../../../../core/services/toast.service';
+import { toastSuccessWithOptionalFilterNote } from '../../../../core/utils/content-sanitized-notice.util';
+import { messageFromHttpError } from '../../../../core/utils/http-error.util';
 
 @Component({
   selector: 'app-admin-ticket-detail',
@@ -17,6 +21,7 @@ import { ReplyService, TicketReply } from '../../../../core/services/reply.servi
 export class AdminTicketDetail implements OnInit {
   ticket: Ticket | null = null;
   replies: TicketReply[] = [];
+  ownerLabel = '';
   loading = true;
   errorMessage = '';
 
@@ -31,7 +36,9 @@ export class AdminTicketDetail implements OnInit {
     private fb: FormBuilder,
     private ticketService: TicketService,
     private replyService: ReplyService,
+    private userService: UserService,
     private auth: AuthService,
+    private toast: ToastService,
     private cdr: ChangeDetectorRef
   ) {
     this.replyForm = this.fb.group({
@@ -54,31 +61,43 @@ export class AdminTicketDetail implements OnInit {
     this.ticketService.getById(id).subscribe({
       next: (t) => {
         this.ticket = t;
-        if (!t) {
-          this.errorMessage = 'Ticket not found.';
-          this.loading = false;
-          this.cdr.detectChanges();
-          return;
-        }
+        this.resolveOwnerLabel(t.userId);
+        this.updateReplyFormDisabledState();
         this.loadReplies(t.id);
       },
-      error: () => {
-        this.errorMessage = 'Failed to load ticket.';
+      error: (err: unknown) => {
+        this.ticket = null;
+        this.errorMessage = messageFromHttpError(err, 'Failed to load ticket.');
         this.loading = false;
         this.cdr.detectChanges();
       },
     });
   }
 
+  private resolveOwnerLabel(userId: number): void {
+    this.ownerLabel = `User #${userId}`;
+    this.userService.getById(userId).subscribe({
+      next: (u) => {
+        if (u) {
+          const name = `${u.firstName} ${u.lastName}`.trim();
+          this.ownerLabel = name ? `${name} (${u.email})` : u.email;
+        }
+        this.cdr.detectChanges();
+      },
+      error: () => this.cdr.detectChanges(),
+    });
+  }
+
   loadReplies(ticketId: number): void {
     this.replyService.getByTicketId(ticketId).subscribe({
       next: (r) => {
-        this.replies = r ?? [];
+        this.replies = r;
         this.loading = false;
+        this.updateReplyFormDisabledState();
         this.cdr.detectChanges();
       },
-      error: () => {
-        this.errorMessage = 'Failed to load replies.';
+      error: (err: unknown) => {
+        this.errorMessage = messageFromHttpError(err, 'Failed to load replies.');
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -90,41 +109,54 @@ export class AdminTicketDetail implements OnInit {
       this.replyForm.markAllAsTouched();
       return;
     }
-    const msg = String(this.replyForm.value.message || '').trim();
+    const msg = String(this.replyForm.getRawValue().message || '').trim();
     if (!msg) return;
 
     this.sending = true;
+    this.updateReplyFormDisabledState();
     this.replyService.create({ ticketId: this.ticket.id, message: msg }).subscribe({
-      next: (created) => {
+      next: (reply) => {
         this.sending = false;
-        if (created) {
-          this.replyForm.reset({ message: '' });
-          this.load(this.ticket!.id);
-        } else {
-          this.errorMessage = 'Failed to send reply.';
-        }
-        this.cdr.detectChanges();
+        this.replyForm.reset({ message: '' });
+        this.updateReplyFormDisabledState();
+        toastSuccessWithOptionalFilterNote(this.toast, msg, reply.message, 'Reply sent.');
+        this.load(this.ticket!.id);
       },
-      error: () => {
+      error: (err: unknown) => {
         this.sending = false;
-        this.errorMessage = 'Failed to send reply.';
+        this.updateReplyFormDisabledState();
+        this.errorMessage = messageFromHttpError(err, 'Failed to send reply.');
         this.cdr.detectChanges();
       },
     });
   }
 
+  private updateReplyFormDisabledState(): void {
+    const c = this.replyForm.get('message');
+    if (!c) return;
+    const block = this.sending || this.ticket?.status === 'CLOSED';
+    if (block) {
+      c.disable({ emitEvent: false });
+    } else {
+      c.enable({ emitEvent: false });
+    }
+  }
+
   closeTicket(): void {
-    if (!this.ticket?.id) return;
+    if (!this.ticket?.id || this.ticket.status === 'CLOSED') return;
+    if (!confirm('Close this ticket? The customer will not be able to add new replies.')) return;
     this.closing = true;
     this.ticketService.close(this.ticket.id).subscribe({
       next: (t) => {
         this.closing = false;
-        if (t) this.ticket = t;
+        this.ticket = t;
+        this.updateReplyFormDisabledState();
+        this.toast.success('Ticket closed.');
         this.cdr.detectChanges();
       },
-      error: () => {
+      error: (err: unknown) => {
         this.closing = false;
-        this.errorMessage = 'Failed to close ticket.';
+        this.errorMessage = messageFromHttpError(err, 'Failed to close ticket.');
         this.cdr.detectChanges();
       },
     });
@@ -132,17 +164,17 @@ export class AdminTicketDetail implements OnInit {
 
   deleteTicket(): void {
     if (!this.ticket?.id) return;
+    if (!confirm('Delete this ticket and all replies permanently? This cannot be undone.')) return;
     this.deleting = true;
     this.ticketService.delete(this.ticket.id).subscribe({
-      next: (ok) => {
+      next: () => {
         this.deleting = false;
-        if (ok) this.router.navigate(['/admin/tickets']);
-        else this.errorMessage = 'Failed to delete ticket.';
-        this.cdr.detectChanges();
+        this.toast.success('Ticket deleted.');
+        this.router.navigate(['/admin/tickets']);
       },
-      error: () => {
+      error: (err: unknown) => {
         this.deleting = false;
-        this.errorMessage = 'Failed to delete ticket.';
+        this.errorMessage = messageFromHttpError(err, 'Failed to delete ticket.');
         this.cdr.detectChanges();
       },
     });
@@ -153,14 +185,20 @@ export class AdminTicketDetail implements OnInit {
     return myId != null && r.authorUserId === myId;
   }
 
-  statusBadge(status: string): string {
-    return status === 'OPEN' ? 'bg-success' : 'bg-danger';
+  badgeStatusClasses(status: string): Record<string, boolean> {
+    return {
+      'tk-pill': true,
+      'tk-pill--open': status === 'OPEN',
+      'tk-pill--closed': status !== 'OPEN',
+    };
   }
 
-  priorityBadge(p: string): string {
-    if (p === 'HIGH') return 'bg-danger';
-    if (p === 'MEDIUM') return 'bg-warning text-dark';
-    return 'bg-primary';
+  badgePriorityClasses(p: string): Record<string, boolean> {
+    return {
+      'tk-pill': true,
+      'tk-pill--high': p === 'HIGH',
+      'tk-pill--medium': p === 'MEDIUM',
+      'tk-pill--low': p === 'LOW' || (p !== 'HIGH' && p !== 'MEDIUM'),
+    };
   }
 }
-

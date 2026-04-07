@@ -1,9 +1,14 @@
 import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router, RouterModule } from '@angular/router';
+import { finalize } from 'rxjs/operators';
 
 import { AuthService } from '../../../../core/services/auth.service';
 import { Ticket, TicketService } from '../../../../core/services/ticket.service';
+import { ToastService } from '../../../../core/services/toast.service';
+import { messageFromHttpError } from '../../../../core/utils/http-error.util';
+
+type StatusFilter = 'ALL' | 'OPEN' | 'CLOSED';
 
 @Component({
   selector: 'app-ticket-user',
@@ -14,13 +19,16 @@ import { Ticket, TicketService } from '../../../../core/services/ticket.service'
 })
 export class TicketUser implements OnInit {
   tickets: Ticket[] = [];
+  statusFilter: StatusFilter = 'ALL';
   loading = true;
+  syncingProfile = false;
   errorMessage = '';
 
   constructor(
     private ticketService: TicketService,
     private auth: AuthService,
     private router: Router,
+    private toast: ToastService,
     private cdr: ChangeDetectorRef
   ) {}
 
@@ -29,23 +37,48 @@ export class TicketUser implements OnInit {
   }
 
   loadTickets(): void {
-    const userId = this.auth.getUserId();
-    if (!userId) {
-      this.loading = false;
-      this.errorMessage = 'Missing user profile. Please re-login.';
-      this.cdr.detectChanges();
+    this.errorMessage = '';
+    let userId = this.auth.getUserId();
+    if (userId == null) {
+      this.loading = true;
+      this.syncingProfile = true;
+      this.auth
+        .fetchUserProfile()
+        .pipe(
+          finalize(() => {
+            this.syncingProfile = false;
+            this.cdr.detectChanges();
+          })
+        )
+        .subscribe((profile) => {
+          userId = profile?.id ?? null;
+          if (userId == null) {
+            this.loading = false;
+            this.errorMessage =
+              'Your profile could not be loaded. Sign out, sign in again, then open Support.';
+            this.toast.error(this.errorMessage);
+            return;
+          }
+          this.fetchTicketsForUser(userId);
+        });
       return;
     }
+    this.fetchTicketsForUser(userId);
+  }
+
+  private fetchTicketsForUser(userId: number): void {
     this.loading = true;
     this.errorMessage = '';
     this.ticketService.getByUserId(userId).subscribe({
       next: (tickets) => {
-        this.tickets = tickets ?? [];
+        this.tickets = tickets;
         this.loading = false;
         this.cdr.detectChanges();
       },
-      error: () => {
-        this.errorMessage = 'Failed to load tickets.';
+      error: (err: unknown) => {
+        this.errorMessage = messageFromHttpError(err, 'Failed to load tickets.');
+        this.toast.error(this.errorMessage);
+        this.tickets = [];
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -60,14 +93,29 @@ export class TicketUser implements OnInit {
     this.router.navigate(['/dashboard/tickets/new']);
   }
 
-  badgeClassStatus(status: string): string {
-    return status === 'OPEN' ? 'bg-success' : 'bg-danger';
+  setFilter(f: StatusFilter): void {
+    this.statusFilter = f;
   }
 
-  badgeClassPriority(p: string): string {
-    if (p === 'HIGH') return 'bg-danger';
-    if (p === 'MEDIUM') return 'bg-warning text-dark';
-    return 'bg-primary';
+  get filteredTickets(): Ticket[] {
+    if (this.statusFilter === 'ALL') return this.tickets;
+    return this.tickets.filter((t) => t.status === this.statusFilter);
+  }
+
+  badgeStatusClasses(status: string): Record<string, boolean> {
+    return {
+      'tk-pill': true,
+      'tk-pill--open': status === 'OPEN',
+      'tk-pill--closed': status !== 'OPEN',
+    };
+  }
+
+  badgePriorityClasses(p: string): Record<string, boolean> {
+    return {
+      'tk-pill': true,
+      'tk-pill--high': p === 'HIGH',
+      'tk-pill--medium': p === 'MEDIUM',
+      'tk-pill--low': p === 'LOW' || (p !== 'HIGH' && p !== 'MEDIUM'),
+    };
   }
 }
-

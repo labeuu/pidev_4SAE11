@@ -16,7 +16,9 @@
         <option value="$PROJECT_DIR$/backEnd/Microservices/Vendor/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Configserver/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Contract/pom.xml" />
+main
         <option value="$PROJECT_DIR$/backEnd/Microservices/Subcontracting/pom.xml" />
+ main
         <option value="$PROJECT_DIR$/backEnd/Microservices/ticket-service/pom.xml" />
       </list>
     </option>

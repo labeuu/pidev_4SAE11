@@ -97,11 +97,12 @@ export const routes: Routes = [
       { path: 'design-brief', loadComponent: () => import('./pages/dashboard/design-brief/design-brief').then(m => m.DesignBrief), title: 'Design Brief Builder' },
       {
         path: 'tickets',
+        title: 'Support',
         children: [
-          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/dashboard/tickets/ticket-user/ticket-user').then(m => m.TicketUser) },
-          { path: 'new', loadComponent: () => import('./pages/dashboard/tickets/ticket-form/ticket-form').then(m => m.TicketForm) },
-          { path: ':id', loadComponent: () => import('./pages/dashboard/tickets/ticket-detail/ticket-detail').then(m => m.TicketDetail) },
-          { path: ':id/edit', loadComponent: () => import('./pages/dashboard/tickets/ticket-form/ticket-form').then(m => m.TicketForm) },
+          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/dashboard/tickets/ticket-user/ticket-user').then(m => m.TicketUser), title: 'My tickets' },
+          { path: 'new', loadComponent: () => import('./pages/dashboard/tickets/ticket-form/ticket-form').then(m => m.TicketForm), title: 'New ticket' },
+          { path: ':id/edit', loadComponent: () => import('./pages/dashboard/tickets/ticket-form/ticket-form').then(m => m.TicketForm), title: 'Edit ticket' },
+          { path: ':id', loadComponent: () => import('./pages/dashboard/tickets/ticket-detail/ticket-detail').then(m => m.TicketDetail), title: 'Ticket' },
         ]
       },
       {

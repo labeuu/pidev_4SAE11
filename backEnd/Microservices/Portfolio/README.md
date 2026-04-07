@@ -1,5 +1,7 @@
 # 📂 Portfolio Microservice
 
+**Canonical platform doc:** [Documentation/services/portfolio.md](../../Documentation/services/portfolio.md)
+
 The **Portfolio Microservice** is a core component of the **Freelancia** platform, designed to manage freelancer profiles, skills, and professional experiences. It also features an AI-powered assessment engine to verify skills through automated technical tests.
 
 ## 🚀 Features

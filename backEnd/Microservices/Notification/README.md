@@ -1,5 +1,7 @@
 # Notification Microservice
 
+**Full documentation:** [Documentation/services/notification.md](../../Documentation/services/notification.md)
+
 Spring Boot microservice for user notifications, backed by **Firebase Firestore**.
 
 - **Port:** 8087

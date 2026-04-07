@@ -6,12 +6,18 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.RequestScope;
 import org.springframework.web.server.ResponseStatusException;
 
 import static org.springframework.http.HttpStatus.FORBIDDEN;
 import static org.springframework.http.HttpStatus.UNAUTHORIZED;
 
+/**
+ * Per-request bean so cached user id is never reused across concurrent HTTP sessions
+ * (singleton caching caused 403 "Not allowed" for {@code GET /tickets/user/{id}}).
+ */
 @Component
+@RequestScope
 @RequiredArgsConstructor
 public class CurrentUserService {
 
