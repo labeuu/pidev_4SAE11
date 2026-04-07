@@ -8,6 +8,10 @@ spring:
     max-in-memory-size: 10MB
   cloud:
     gateway:
+      # Global Netty timeouts (Duration for response; ms for connect). Very long for slow local LLM (Task→AImodel→Ollama).
+      httpclient:
+        response-timeout: 4h
+        connect-timeout: 30000
       globalcors:
         add-to-simple-url-handler-mapping: true
         cors-configurations:
@@ -119,6 +123,18 @@ spring:
           filters:
             - StripPrefix=1
 
+        # Task AI: match first — metadata response-timeout in milliseconds (4h) for slow Ollama.
+        - id: task-ai
+          uri: http://localhost:8091
+          order: -1
+          predicates:
+            - Path=/task/api/tasks/ai/**
+          filters:
+            - StripPrefix=1
+          metadata:
+            response-timeout: 14400000
+            connect-timeout: 30000
+
         # Task: direct URL (port 8091)
         - id: task
           uri: http://localhost:8091
@@ -134,3 +150,17 @@ spring:
             - Path=/vendor/**
           filters:
             - StripPrefix=1
+          metadata:
+            response-timeout: 14400000
+            connect-timeout: 30000
+
+        # AImodel (Node): discovered via Eureka, port 8092
+        - id: aimodel
+          uri: lb://AIMODEL
+          predicates:
+            - Path=/aimodel/**
+          filters:
+            - StripPrefix=1
+          metadata:
+            response-timeout: 14400000
+            connect-timeout: 30000

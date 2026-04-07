@@ -1,10 +1,13 @@
 <div class="project-tasks-page">
-  <header class="page-header">
+  <header class="page-header page-header--client">
+    <div class="page-header__glow" aria-hidden="true"></div>
     <div class="page-header__top">
       <span class="page-badge">Client</span>
     </div>
     <h1 class="page-title">Project Tasks</h1>
-    <p class="page-subtitle">View tasks for your projects. Your freelancer manages and completes them. Refresh to see updates.</p>
+    <p class="page-subtitle">
+      Track progress across your projects. Freelancers update execution; you stay aligned with a clear overview, filters, and status at a glance.
+    </p>
   </header>
 
   @if (!isClient) {
@@ -18,128 +21,570 @@
     }
 
     @if (myProjects.length === 0) {
-      <div class="state-box state-box--empty">
-        <p class="state-box__text">You have no projects yet.</p>
-        <p class="state-box__hint">Create a project first to add tasks.</p>
+      <div class="state-box state-box--empty state-box--hero">
+        <div class="state-box__visual state-box__visual--folder" aria-hidden="true"></div>
+        <p class="state-box__text">No projects yet</p>
+        <p class="state-box__hint">Create a project from your dashboard, then task activity will show up here for your freelancers.</p>
       </div>
     } @else {
-      <div class="project-selector" [formGroup]="projectForm">
-        <label for="project-select">Project</label>
-        <select id="project-select" formControlName="projectId" (change)="onProjectChange()">
-          @for (p of myProjects; track p.id) {
-            <option [ngValue]="p.id">{{ getProjectTitle(p) }}</option>
-          }
-        </select>
+      <div class="project-toolbar" [formGroup]="projectForm">
+        <div class="project-toolbar__lead" aria-hidden="true">
+          <span class="project-toolbar__glyph"></span>
+        </div>
+        <div class="project-toolbar__body">
+          <label class="project-toolbar__label" for="project-select">Active project</label>
+          <select
+            id="project-select"
+            class="project-toolbar__select"
+            formControlName="projectId"
+            (change)="onProjectChange()"
+          >
+            @for (p of myProjects; track p.id) {
+              <option [ngValue]="p.id">{{ getProjectTitle(p) }}</option>
+            }
+          </select>
+        </div>
       </div>
 
-      @if (selectedProjectId && tasks.length > 0) {
-        <div class="progress-bar-wrap" aria-live="polite">
-          <div class="progress-bar">
-            <div class="progress-bar__fill" [style.width.%]="completionPercentage"></div>
-          </div>
-          <p class="progress-bar__label">{{ doneCount }} of {{ tasks.length }} tasks completed ({{ completionPercentage | number:'1.0-0' }}%)</p>
-        </div>
-
-        <section class="stats-section" aria-labelledby="stats-heading">
-          <h2 id="stats-heading" class="stats-section__title">
-            <span class="stats-section__icon">📊</span>
-            Task Statistics
-          </h2>
-
-          <div class="stats-cards">
-            <div class="stat-card">
-              <span class="stat-card__value">{{ tasks.length }}</span>
-              <span class="stat-card__label">Total</span>
-            </div>
-            <div class="stat-card stat-card--done">
-              <span class="stat-card__value">{{ doneCount }}</span>
-              <span class="stat-card__label">Done</span>
-            </div>
-            <div class="stat-card stat-card--progress">
-              <span class="stat-card__value">{{ inProgressCount }}</span>
-              <span class="stat-card__label">In Progress</span>
-            </div>
-            <div class="stat-card stat-card--overdue" [class.stat-card--alert]="overdueCount > 0">
-              <span class="stat-card__value">{{ overdueCount }}</span>
-              <span class="stat-card__label">Overdue</span>
+      @if (selectedProjectId) {
+        <section class="task-stats-overview" aria-labelledby="project-task-stats-heading">
+          <div class="task-stats-overview__head">
+            <div class="task-stats-overview__intro">
+              <h2 id="project-task-stats-heading" class="task-stats-overview__title">Project workload overview</h2>
+              <p class="task-stats-overview__hint">
+                Totals include every task and subtask in this project. The task list below shows root tasks only (paginated), unless you open the overdue drill-down.
+              </p>
             </div>
           </div>
 
-          <div class="stats-charts">
-            <app-card class="chart-card">
-              <h3 class="chart-card__title">Status Breakdown</h3>
-              <div class="chart-wrapper chart-wrapper--doughnut">
-                <canvas baseChart
-                  [type]="'doughnut'"
-                  [data]="statusChartData"
-                  [options]="statusChartOptions">
-                </canvas>
+          @if (extendedStatsLoading && !extendedStats) {
+            <div class="task-stats-skeleton" aria-busy="true" aria-label="Loading statistics">
+              <div class="task-stats-skeleton__grid">
+                @for (i of [1, 2, 3, 4]; track i) {
+                  <div class="task-stats-skeleton__card"></div>
+                }
               </div>
-            </app-card>
-            <app-card class="chart-card">
-              <h3 class="chart-card__title">Priority Distribution</h3>
-              <div class="chart-wrapper chart-wrapper--bar">
-                <canvas baseChart
-                  [type]="'bar'"
-                  [data]="priorityChartData"
-                  [options]="priorityChartOptions">
-                </canvas>
+              <div class="task-stats-skeleton__bar"></div>
+              <div class="task-stats-skeleton__priorities"></div>
+            </div>
+          } @else if (extendedStatsError && !extendedStats) {
+            <p class="task-stats-overview__fail" role="status">Statistics could not be loaded. You can still browse tasks below.</p>
+          } @else if (extendedStats) {
+            <div class="progress-spotlight" aria-live="polite">
+              <div class="progress-spotlight__head">
+                <span class="progress-spotlight__eyebrow">Completion</span>
+                <span class="progress-spotlight__pct">{{ formatCompletionPct(extendedStats.completionPercentage) }}%</span>
               </div>
-            </app-card>
-          </div>
+              <div class="progress-bar progress-bar--elevated">
+                <div class="progress-bar__fill" [style.width.%]="extendedCompletionPct"></div>
+              </div>
+              <p class="progress-bar__label progress-spotlight__caption">
+                {{ extendedStats.doneCount ?? 0 }} of {{ extendedStats.totalTasks ?? 0 }} items done · totals include subtasks
+              </p>
+            </div>
+
+            <div class="task-stats-kpis">
+              <button
+                type="button"
+                class="task-stat-card task-stat-card--interactive task-stat-card--alert"
+                [class.task-stat-card--alert-active]="(extendedStats.overdueCount ?? 0) > 0"
+                [class.task-stat-card--selected]="isStatFocus('overdue')"
+                (click)="applyOverdueDrilldown()"
+              >
+                <span class="task-stat-card__label">Overdue</span>
+                <span class="task-stat-card__value">{{ extendedStats.overdueCount ?? 0 }}</span>
+                <span class="task-stat-card__hint">Open items past due — click to list all overdue in this project.</span>
+              </button>
+              <button
+                type="button"
+                class="task-stat-card task-stat-card--interactive"
+                [class.task-stat-card--selected]="isStatFocus('active')"
+                (click)="applyActiveDrilldown()"
+              >
+                <span class="task-stat-card__label">Active</span>
+                <span class="task-stat-card__value">{{ statsActiveOpen }}</span>
+                <span class="task-stat-card__hint">To do + in progress + in review (includes subtasks in counts) — click to list open root tasks.</span>
+              </button>
+              <button
+                type="button"
+                class="task-stat-card task-stat-card--interactive"
+                [class.task-stat-card--selected]="isStatFocus('status_DONE')"
+                (click)="applyStatusDrilldown('DONE')"
+              >
+                <span class="task-stat-card__label">Done</span>
+                <span class="task-stat-card__value">{{ extendedStats.doneCount ?? 0 }}</span>
+                <span class="task-stat-card__hint">Completed items — click to list.</span>
+              </button>
+              <button
+                type="button"
+                class="task-stat-card task-stat-card--progress task-stat-card--interactive"
+                (click)="resetStatsListView()"
+              >
+                <span class="task-stat-card__label">Completion</span>
+                <span class="task-stat-card__value">{{ formatCompletionPct(extendedStats.completionPercentage) }}%</span>
+                <div
+                  class="task-stat-card__progress-track"
+                  role="progressbar"
+                  [attr.aria-valuemin]="0"
+                  [attr.aria-valuemax]="100"
+                  [attr.aria-valuenow]="completionPctForAria(extendedStats)"
+                >
+                  <div class="task-stat-card__progress-fill" [style.width.%]="extendedStats.completionPercentage ?? 0"></div>
+                </div>
+                <span class="task-stat-card__hint">{{ extendedStats.totalTasks ?? 0 }} items total — click to reset list &amp; filters</span>
+              </button>
+            </div>
+
+            <div class="task-stats-pipeline">
+              <h3 class="task-stats-pipeline__title">Status mix</h3>
+              <p class="task-stats-pipeline__subhint">Click a segment or legend item to filter the task list by status.</p>
+              <div class="task-stats-mix" role="group" aria-label="Status mix; each segment filters the list by status">
+                @if ((extendedStats.todoCount ?? 0) > 0) {
+                  <button
+                    type="button"
+                    class="task-stats-mix__seg task-stats-mix__seg--todo task-stats-mix__hit"
+                    [style.flex-grow]="extendedStats.todoCount"
+                    [class.task-stats-mix__hit--selected]="isStatFocus('status_TODO')"
+                    (click)="applyStatusDrilldown('TODO')"
+                  ></button>
+                }
+                @if ((extendedStats.inProgressCount ?? 0) > 0) {
+                  <button
+                    type="button"
+                    class="task-stats-mix__seg task-stats-mix__seg--in-progress task-stats-mix__hit"
+                    [style.flex-grow]="extendedStats.inProgressCount"
+                    [class.task-stats-mix__hit--selected]="isStatFocus('status_IN_PROGRESS')"
+                    (click)="applyStatusDrilldown('IN_PROGRESS')"
+                  ></button>
+                }
+                @if ((extendedStats.inReviewCount ?? 0) > 0) {
+                  <button
+                    type="button"
+                    class="task-stats-mix__seg task-stats-mix__seg--in-review task-stats-mix__hit"
+                    [style.flex-grow]="extendedStats.inReviewCount"
+                    [class.task-stats-mix__hit--selected]="isStatFocus('status_IN_REVIEW')"
+                    (click)="applyStatusDrilldown('IN_REVIEW')"
+                  ></button>
+                }
+                @if ((extendedStats.doneCount ?? 0) > 0) {
+                  <button
+                    type="button"
+                    class="task-stats-mix__seg task-stats-mix__seg--done task-stats-mix__hit"
+                    [style.flex-grow]="extendedStats.doneCount"
+                    [class.task-stats-mix__hit--selected]="isStatFocus('status_DONE')"
+                    (click)="applyStatusDrilldown('DONE')"
+                  ></button>
+                }
+                @if ((extendedStats.cancelledCount ?? 0) > 0) {
+                  <button
+                    type="button"
+                    class="task-stats-mix__seg task-stats-mix__seg--cancelled task-stats-mix__hit"
+                    [style.flex-grow]="extendedStats.cancelledCount"
+                    [class.task-stats-mix__hit--selected]="isStatFocus('status_CANCELLED')"
+                    (click)="applyStatusDrilldown('CANCELLED')"
+                  ></button>
+                }
+                @if ((extendedStats.totalTasks ?? 0) === 0) {
+                  <span class="task-stats-mix__empty">No items in this project yet</span>
+                }
+              </div>
+              <ul class="task-stats-legend">
+                <li>
+                  <button
+                    type="button"
+                    class="task-stats-legend__btn"
+                    [class.task-stats-legend__btn--selected]="isStatFocus('status_TODO')"
+                    (click)="applyStatusDrilldown('TODO')"
+                  >
+                    <span class="task-stats-legend__swatch task-stats-mix__seg--todo"></span> To do {{ extendedStats.todoCount ?? 0 }}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    class="task-stats-legend__btn"
+                    [class.task-stats-legend__btn--selected]="isStatFocus('status_IN_PROGRESS')"
+                    (click)="applyStatusDrilldown('IN_PROGRESS')"
+                  >
+                    <span class="task-stats-legend__swatch task-stats-mix__seg--in-progress"></span> In progress
+                    {{ extendedStats.inProgressCount ?? 0 }}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    class="task-stats-legend__btn"
+                    [class.task-stats-legend__btn--selected]="isStatFocus('status_IN_REVIEW')"
+                    (click)="applyStatusDrilldown('IN_REVIEW')"
+                  >
+                    <span class="task-stats-legend__swatch task-stats-mix__seg--in-review"></span> In review
+                    {{ extendedStats.inReviewCount ?? 0 }}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    class="task-stats-legend__btn"
+                    [class.task-stats-legend__btn--selected]="isStatFocus('status_DONE')"
+                    (click)="applyStatusDrilldown('DONE')"
+                  >
+                    <span class="task-stats-legend__swatch task-stats-mix__seg--done"></span> Done {{ extendedStats.doneCount ?? 0 }}
+                  </button>
+                </li>
+                <li>
+                  <button
+                    type="button"
+                    class="task-stats-legend__btn"
+                    [class.task-stats-legend__btn--selected]="isStatFocus('status_CANCELLED')"
+                    (click)="applyStatusDrilldown('CANCELLED')"
+                  >
+                    <span class="task-stats-legend__swatch task-stats-mix__seg--cancelled"></span> Cancelled
+                    {{ extendedStats.cancelledCount ?? 0 }}
+                  </button>
+                </li>
+              </ul>
+            </div>
+
+            <div class="task-stats-priorities">
+              <h3 class="task-stats-priorities__title">Priority distribution</h3>
+              <p class="task-stats-priorities__subhint">Click a row to filter root tasks in the list by priority.</p>
+              <ul class="task-stats-priority-bars" role="list">
+                @for (p of ['LOW', 'MEDIUM', 'HIGH', 'URGENT']; track p) {
+                  <li
+                    class="task-stats-priority-row task-stats-priority-row--interactive"
+                    (click)="applyPriorityDrilldown($any(p))"
+                    (keydown.enter)="applyPriorityDrilldown($any(p))"
+                    [class.task-stats-priority-row--selected]="isStatFocus('priority_' + p)"
+                    role="button"
+                    tabindex="0"
+                    [attr.aria-label]="'Filter by priority ' + p"
+                  >
+                    <span
+                      class="task-stats-priority-row__label priority-badge priority-badge--{{ p | lowercase }}"
+                      >{{ p === 'LOW' ? 'Low' : p === 'MEDIUM' ? 'Medium' : p === 'HIGH' ? 'High' : 'Urgent' }}</span
+                    >
+                    <div class="task-stats-priority-row__track">
+                      <div
+                        class="task-stats-priority-row__fill task-stats-priority-row__fill--{{ p | lowercase }}"
+                        [style.width.%]="
+                          (extendedStats.totalTasks ?? 0) > 0
+                            ? (100 * priorityBreakdownCount($any(p))) / (extendedStats.totalTasks ?? 1)
+                            : 0
+                        "
+                      ></div>
+                    </div>
+                    <span class="task-stats-priority-row__count">{{ priorityBreakdownCount($any(p)) }}</span>
+                  </li>
+                }
+              </ul>
+            </div>
+
+            @if ((extendedStats.unassignedCount ?? 0) > 0) {
+              <p class="task-stats-unassigned" role="status">
+                {{ extendedStats.unassignedCount }} item(s) in this project have no assignee — consider assigning work in My Tasks or with your
+                freelancer.
+              </p>
+            }
+
+          }
         </section>
       }
 
-      <section class="tasks-section" aria-labelledby="list-heading">
+      <section class="tasks-section" id="project-tasks-list" aria-labelledby="list-heading">
         <app-card class="card-list">
-          <div class="toolbar toolbar--flex">
-            <h2 id="list-heading" class="section-title">
-              <span class="section-title__icon">✅</span>
-              Tasks
-            </h2>
-            <div class="toolbar-filters" [formGroup]="filterForm">
-              <input type="text" class="search-input" formControlName="search" placeholder="Search by title…" (input)="onSearchInput()" />
-            </div>
-            <button type="button" class="btn-refresh" (click)="loadTasks()" [disabled]="loading" title="Refresh to see latest updates">Refresh</button>
-          </div>
-          @if (totalPages > 0 || totalElements > 0) {
-            <div class="toolbar toolbar--count">
-              <span class="toolbar-count">{{ totalElements }} total · Page {{ page + 1 }} of {{ totalPages || 1 }}</span>
-            </div>
-          }
-
-          @if (loading && tasks.length === 0) {
-            <div class="state-box state-box--loading">
-              <span class="state-box__spinner" aria-hidden="true"></span>
-              <p class="state-box__text">Loading tasks…</p>
-            </div>
-          } @else if (tasks.length === 0) {
-            <div class="state-box state-box--empty">
-              <p class="state-box__text">No tasks for this project yet.</p>
-              <p class="state-box__hint">Tasks will appear when your freelancer adds them.</p>
-            </div>
-          } @else {
-          <ul class="task-list">
-            @for (t of tasks; track t.id) {
-              <li class="task-item">
-                <div class="task-item__main">
-                  <span class="task-item__title">{{ t.title }}</span>
-                  <span class="task-item__meta">Assignee: {{ getAssigneeName(t.assigneeId) }} · Due {{ formatDueDate(t.dueDate) }}</span>
+          <div class="tasks-layout">
+            <div class="tasks-layout__sidebar">
+              <div class="toolbar toolbar--flex toolbar--stack toolbar--sidebar">
+                <h2 id="list-heading" class="section-title section-title--sidebar">
+                  <span class="section-title__icon section-title__icon--tasks" aria-hidden="true"></span>
+                  Task list
+                </h2>
+                <fieldset class="filter-panel" [formGroup]="filterForm">
+                  <legend class="filter-panel__legend">Search &amp; filters</legend>
+                  <p class="filter-panel__hint">Results update shortly after you change a field.</p>
+                  <div class="filter-panel__fields toolbar-filters toolbar-filters--grid">
+                    <div class="filter-panel__field">
+                      <label class="filter-panel__label" for="pt-search">Search</label>
+                      <input
+                        id="pt-search"
+                        type="search"
+                        class="search-input search-input--panel"
+                        formControlName="search"
+                        placeholder="Title or description…"
+                        autocomplete="off"
+                      />
+                    </div>
+                    <div class="filter-panel__field">
+                      <label class="filter-panel__label" for="pt-status">Status</label>
+                      <select id="pt-status" class="filter-select" formControlName="status">
+                        <option value="">All statuses</option>
+                        <option value="TODO">To do</option>
+                        <option value="IN_PROGRESS">In progress</option>
+                        <option value="IN_REVIEW">In review</option>
+                        <option value="DONE">Done</option>
+                        <option value="CANCELLED">Cancelled</option>
+                      </select>
+                    </div>
+                    <div class="filter-panel__field">
+                      <label class="filter-panel__label" for="pt-priority">Priority</label>
+                      <select id="pt-priority" class="filter-select" formControlName="priority">
+                        <option value="">All priorities</option>
+                        <option value="LOW">Low</option>
+                        <option value="MEDIUM">Medium</option>
+                        <option value="HIGH">High</option>
+                        <option value="URGENT">Urgent</option>
+                      </select>
+                    </div>
+                    <div class="filter-panel__field">
+                      <label class="filter-panel__label" for="pt-sort">Sort</label>
+                      <select id="pt-sort" class="filter-select" formControlName="sort">
+                        <option value="createdAt,desc">Newest first</option>
+                        <option value="createdAt,asc">Oldest first</option>
+                        <option value="dueDate,asc">Due date (soonest)</option>
+                        <option value="dueDate,desc">Due date (latest)</option>
+                      </select>
+                    </div>
+                  </div>
+                </fieldset>
+                <div class="toolbar-actions toolbar-actions--sidebar">
+                  <button
+                    type="button"
+                    class="btn-refresh btn-refresh--block btn-refresh--primary"
+                    (click)="refreshAll()"
+                    [disabled]="loading && tasks.length === 0"
+                    title="Refresh statistics and task list"
+                  >
+                    <span class="btn-refresh__glyph" aria-hidden="true"></span>
+                    Refresh all
+                  </button>
                 </div>
-                <span class="badge badge--{{ t.status | lowercase }}">{{ t.status }}</span>
-              </li>
-            }
-          </ul>
-          @if (totalPages > 1) {
-            <nav class="pagination" aria-label="Tasks pagination">
-              <button type="button" class="btn-pagination" (click)="goToPage(0)" [disabled]="page === 0 || loading" aria-label="First page">First</button>
-              <button type="button" class="btn-pagination" (click)="goToPage(page - 1)" [disabled]="page === 0 || loading" aria-label="Previous">Prev</button>
-              <span class="pagination-info">Page {{ page + 1 }} of {{ totalPages }}</span>
-              <button type="button" class="btn-pagination" (click)="goToPage(page + 1)" [disabled]="page >= totalPages - 1 || loading" aria-label="Next">Next</button>
-              <button type="button" class="btn-pagination" (click)="goToPage(totalPages - 1)" [disabled]="page >= totalPages - 1 || loading" aria-label="Last page">Last</button>
-            </nav>
-          }
-          }
+              </div>
+            </div>
+
+            <div class="tasks-layout__main" [class.tasks-layout__main--refreshing]="listRefreshing">
+              @if (showStatsDrilldownBanner) {
+                <div class="task-drilldown-banner" role="status">
+                  <p class="task-drilldown-banner__text">{{ statsDrilldownBannerMessage }}</p>
+                  <button type="button" class="task-drilldown-banner__clear" (click)="clearStatDrilldownAndReload()">
+                    Clear drill-down
+                  </button>
+                </div>
+              }
+
+              @if (listViewMode === 'overdue') {
+                <div class="toolbar toolbar--count">
+                  <span class="toolbar-count-pill toolbar-count-pill--warn">
+                    <span class="toolbar-count-pill__label">Overdue drill-down</span>
+                    <span class="toolbar-count-pill__value">{{ totalElements }} items</span>
+                  </span>
+                </div>
+              } @else if (totalPages > 0 || totalElements > 0) {
+                <div class="toolbar toolbar--count">
+                  <span class="toolbar-count-pill">
+                    <span class="toolbar-count-pill__label">Showing</span>
+                    <span class="toolbar-count-pill__value"
+                      >{{ totalElements }} root tasks · Page {{ page + 1 }} / {{ totalPages || 1 }}</span
+                    >
+                  </span>
+                </div>
+              }
+
+              @if (loading && tasks.length === 0) {
+                <div class="state-box state-box--loading">
+                  <span class="state-box__spinner" aria-hidden="true"></span>
+                  <p class="state-box__text">Loading tasks…</p>
+                  <p class="state-box__hint state-box__hint--muted">Hang tight — we are fetching the latest list.</p>
+                </div>
+              } @else if (tasks.length === 0) {
+                <div class="state-box state-box--empty state-box--inline">
+                  <div
+                    class="state-box__visual"
+                    [class.state-box__visual--calm]="listViewMode === 'overdue'"
+                    aria-hidden="true"
+                  ></div>
+                  <p class="state-box__text">
+                    {{ listViewMode === 'overdue' ? 'No overdue items right now' : 'Nothing matches these filters' }}
+                  </p>
+                  <p class="state-box__hint">
+                    {{
+                      listViewMode === 'overdue'
+                        ? 'When something slips past its due date, it will appear in this list automatically.'
+                        : 'Widen search, reset filters in the panel, or use the overview cards to jump to a status.'
+                    }}
+                  </p>
+                </div>
+              } @else {
+                <ul class="task-list task-list--cards">
+                  @for (t of tasks; track taskRowTrackId(t)) {
+                    <li
+                      class="task-block"
+                      [class.task-block--subtask-row]="taskRowLooksLikeSubtask(t)"
+                      [class.task-block--overdue]="isOverdueDueDate(t.dueDate, t.status)"
+                    >
+                      <div
+                        class="task-item task-item--with-expand"
+                        [attr.data-status]="t.status"
+                        [class.task-item--overdue]="isOverdueDueDate(t.dueDate, t.status)"
+                      >
+                        @if (!taskRowLooksLikeSubtask(t)) {
+                          <button
+                            type="button"
+                            class="btn-expand"
+                            (click)="toggleRootExpanded(t)"
+                            [attr.aria-expanded]="isRootExpanded(t.id)"
+                            [attr.aria-controls]="'client-subtasks-' + t.id"
+                            [attr.aria-label]="expandLabel(t)"
+                          >
+                            <span
+                              class="btn-expand__chevron"
+                              [class.btn-expand__chevron--open]="isRootExpanded(t.id)"
+                              aria-hidden="true"
+                            ></span>
+                          </button>
+                        } @else {
+                          <span class="btn-expand btn-expand--placeholder" aria-hidden="true"></span>
+                        }
+                        <div class="task-item__main">
+                          <div class="task-item__title-row">
+                            @if (t.subtask) {
+                              <span class="task-item__subtask-badge">Subtask</span>
+                            }
+                            <span class="task-item__title">{{ t.title }}</span>
+                          </div>
+                          <div class="task-item__meta-grid">
+                            <span class="task-item__meta-chip task-item__meta-chip--assignee">
+                              <span class="task-item__meta-key">Assignee</span>
+                              {{ getAssigneeName(t.assigneeId) }}
+                            </span>
+                            <span
+                              class="task-item__meta-chip task-item__meta-chip--due"
+                              [class.task-item__meta-chip--warn]="isOverdueDueDate(t.dueDate, t.status)"
+                            >
+                              <span class="task-item__meta-key">Schedule</span>
+                              {{ dueDateDisplayLine(t.dueDate, t.status) }}
+                            </span>
+                          </div>
+                          @if (!taskRowLooksLikeSubtask(t) && subtaskProgressForTask(t.id); as prog) {
+                            @if (prog.total > 0) {
+                              <div
+                                class="task-progress"
+                                role="group"
+                                [attr.aria-label]="'Subtasks: ' + prog.completed + ' of ' + prog.total + ' completed'"
+                              >
+                                <div
+                                  class="task-progress__track"
+                                  role="progressbar"
+                                  [attr.aria-valuemin]="0"
+                                  [attr.aria-valuemax]="prog.total"
+                                  [attr.aria-valuenow]="prog.completed"
+                                >
+                                  <div class="task-progress__fill" [style.width.%]="subtaskProgressPercent(t.id)"></div>
+                                </div>
+                                <span class="task-progress__label" aria-hidden="true">{{ prog.completed }}/{{ prog.total }}</span>
+                              </div>
+                            } @else {
+                              <span class="task-progress__none" aria-hidden="true">No subtasks yet</span>
+                            }
+                          }
+                        </div>
+                        <div class="task-item__rail">
+                          @if (isOverdueDueDate(t.dueDate, t.status)) {
+                            <span class="task-overdue-badge task-overdue-badge--sm">Overdue</span>
+                          }
+                          <span
+                            class="task-item__priority priority-badge priority-badge--{{ (t.priority || 'MEDIUM') | lowercase }}"
+                            >{{ formatPriorityLabel(t.priority) }}</span
+                          >
+                          <span class="badge badge--{{ t.status | lowercase }}">{{ friendlyTaskStatus(t.status) }}</span>
+                        </div>
+                      </div>
+                      @if (!taskRowLooksLikeSubtask(t) && isRootExpanded(t.id)) {
+                        <div
+                          class="subtasks-region subtasks-region--client"
+                          [id]="'client-subtasks-' + t.id"
+                          role="region"
+                          [attr.aria-label]="'Subtasks for ' + t.title"
+                        >
+                          @if (subtasksLoading[t.id!]) {
+                            <p class="subtasks-region__loading">Loading subtasks…</p>
+                          } @else if (subtasksFor(t.id).length === 0) {
+                            <p class="subtasks-region__empty">No subtasks on this task yet.</p>
+                          } @else {
+                            <p class="subtasks-region__hint">Subtasks (read-only). Your freelancer updates status.</p>
+                            <ul class="subtask-list" role="list">
+                              @for (st of subtasksFor(t.id); track st.id) {
+                                <li
+                                  class="subtask-item"
+                                  [class.subtask-item--overdue]="isOverdueDueDate(st.dueDate, st.status)"
+                                >
+                                  <div class="subtask-item__main">
+                                    <span class="subtask-item__title">{{ st.title }}</span>
+                                    <div class="subtask-item__meta-row">
+                                      <span class="subtask-item__meta"
+                                        >{{ getAssigneeName(st.assigneeId) }} ·
+                                        {{ dueDateDisplayLine(st.dueDate, st.status) }}</span
+                                      >
+                                      @if (isOverdueDueDate(st.dueDate, st.status)) {
+                                        <span class="task-overdue-badge task-overdue-badge--sm">Overdue</span>
+                                      }
+                                    </div>
+                                  </div>
+                                  <div class="subtask-item__rail">
+                                    <span
+                                      class="task-item__priority priority-badge priority-badge--{{ (st.priority || 'MEDIUM') | lowercase }}"
+                                      >{{ formatPriorityLabel(st.priority) }}</span
+                                    >
+                                    <span class="badge badge--{{ st.status | lowercase }}">{{
+                                      friendlyTaskStatus(st.status)
+                                    }}</span>
+                                  </div>
+                                </li>
+                              }
+                            </ul>
+                          }
+                        </div>
+                      }
+                    </li>
+                  }
+                </ul>
+                @if (listViewMode !== 'overdue' && totalPages > 1) {
+                  <nav class="pagination pagination--segmented" aria-label="Tasks pagination">
+                    <button type="button" class="btn-pagination" (click)="goToPage(0)" [disabled]="page === 0 || loading" aria-label="First page">
+                      First
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-pagination"
+                      (click)="goToPage(page - 1)"
+                      [disabled]="page === 0 || loading"
+                      aria-label="Previous"
+                    >
+                      Prev
+                    </button>
+                    <span class="pagination-info">Page {{ page + 1 }} of {{ totalPages }}</span>
+                    <button
+                      type="button"
+                      class="btn-pagination"
+                      (click)="goToPage(page + 1)"
+                      [disabled]="page >= totalPages - 1 || loading"
+                      aria-label="Next"
+                    >
+                      Next
+                    </button>
+                    <button
+                      type="button"
+                      class="btn-pagination"
+                      (click)="goToPage(totalPages - 1)"
+                      [disabled]="page >= totalPages - 1 || loading"
+                      aria-label="Last page"
+                    >
+                      Last
+                    </button>
+                  </nav>
+                }
+              }
+            </div>
+          </div>
         </app-card>
       </section>
     }

@@ -3,6 +3,8 @@ package com.esprit.task.dto;
 import com.esprit.task.entity.TaskPriority;
 import com.esprit.task.entity.TaskStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -17,13 +19,15 @@ import java.time.LocalDate;
 @Schema(description = "Request body for creating or updating a task")
 public class TaskRequest {
 
-    @Schema(description = "Project ID", required = true)
+    @NotNull(message = "projectId is required")
+    @Schema(description = "Project ID", requiredMode = Schema.RequiredMode.REQUIRED)
     private Long projectId;
 
     @Schema(description = "Contract ID")
     private Long contractId;
 
-    @Schema(description = "Task title", required = true)
+    @NotBlank(message = "title is required")
+    @Schema(description = "Task title", requiredMode = Schema.RequiredMode.REQUIRED)
     private String title;
 
     @Schema(description = "Task description")
@@ -43,9 +47,6 @@ public class TaskRequest {
 
     @Schema(description = "Sort order index")
     private Integer orderIndex;
-
-    @Schema(description = "Parent task ID for subtasks")
-    private Long parentTaskId;
 
     @Schema(description = "Creator user ID")
     private Long createdBy;

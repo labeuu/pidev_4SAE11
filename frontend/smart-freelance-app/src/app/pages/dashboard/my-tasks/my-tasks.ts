@@ -1,12 +1,42 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
-import { Subject, catchError, debounceTime, distinctUntilChanged, of, takeUntil } from 'rxjs';
-import { TaskService, Task, TaskRequest, TaskStatus, TaskPriority, TaskFilterParams, PageResponse } from '../../../core/services/task.service';
+import { FormsModule } from '@angular/forms';
+import {
+  Observable,
+  Subject,
+  Subscription,
+  catchError,
+  debounceTime,
+  distinctUntilChanged,
+  interval,
+  map,
+  of,
+  switchMap,
+  takeUntil,
+} from 'rxjs';
+import {
+  TaskService,
+  Task,
+  TaskRequest,
+  TaskStatus,
+  TaskPriority,
+  TaskFilterParams,
+  PageResponse,
+  AiProposedTask,
+  Subtask,
+  SubtaskRequest,
+  ProjectActivity,
+  TaskStatsExtendedDto,
+} from '../../../core/services/task.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ProjectService } from '../../../core/services/project.service';
 import { ProjectApplicationService } from '../../../core/services/project-application.service';
 import { Card } from '../../../shared/components/card/card';
+import {
+  AiModelLiveStatus,
+  AiModelStatusService,
+} from '../../../core/services/aimodel-status.service';
 
 interface ProjectOption {
   id: number;
@@ -16,24 +46,45 @@ interface ProjectOption {
 @Component({
   selector: 'app-my-tasks',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule, Card],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, Card],
   templateUrl: './my-tasks.html',
   styleUrl: './my-tasks.scss',
 })
 export class MyTasks implements OnInit, OnDestroy {
   tasks: Task[] = [];
   loading = true;
+  /** True while reloading when the list already had rows (keeps previous tasks visible). */
+  searching = false;
   errorMessage = '';
   page = 0;
   size = 10;
   totalElements = 0;
   totalPages = 0;
   projectIdToTitle: Record<number, string> = {};
-  private searchSubject$ = new Subject<string>();
+  /** Subtask completion for root tasks on the current page. */
+  subtaskProgressByTaskId: Record<number, { total: number; completed: number }> = {};
+  /** Global project order (lower index = more recently active). */
+  private projectOrderRank = new Map<number, number>();
+  projectActivityByProjectId: Record<number, ProjectActivity> = {};
+  private readonly taskLoad$ = new Subject<void>();
   private destroy$ = new Subject<void>();
   /** Projects the freelancer is associated with (has tasks or accepted application). */
   associatedProjects: ProjectOption[] = [];
   updatingStatus = false;
+  /** True while building the freelancer PDF (last 7 days ending today). */
+  workReportDownloading = false;
+
+  /** Global workload (all assigned tasks + subtasks), not tied to list filters. */
+  extendedStats: TaskStatsExtendedDto | null = null;
+  extendedStatsLoading = false;
+  extendedStatsError = false;
+
+  /** Paginated list vs full overdue list from stats drill-down. */
+  listViewMode: 'paginated' | 'overdue' = 'paginated';
+  /** When true, paginated API uses openTasksOnly (non-terminal root tasks). */
+  filterOpenTasksOnly = false;
+  /** Which stat control is reflected in the list (for highlight + banner). */
+  statsFocusKey: string | null = null;
 
   addModalOpen = false;
   adding = false;
@@ -43,13 +94,46 @@ export class MyTasks implements OnInit, OnDestroy {
   editForm: FormGroup;
   taskToDelete: Task | null = null;
   deleting = false;
+  /** Expand/collapse root tasks to load nested subtasks */
+  expandedByTaskId: Record<number, boolean> = {};
+  subtasksByTaskId: Record<number, Subtask[]> = {};
+  subtasksLoading: Record<number, boolean> = {};
+  updatingSubtaskStatus = false;
+  subtaskToDelete: { parentTaskId: number; subtask: Subtask } | null = null;
+  deletingSubtask = false;
+  /** Manual add/edit subtask modal */
+  subtaskModalParent: Task | null = null;
+  subtaskModalEditing: Subtask | null = null;
+  savingSubtask = false;
+  subtaskForm: FormGroup;
   filterForm: FormGroup;
+
+  suggestDescriptionLoading = false;
+  aiWizardOpen = false;
+  /** 'project-tasks' from toolbar/add flow; 'subtasks' from edit modal on a root task */
+  aiWizardMode: 'project-tasks' | 'subtasks' | null = null;
+  aiProjectSelectedId: number | null = null;
+  aiProposalRows: AiProposedTask[] = [];
+  aiWizardLoading = false;
+  aiWizardError = '';
+  acceptingAi = false;
+  /** When generating subtasks, parent task (root). */
+  aiSubtaskParent: Task | null = null;
+  /** After Accept-all subtasks, re-expand parent and reload subtasks once tasks refresh */
+  private pendingRevealSubtasksForTaskId: number | null = null;
+
+  /** Live pipeline: gateway → AImodel → Ollama (polled while AI wizard is open). */
+  private aiLivePollSub: Subscription | null = null;
+  aiPipelineStatus: AiModelLiveStatus | null = null;
+  aiPipelineGatewayError = false;
+  aiStatusRefreshing = false;
 
   constructor(
     private taskService: TaskService,
     public auth: AuthService,
     private projectService: ProjectService,
     private projectApplicationService: ProjectApplicationService,
+    private aiModelStatusService: AiModelStatusService,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef
   ) {
@@ -68,10 +152,66 @@ export class MyTasks implements OnInit, OnDestroy {
       priority: ['MEDIUM' as TaskPriority],
       dueDate: [null as string | null],
     });
-    this.filterForm = this.fb.group({ search: [''] });
+    this.filterForm = this.fb.group({
+      search: [''],
+      status: [''],
+      priority: [''],
+      projectId: [null as number | string | null],
+      sort: ['createdAt,desc'],
+    });
+    this.subtaskForm = this.fb.group({
+      title: ['', Validators.required],
+      description: [''],
+      status: ['TODO' as TaskStatus],
+      priority: ['MEDIUM' as TaskPriority],
+      dueDate: [null as string | null],
+    });
   }
 
   /** Projects the freelancer can add tasks to (only those they're associated with via tasks or accepted application). */
+  /** Tasks grouped by project for sectioned layout */
+  get projectTaskGroups(): { projectId: number; title: string; tasks: Task[] }[] {
+    const map = new Map<number, Task[]>();
+    for (const t of this.displayTasks) {
+      const pid = t.projectId;
+      if (pid == null) continue;
+      if (!map.has(pid)) map.set(pid, []);
+      map.get(pid)!.push(t);
+    }
+    const rank = (pid: number) => this.projectOrderRank.get(pid) ?? 10_000;
+    return [...map.entries()]
+      .map(([projectId, groupTasks]) => ({
+        projectId,
+        title: this.getProjectTitle(projectId),
+        tasks: [...groupTasks].sort((a, b) =>
+          (a.title ?? '').localeCompare(b.title ?? '', undefined, { sensitivity: 'base' })
+        ),
+      }))
+      .sort((a, b) => {
+        const ra = rank(a.projectId);
+        const rb = rank(b.projectId);
+        if (ra !== rb) return ra - rb;
+        return a.title.localeCompare(b.title, undefined, { sensitivity: 'base' });
+      });
+  }
+
+  /** Tasks currently shown in the list (paginated page or overdue drill-down). */
+  get displayTasks(): Task[] {
+    return this.tasks;
+  }
+
+  get filterProjectOptions(): ProjectOption[] {
+    const ids = new Set<number>();
+    for (const key of Object.keys(this.projectIdToTitle)) {
+      const n = Number(key);
+      if (!Number.isNaN(n)) ids.add(n);
+    }
+    for (const p of this.associatedProjects) ids.add(p.id);
+    return [...ids]
+      .map((id) => ({ id, title: this.getProjectTitle(id) }))
+      .sort((a, b) => (a.title ?? '').localeCompare(b.title ?? '', undefined, { sensitivity: 'base' }));
+  }
+
   get projectsForAdd(): ProjectOption[] {
     const fromTasks = [...new Set(this.tasks.map((t) => t.projectId).filter((id): id is number => id != null))]
       .map((id) => ({ id, title: this.getProjectTitle(id) }));
@@ -82,9 +222,42 @@ export class MyTasks implements OnInit, OnDestroy {
     return merged.sort((a, b) => (a.title ?? '').localeCompare(b.title ?? ''));
   }
 
+  /**
+   * Accepted applications (associated projects) where the freelancer has no assigned tasks/subtasks yet.
+   * Uses extended stats from the task service (full assignee scope, not the current list page).
+   */
+  get associatedProjectsAwaitingTasks(): ProjectOption[] {
+    const raw = this.extendedStats?.projectIdsWithAssignedWork;
+    if (raw == null) {
+      return [];
+    }
+    const ids = new Set(raw);
+    return this.associatedProjects
+      .filter((p) => !ids.has(p.id))
+      .sort((a, b) => (a.title ?? '').localeCompare(b.title ?? '', undefined, { sensitivity: 'base' }));
+  }
+
   ngOnInit(): void {
-    this.setupSearchDebounce();
-    this.loadTasks();
+    this.setupTaskLoadStream();
+    this.filterForm.valueChanges
+      .pipe(
+        debounceTime(350),
+        map(() => this.filterFingerprint()),
+        distinctUntilChanged(),
+        takeUntil(this.destroy$)
+      )
+      .subscribe(() => {
+        if (this.listViewMode === 'overdue') {
+          this.listViewMode = 'paginated';
+          this.statsFocusKey = null;
+        }
+        const st = String(this.filterForm.get('status')?.value ?? '').trim();
+        if (st) this.filterOpenTasksOnly = false;
+        this.page = 0;
+        this.statsFocusKey = null;
+        this.taskLoad$.next();
+      });
+    this.taskLoad$.next();
     this.projectService.getAllProjects().pipe(catchError(() => of([]))).subscribe((projects) => {
       (projects ?? []).forEach((p) => {
         if (p.id != null) this.projectIdToTitle[p.id] = p.title?.trim() || `Project ${p.id}`;
@@ -93,6 +266,7 @@ export class MyTasks implements OnInit, OnDestroy {
     });
     const userId = this.auth.getUserId();
     if (userId != null) {
+      this.refreshFreelancerDashboardExtras();
       this.projectApplicationService
         .getApplicationsByFreelance(userId)
         .pipe(catchError(() => of([])))
@@ -119,61 +293,479 @@ export class MyTasks implements OnInit, OnDestroy {
   }
 
   ngOnDestroy(): void {
+    this.stopAiLiveStatusPoll();
     this.destroy$.next();
     this.destroy$.complete();
   }
 
-  private setupSearchDebounce(): void {
-    this.searchSubject$.pipe(
-      debounceTime(350),
-      distinctUntilChanged(),
-      takeUntil(this.destroy$)
-    ).subscribe(() => {
-      this.page = 0;
-      this.loadTasks();
+  get aiPipelineOk(): boolean {
+    return !this.aiPipelineGatewayError && !!this.aiPipelineStatus?.modelReady;
+  }
+
+  get aiPipelineWarn(): boolean {
+    return (
+      !this.aiPipelineGatewayError &&
+      !!this.aiPipelineStatus?.ollamaReachable &&
+      !this.aiPipelineStatus?.modelReady
+    );
+  }
+
+  get aiPipelineBad(): boolean {
+    return (
+      this.aiPipelineGatewayError ||
+      (!!this.aiPipelineStatus && !this.aiPipelineStatus.ollamaReachable)
+    );
+  }
+
+  get aiPipelineStatusMessage(): string {
+    if (this.aiPipelineGatewayError) {
+      return 'Cannot reach the AI service (gateway / AImodel). Is Eureka up and AIMODEL registered, or try restarting the gateway.';
+    }
+    if (!this.aiPipelineStatus) {
+      return 'Checking AI service and Ollama…';
+    }
+    if (!this.aiPipelineStatus.ollamaReachable) {
+      return `Ollama not reachable from the AI service. Start Ollama or set OLLAMA_BASE_URL on AImodel. Configured model: ${this.aiPipelineStatus.model}`;
+    }
+    if (!this.aiPipelineStatus.modelReady) {
+      return `Ollama is running but model "${this.aiPipelineStatus.model}" was not found. Run: ollama pull ${this.aiPipelineStatus.model}`;
+    }
+    return `Ready — Ollama OK, model "${this.aiPipelineStatus.model}" available`;
+  }
+
+  private startAiLiveStatusPoll(): void {
+    this.stopAiLiveStatusPoll();
+    this.aiPipelineStatus = null;
+    this.aiPipelineGatewayError = false;
+    this.pullAiLiveStatus();
+    this.aiLivePollSub = interval(8000)
+      .pipe(takeUntil(this.destroy$))
+      .subscribe(() => {
+        if (this.aiWizardOpen) this.pullAiLiveStatus();
+      });
+  }
+
+  private stopAiLiveStatusPoll(): void {
+    this.aiLivePollSub?.unsubscribe();
+    this.aiLivePollSub = null;
+  }
+
+  private pullAiLiveStatus(): void {
+    this.aiStatusRefreshing = true;
+    this.cdr.markForCheck();
+    this.aiModelStatusService.getLiveStatus().subscribe({
+      next: ({ snapshot, reachabilityError }) => {
+        this.aiStatusRefreshing = false;
+        if (reachabilityError) {
+          this.aiPipelineStatus = null;
+          this.aiPipelineGatewayError = true;
+        } else {
+          this.aiPipelineGatewayError = false;
+          this.aiPipelineStatus = snapshot;
+        }
+        this.cdr.markForCheck();
+      },
     });
   }
 
-  onSearchInput(): void {
-    this.searchSubject$.next(this.filterForm.get('search')?.value?.trim() ?? '');
+  private filterFingerprint(): string {
+    const v = this.filterForm.getRawValue();
+    return JSON.stringify({
+      search: String(v.search ?? '').trim(),
+      status: String(v.status ?? ''),
+      priority: String(v.priority ?? ''),
+      projectId: v.projectId == null || v.projectId === '' ? '' : String(v.projectId),
+      sort: String(v.sort ?? ''),
+      openTasksOnly: this.filterOpenTasksOnly,
+    });
   }
 
-  loadTasks(): void {
-    const userId = this.auth.getUserId();
-    if (userId == null) {
-      this.loading = false;
-      this.cdr.detectChanges();
-      return;
-    }
-    this.loading = true;
-    const params: TaskFilterParams = {
-      page: this.page,
-      size: this.size,
-      sort: 'createdAt,desc',
-      assigneeId: userId,
-      search: this.filterForm.get('search')?.value?.trim() || null,
-    };
-    this.taskService.getFilteredTasks(params).subscribe({
-      next: (p: PageResponse<Task>) => {
+  private setupTaskLoadStream(): void {
+    this.taskLoad$
+      .pipe(
+        switchMap(() => this.fetchTasksPage()),
+        takeUntil(this.destroy$)
+      )
+      .subscribe((outcome) => {
+        if (outcome.type === 'nouser') {
+          this.tasks = [];
+          this.subtaskProgressByTaskId = {};
+          this.totalElements = 0;
+          this.totalPages = 0;
+          this.loading = false;
+          this.searching = false;
+          this.cdr.detectChanges();
+          return;
+        }
+        if (outcome.type === 'error') {
+          this.errorMessage = 'Failed to load tasks.';
+          this.loading = false;
+          this.searching = false;
+          this.cdr.detectChanges();
+          return;
+        }
+        const p = outcome.p;
+        const progress = outcome.progress;
         this.tasks = p.content ?? [];
         this.totalElements = p.totalElements ?? 0;
         this.totalPages = p.totalPages ?? 0;
+        const nextProgress: Record<number, { total: number; completed: number }> = {};
+        for (const t of this.tasks) {
+          if (t.id == null) continue;
+          nextProgress[t.id] = progress[t.id] ?? { total: 0, completed: 0 };
+        }
+        this.subtaskProgressByTaskId = nextProgress;
+        this.expandedByTaskId = {};
+        this.subtasksByTaskId = {};
+        this.subtasksLoading = {};
+        const revealId = this.pendingRevealSubtasksForTaskId;
+        this.pendingRevealSubtasksForTaskId = null;
         this.loading = false;
+        this.searching = false;
         this.errorMessage = '';
+        if (revealId != null && this.tasks.some((t) => t.id === revealId && !t.subtask)) {
+          this.expandedByTaskId[revealId] = true;
+          this.ensureSubtasksLoaded(revealId);
+        }
         this.cdr.detectChanges();
+      });
+  }
+
+  private fetchTasksPage(): Observable<
+    | { type: 'nouser' }
+    | { type: 'error' }
+    | {
+        type: 'ok';
+        p: PageResponse<Task>;
+        progress: Record<number, { total: number; completed: number }>;
+      }
+  > {
+    const userId = this.auth.getUserId();
+    if (userId == null) {
+      return of({ type: 'nouser' as const });
+    }
+    const hadRows = this.tasks.length > 0;
+    this.searching = hadRows;
+    this.loading = true;
+    this.errorMessage = '';
+    this.cdr.markForCheck();
+
+    if (this.listViewMode === 'overdue') {
+      return this.taskService.getOverdueTasks(null, userId).pipe(
+        switchMap((list) => {
+          const rootIds = (list ?? [])
+            .filter((t) => !t.subtask)
+            .map((t) => t.id)
+            .filter((id): id is number => id != null);
+          return this.taskService.getSubtaskProgress(userId, rootIds).pipe(
+            map((progress) => {
+              const content = list ?? [];
+              return {
+                type: 'ok' as const,
+                p: {
+                  content,
+                  totalElements: content.length,
+                  totalPages: 1,
+                  size: content.length,
+                  number: 0,
+                },
+                progress,
+              };
+            })
+          );
+        }),
+        catchError(() => of({ type: 'error' as const }))
+      );
+    }
+
+    const v = this.filterForm.getRawValue();
+    const st = String(v.status ?? '').trim();
+    const pr = String(v.priority ?? '').trim();
+    const proj = v.projectId;
+    const useOpenOnly = this.filterOpenTasksOnly && !st;
+    const params: TaskFilterParams = {
+      page: this.page,
+      size: this.size,
+      sort: String(v.sort ?? '').trim() || 'createdAt,desc',
+      assigneeId: userId,
+      search: String(v.search ?? '').trim() || null,
+      status: st ? (st as TaskStatus) : null,
+      priority: pr ? (pr as TaskPriority) : null,
+      projectId: proj != null && proj !== '' ? Number(proj) : null,
+      openTasksOnly: useOpenOnly ? true : null,
+    };
+    return this.taskService.getFilteredTasks(params).pipe(
+      switchMap((p) => {
+        const ids = (p.content ?? [])
+          .filter((t) => !t.subtask)
+          .map((t) => t.id)
+          .filter((id): id is number => id != null);
+        return this.taskService.getSubtaskProgress(userId, ids).pipe(
+          map((progress) => ({ type: 'ok' as const, p, progress }))
+        );
+      }),
+      catchError(() => of({ type: 'error' as const }))
+    );
+  }
+
+  /** Full list reload (cancels in-flight request via switchMap). */
+  requestTaskReload(): void {
+    this.taskLoad$.next();
+  }
+
+  private refreshFreelancerDashboardExtras(): void {
+    this.loadProjectActivity();
+    if (!this.auth.isFreelancer()) return;
+    this.loadExtendedStats();
+  }
+
+  private loadProjectActivity(): void {
+    const userId = this.auth.getUserId();
+    if (userId == null) return;
+    this.taskService.getProjectActivity(userId).subscribe({
+      next: (list) => {
+        this.projectOrderRank.clear();
+        this.projectActivityByProjectId = {};
+        (list ?? []).forEach((row, i) => {
+          this.projectOrderRank.set(row.projectId, i);
+          this.projectActivityByProjectId[row.projectId] = row;
+        });
+        this.cdr.markForCheck();
+      },
+      error: () => {},
+    });
+  }
+
+  private loadExtendedStats(): void {
+    const userId = this.auth.getUserId();
+    if (userId == null) return;
+    this.extendedStatsLoading = true;
+    this.extendedStatsError = false;
+    this.cdr.markForCheck();
+    this.taskService.getExtendedStatsByFreelancer(userId).subscribe({
+      next: (data) => {
+        this.extendedStatsLoading = false;
+        this.extendedStats = data;
+        if (data == null) this.extendedStatsError = true;
+        this.cdr.markForCheck();
       },
       error: () => {
-        this.errorMessage = 'Failed to load tasks.';
-        this.loading = false;
-        this.cdr.detectChanges();
+        this.extendedStatsLoading = false;
+        this.extendedStatsError = true;
+        this.cdr.markForCheck();
       },
     });
+  }
+
+  /** Open work (not done/cancelled) across assigned items. */
+  get statsActiveOpen(): number {
+    const s = this.extendedStats;
+    if (!s) return 0;
+    return (Number(s.todoCount) || 0) + (Number(s.inProgressCount) || 0) + (Number(s.inReviewCount) || 0);
+  }
+
+  priorityBreakdownCount(priority: TaskPriority): number {
+    const rows = this.extendedStats?.priorityBreakdown ?? [];
+    const row = rows.find((r) => r.priority === priority);
+    return Number(row?.count) || 0;
+  }
+
+  formatCompletionPct(pct: number | undefined | null): string {
+    if (pct == null || Number.isNaN(Number(pct))) return '0';
+    return Math.round(Number(pct)).toString();
+  }
+
+  /** For progressbar aria-valuenow (0–100). */
+  completionPctForAria(stats: TaskStatsExtendedDto): number {
+    const n = Number(stats.completionPercentage);
+    if (Number.isNaN(n)) return 0;
+    return Math.min(100, Math.max(0, Math.round(n)));
+  }
+
+  scrollToTasksList(): void {
+    const el = document.getElementById('tasks-section');
+    el?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+
+  isStatFocus(key: string): boolean {
+    return this.statsFocusKey === key;
+  }
+
+  get statsDrilldownBannerMessage(): string {
+    if (this.listViewMode === 'overdue') {
+      return 'Viewing all overdue work (tasks and subtasks). Sidebar filters do not apply to this list.';
+    }
+    if (this.statsFocusKey === 'active') {
+      return 'Viewing open root tasks only (status is not done or cancelled). Subtasks still appear under their parent when you expand.';
+    }
+    if (this.statsFocusKey?.startsWith('status_')) {
+      return 'List filtered by status from the overview. Change filters on the left anytime.';
+    }
+    if (this.statsFocusKey?.startsWith('priority_')) {
+      return 'List filtered by priority from the overview.';
+    }
+    return '';
+  }
+
+  get showStatsDrilldownBanner(): boolean {
+    return this.listViewMode === 'overdue' || !!this.statsFocusKey;
+  }
+
+  applyOverdueDrilldown(): void {
+    if (!this.isFreelancer) return;
+    this.listViewMode = 'overdue';
+    this.filterOpenTasksOnly = false;
+    this.statsFocusKey = 'overdue';
+    this.page = 0;
+    this.taskLoad$.next();
+    this.scrollToTasksList();
+    this.cdr.markForCheck();
+  }
+
+  applyActiveDrilldown(): void {
+    if (!this.isFreelancer) return;
+    this.listViewMode = 'paginated';
+    this.filterOpenTasksOnly = true;
+    this.statsFocusKey = 'active';
+    this.page = 0;
+    this.filterForm.patchValue({ status: '', sort: 'dueDate,asc' }, { emitEvent: false });
+    this.taskLoad$.next();
+    this.scrollToTasksList();
+    this.cdr.markForCheck();
+  }
+
+  applyStatusDrilldown(status: TaskStatus): void {
+    if (!this.isFreelancer) return;
+    this.listViewMode = 'paginated';
+    this.filterOpenTasksOnly = false;
+    this.statsFocusKey = `status_${status}`;
+    this.page = 0;
+    this.filterForm.patchValue({ status, priority: '', sort: 'dueDate,asc' }, { emitEvent: false });
+    this.taskLoad$.next();
+    this.scrollToTasksList();
+    this.cdr.markForCheck();
+  }
+
+  applyPriorityDrilldown(priority: TaskPriority): void {
+    if (!this.isFreelancer) return;
+    this.listViewMode = 'paginated';
+    this.filterOpenTasksOnly = false;
+    this.statsFocusKey = `priority_${priority}`;
+    this.page = 0;
+    this.filterForm.patchValue({ priority, status: '', sort: 'dueDate,asc' }, { emitEvent: false });
+    this.taskLoad$.next();
+    this.scrollToTasksList();
+    this.cdr.markForCheck();
+  }
+
+  /** Clears stat-driven list view and sidebar filters (Completion / totals card). */
+  resetStatsListView(): void {
+    if (!this.isFreelancer) return;
+    this.listViewMode = 'paginated';
+    this.filterOpenTasksOnly = false;
+    this.statsFocusKey = null;
+    this.page = 0;
+    this.filterForm.patchValue(
+      {
+        search: '',
+        status: '',
+        priority: '',
+        projectId: null,
+        sort: 'createdAt,desc',
+      },
+      { emitEvent: false }
+    );
+    this.taskLoad$.next();
+    this.scrollToTasksList();
+    this.cdr.markForCheck();
+  }
+
+  /** Banner control: full reset to default list view. */
+  clearStatDrilldownAndReload(): void {
+    this.resetStatsListView();
+  }
+
+  taskRowLooksLikeSubtask(t: Task): boolean {
+    return !!t.subtask;
+  }
+
+  taskRowTrackId(t: Task): string {
+    return `${t.id}-${t.subtask ? 'st' : 'root'}`;
+  }
+
+  overdueRowToSubtask(t: Task): Subtask {
+    return {
+      id: t.id,
+      parentTaskId: t.parentTaskId ?? undefined,
+      projectId: t.projectId,
+      title: t.title,
+      description: t.description,
+      status: t.status,
+      priority: t.priority,
+      assigneeId: t.assigneeId,
+      dueDate: t.dueDate,
+      orderIndex: t.orderIndex,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    };
+  }
+
+  parentTaskStubForOverdueSubtask(t: Task): Task {
+    const pid = t.parentTaskId;
+    return {
+      id: pid ?? 0,
+      projectId: t.projectId,
+      contractId: t.contractId,
+      title: pid != null ? `Task #${pid}` : 'Parent task',
+      description: null,
+      status: 'TODO',
+      priority: 'MEDIUM',
+      assigneeId: t.assigneeId,
+      dueDate: null,
+      orderIndex: 0,
+      createdBy: null,
+      createdAt: t.createdAt,
+      updatedAt: t.updatedAt,
+    };
+  }
+
+  private refreshSubtaskProgressForParents(parentIds: number[]): void {
+    const userId = this.auth.getUserId();
+    if (userId == null || parentIds.length === 0) return;
+    this.taskService.getSubtaskProgress(userId, parentIds).subscribe({
+      next: (m) => {
+        for (const id of parentIds) {
+          this.subtaskProgressByTaskId[id] = m[id] ?? { total: 0, completed: 0 };
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {},
+    });
+  }
+
+  subtaskProgressForTask(taskId: number | undefined): { total: number; completed: number } | null {
+    if (taskId == null) return null;
+    return this.subtaskProgressByTaskId[taskId] ?? null;
+  }
+
+  subtaskProgressPercent(taskId: number | undefined): number {
+    const p = this.subtaskProgressForTask(taskId);
+    if (!p || p.total <= 0) return 0;
+    return Math.round((100 * p.completed) / p.total);
+  }
+
+  formatProjectActivityHint(projectId: number): string {
+    const row = this.projectActivityByProjectId[projectId];
+    if (!row?.lastActivityAt) return '';
+    const d = new Date(row.lastActivityAt);
+    if (Number.isNaN(d.getTime())) return '';
+    return `Last activity ${d.toLocaleString()} · ${row.openTaskCount} open task(s)`;
   }
 
   goToPage(p: number): void {
     if (p < 0 || p >= this.totalPages) return;
     this.page = p;
-    this.loadTasks();
+    this.taskLoad$.next();
   }
 
   getProjectTitle(id: number): string {
@@ -182,6 +774,98 @@ export class MyTasks implements OnInit, OnDestroy {
 
   formatDueDate(d: string | null): string {
     return d ? new Date(d).toLocaleDateString() : '—';
+  }
+
+  /** Open tasks only — same rule as backend overdue queries. */
+  private isOpenTaskStatus(status: string | undefined | null): boolean {
+    return status !== 'DONE' && status !== 'CANCELLED';
+  }
+
+  /**
+   * True when due date (calendar day) is before today in the user's local timezone
+   * and the item is still open.
+   */
+  isOverdueDueDate(dueDate: string | null | undefined, status: string | undefined | null): boolean {
+    if (!dueDate || !this.isOpenTaskStatus(status)) return false;
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dueDate).trim());
+    if (!m) return false;
+    const y = Number(m[1]);
+    const mo = Number(m[2]) - 1;
+    const day = Number(m[3]);
+    const due = new Date(y, mo, day);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    return due.getTime() < todayStart.getTime();
+  }
+
+  /** e.g. "Due in 2 days", "Due today", "1 day overdue", "5 days overdue" */
+  dueDateDisplayLine(dueDate: string | null | undefined, status: string | undefined | null): string {
+    if (!dueDate) return 'No due date';
+    const formatted = this.formatDueDate(dueDate);
+    if (!this.isOpenTaskStatus(status)) return `Due ${formatted}`;
+    const m = /^(\d{4})-(\d{2})-(\d{2})/.exec(String(dueDate).trim());
+    if (!m) return `Due ${formatted}`;
+    const y = Number(m[1]);
+    const mo = Number(m[2]) - 1;
+    const day = Number(m[3]);
+    const due = new Date(y, mo, day);
+    const now = new Date();
+    const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const diffDays = Math.round((todayStart.getTime() - due.getTime()) / 86400000);
+    if (diffDays === 0) return `Due today (${formatted})`;
+    if (diffDays < 0) {
+      const ahead = -diffDays;
+      return ahead === 1 ? `Due tomorrow (${formatted})` : `Due in ${ahead} days (${formatted})`;
+    }
+    if (diffDays === 1) return `1 day overdue · was ${formatted}`;
+    return `${diffDays} days overdue · was ${formatted}`;
+  }
+
+  isRootExpanded(taskId: number | undefined): boolean {
+    if (taskId == null) return false;
+    return !!this.expandedByTaskId[taskId];
+  }
+
+  toggleRootExpanded(t: Task): void {
+    const id = t.id;
+    if (id == null) return;
+    if (this.expandedByTaskId[id]) {
+      delete this.expandedByTaskId[id];
+    } else {
+      this.expandedByTaskId[id] = true;
+      this.ensureSubtasksLoaded(id);
+    }
+    this.cdr.markForCheck();
+  }
+
+  expandLabel(t: Task): string {
+    if (t.id == null) return 'Show subtasks';
+    return this.isRootExpanded(t.id) ? 'Hide subtasks' : 'Show subtasks';
+  }
+
+  private ensureSubtasksLoaded(parentTaskId: number): void {
+    if (this.subtasksLoading[parentTaskId]) return;
+    if (this.subtasksByTaskId[parentTaskId] !== undefined) return;
+    this.subtasksLoading[parentTaskId] = true;
+    this.cdr.markForCheck();
+    this.taskService.listSubtasks(parentTaskId).subscribe({
+      next: (list) => {
+        this.subtasksByTaskId[parentTaskId] = list ?? [];
+        this.subtasksLoading[parentTaskId] = false;
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.subtasksLoading[parentTaskId] = false;
+        this.subtasksByTaskId[parentTaskId] = [];
+        this.errorMessage = 'Failed to load subtasks.';
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  subtasksFor(parentTaskId: number | undefined): Subtask[] {
+    if (parentTaskId == null) return [];
+    return this.subtasksByTaskId[parentTaskId] ?? [];
   }
 
   /** Human-readable priority for list badges (API uses LOW, MEDIUM, …). */
@@ -224,6 +908,10 @@ export class MyTasks implements OnInit, OnDestroy {
           if (idx >= 0) this.tasks[idx] = { ...this.tasks[idx], status: t.status };
           this.errorMessage = 'Failed to update status.';
         }
+        if (updated) {
+          if (this.listViewMode === 'overdue') this.requestTaskReload();
+          this.refreshFreelancerDashboardExtras();
+        }
         this.cdr.detectChanges();
       },
       error: () => {
@@ -231,6 +919,226 @@ export class MyTasks implements OnInit, OnDestroy {
         if (idx >= 0) this.tasks[idx] = { ...this.tasks[idx], status: t.status };
         this.errorMessage = 'Failed to update status.';
         this.cdr.detectChanges();
+      },
+    });
+  }
+
+  updateSubtaskStatusFromSelect(parentTaskId: number, st: Subtask, value: string): void {
+    if (!value?.trim()) return;
+    this.updateSubtaskStatus(parentTaskId, st, value as TaskStatus);
+  }
+
+  updateSubtaskStatus(parentTaskId: number, st: Subtask, status: TaskStatus): void {
+    if (!st.id || this.updatingSubtaskStatus) return;
+    if (status === st.status) return;
+    this.updatingSubtaskStatus = true;
+    this.errorMessage = '';
+    const list = this.subtasksByTaskId[parentTaskId] ?? [];
+    const idx = list.findIndex((x) => x.id === st.id);
+    if (idx >= 0) {
+      list[idx] = { ...list[idx], status };
+      this.subtasksByTaskId[parentTaskId] = [...list];
+    }
+    this.cdr.markForCheck();
+    this.taskService.patchSubtaskStatus(st.id, status).subscribe({
+      next: (updated) => {
+        this.updatingSubtaskStatus = false;
+        if (updated && idx >= 0) {
+          const cur = this.subtasksByTaskId[parentTaskId] ?? [];
+          const j = cur.findIndex((x) => x.id === st.id);
+          if (j >= 0) {
+            cur[j] = { ...cur[j], ...updated };
+            this.subtasksByTaskId[parentTaskId] = [...cur];
+          }
+        } else if (idx >= 0) {
+          const cur = this.subtasksByTaskId[parentTaskId] ?? [];
+          const j = cur.findIndex((x) => x.id === st.id);
+          if (j >= 0) {
+            cur[j] = { ...cur[j], status: st.status };
+            this.subtasksByTaskId[parentTaskId] = [...cur];
+          }
+          this.errorMessage = 'Failed to update subtask status.';
+        }
+        if (updated) {
+          if (this.listViewMode === 'overdue') {
+            this.requestTaskReload();
+          } else {
+            this.refreshSubtaskProgressForParents([parentTaskId]);
+          }
+          this.refreshFreelancerDashboardExtras();
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.updatingSubtaskStatus = false;
+        if (idx >= 0) {
+          const cur = this.subtasksByTaskId[parentTaskId] ?? [];
+          const j = cur.findIndex((x) => x.id === st.id);
+          if (j >= 0) {
+            cur[j] = { ...cur[j], status: st.status };
+            this.subtasksByTaskId[parentTaskId] = [...cur];
+          }
+        }
+        this.errorMessage = 'Failed to update subtask status.';
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  openAddSubtask(parent: Task): void {
+    if (parent.id == null) return;
+    this.subtaskModalParent = parent;
+    this.subtaskModalEditing = null;
+    this.subtaskForm.reset({
+      title: '',
+      description: '',
+      status: 'TODO',
+      priority: 'MEDIUM',
+      dueDate: null,
+    });
+    this.errorMessage = '';
+    this.cdr.markForCheck();
+  }
+
+  openEditSubtask(parent: Task, st: Subtask): void {
+    if (parent.id == null || st.id == null) return;
+    this.subtaskModalParent = parent;
+    this.subtaskModalEditing = st;
+    const due = st.dueDate ? String(st.dueDate).slice(0, 10) : null;
+    this.subtaskForm.patchValue({
+      title: st.title ?? '',
+      description: st.description ?? '',
+      status: st.status ?? 'TODO',
+      priority: st.priority ?? 'MEDIUM',
+      dueDate: due,
+    });
+    this.errorMessage = '';
+    this.cdr.markForCheck();
+  }
+
+  closeSubtaskModal(): void {
+    if (this.savingSubtask) return;
+    this.subtaskModalParent = null;
+    this.subtaskModalEditing = null;
+    this.cdr.markForCheck();
+  }
+
+  saveSubtask(): void {
+    if (this.subtaskForm.invalid || this.subtaskModalParent?.id == null) {
+      this.subtaskForm.markAllAsTouched();
+      return;
+    }
+    const userId = this.auth.getUserId();
+    const v = this.subtaskForm.getRawValue();
+    const body: SubtaskRequest = {
+      title: (v.title as string).trim(),
+      description: (v.description as string)?.trim() || null,
+      status: (v.status as TaskStatus) || 'TODO',
+      priority: (v.priority as TaskPriority) || 'MEDIUM',
+      assigneeId: userId,
+      dueDate: v.dueDate ? (v.dueDate as string) : null,
+    };
+    const parentId = this.subtaskModalParent.id;
+    this.savingSubtask = true;
+    this.errorMessage = '';
+    this.cdr.markForCheck();
+    const finish = (ok: boolean): void => {
+      this.savingSubtask = false;
+      if (ok) {
+        this.subtaskModalParent = null;
+        this.subtaskModalEditing = null;
+      }
+      this.cdr.markForCheck();
+    };
+    if (this.subtaskModalEditing?.id != null) {
+      this.taskService.updateSubtask(this.subtaskModalEditing.id, body).subscribe({
+        next: (updated) => {
+          if (updated) {
+            const cur = this.subtasksByTaskId[parentId] ?? [];
+            const idx = cur.findIndex((x) => x.id === updated.id);
+            if (idx >= 0) {
+              const next = [...cur];
+              next[idx] = { ...next[idx], ...updated };
+              this.subtasksByTaskId[parentId] = next;
+            }
+            if (this.listViewMode === 'overdue') {
+              this.requestTaskReload();
+            } else {
+              this.refreshSubtaskProgressForParents([parentId]);
+            }
+            this.refreshFreelancerDashboardExtras();
+            finish(true);
+          } else {
+            this.errorMessage = 'Failed to update subtask.';
+            finish(false);
+          }
+        },
+        error: () => {
+          this.errorMessage = 'Failed to update subtask.';
+          finish(false);
+        },
+      });
+      return;
+    }
+    this.taskService.createSubtask(parentId, body).subscribe({
+      next: (created) => {
+        if (created) {
+          delete this.subtasksByTaskId[parentId];
+          delete this.subtasksLoading[parentId];
+          this.ensureSubtasksLoaded(parentId);
+          if (this.listViewMode === 'overdue') {
+            this.requestTaskReload();
+          } else {
+            this.refreshSubtaskProgressForParents([parentId]);
+          }
+          this.refreshFreelancerDashboardExtras();
+          finish(true);
+        } else {
+          this.errorMessage = 'Failed to create subtask.';
+          finish(false);
+        }
+      },
+      error: () => {
+        this.errorMessage = 'Failed to create subtask.';
+        finish(false);
+      },
+    });
+  }
+
+  openDeleteSubtask(parentTaskId: number, st: Subtask): void {
+    this.subtaskToDelete = { parentTaskId, subtask: st };
+  }
+
+  closeDeleteSubtaskModal(): void {
+    if (!this.deletingSubtask) this.subtaskToDelete = null;
+  }
+
+  doDeleteSubtask(): void {
+    if (!this.subtaskToDelete?.subtask.id) return;
+    const { parentTaskId, subtask } = this.subtaskToDelete;
+    this.deletingSubtask = true;
+    this.taskService.deleteSubtask(subtask.id).subscribe({
+      next: (ok) => {
+        this.deletingSubtask = false;
+        this.subtaskToDelete = null;
+        if (ok) {
+          const cur = this.subtasksByTaskId[parentTaskId] ?? [];
+          this.subtasksByTaskId[parentTaskId] = cur.filter((x) => x.id !== subtask.id);
+          if (this.listViewMode === 'overdue') {
+            this.requestTaskReload();
+          } else {
+            this.refreshSubtaskProgressForParents([parentTaskId]);
+          }
+          this.refreshFreelancerDashboardExtras();
+        } else {
+          this.errorMessage = 'Failed to delete subtask.';
+        }
+        this.cdr.markForCheck();
+      },
+      error: () => {
+        this.deletingSubtask = false;
+        this.errorMessage = 'Failed to delete subtask.';
+        this.cdr.markForCheck();
       },
     });
   }
@@ -280,7 +1188,8 @@ export class MyTasks implements OnInit, OnDestroy {
       next: () => {
         this.adding = false;
         this.addModalOpen = false;
-        this.loadTasks();
+        this.requestTaskReload();
+        this.refreshFreelancerDashboardExtras();
         this.cdr.detectChanges();
       },
       error: () => {
@@ -323,7 +1232,8 @@ export class MyTasks implements OnInit, OnDestroy {
       next: () => {
         this.saving = false;
         this.editingTask = null;
-        this.loadTasks();
+        this.requestTaskReload();
+        this.refreshFreelancerDashboardExtras();
         this.cdr.detectChanges();
       },
       error: () => {
@@ -349,8 +1259,10 @@ export class MyTasks implements OnInit, OnDestroy {
       next: (ok) => {
         this.deleting = false;
         this.taskToDelete = null;
-        if (ok) this.loadTasks();
-        else this.errorMessage = 'Failed to delete task.';
+        if (ok) {
+          this.requestTaskReload();
+          this.refreshFreelancerDashboardExtras();
+        } else this.errorMessage = 'Failed to delete task.';
         this.cdr.detectChanges();
       },
       error: () => {
@@ -363,5 +1275,253 @@ export class MyTasks implements OnInit, OnDestroy {
 
   get isFreelancer(): boolean {
     return this.auth.isFreelancer();
+  }
+
+  /** PDF for assigned work: rolling 7 calendar days ending today (local date). */
+  downloadLastWeekWorkReport(): void {
+    if (!this.isFreelancer || this.workReportDownloading) return;
+    const userId = this.auth.getUserId();
+    if (userId == null) {
+      this.errorMessage = 'Sign in to download a work report.';
+      this.cdr.detectChanges();
+      return;
+    }
+    this.errorMessage = '';
+    this.workReportDownloading = true;
+    this.cdr.detectChanges();
+    const periodEnd = this.localDateIsoYmd(new Date());
+    this.taskService.downloadWorkReportPdf({ freelancerId: userId, lastDays: 7, periodEnd }).subscribe({
+      next: (blob) => {
+        this.workReportDownloading = false;
+        this.taskService.saveBlobAsFile(blob, `my-work-report-${periodEnd}.pdf`);
+        this.cdr.detectChanges();
+      },
+      error: () => {
+        this.workReportDownloading = false;
+        this.errorMessage = 'Could not generate work report. Try again later.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  private localDateIsoYmd(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, '0');
+    const day = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${day}`;
+  }
+
+  suggestDescriptionFromAi(): void {
+    const userId = this.auth.getUserId();
+    const projectId = this.addForm.get('projectId')?.value as number | null;
+    const title = (this.addForm.get('title')?.value as string | null)?.trim();
+    if (userId == null || projectId == null || !title) {
+      this.errorMessage = 'Select a project and enter a title first.';
+      this.cdr.detectChanges();
+      return;
+    }
+    const allowed = this.projectsForAdd.some((p) => p.id === projectId);
+    if (!allowed) {
+      this.errorMessage = 'You can only use AI on projects you are associated with.';
+      this.cdr.detectChanges();
+      return;
+    }
+    this.errorMessage = '';
+    this.suggestDescriptionLoading = true;
+    this.cdr.detectChanges();
+    this.taskService.suggestTaskDescription({ projectId, freelancerId: userId, title }).subscribe({
+      next: (res) => {
+        this.suggestDescriptionLoading = false;
+        this.addForm.patchValue({ description: res.description ?? '' });
+        this.cdr.detectChanges();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.suggestDescriptionLoading = false;
+        this.errorMessage = err?.error?.message ?? 'AI suggestion failed.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  openAiProjectTasksWizard(): void {
+    if (this.projectsForAdd.length === 0) return;
+    this.aiWizardMode = 'project-tasks';
+    this.aiSubtaskParent = null;
+    this.aiProjectSelectedId = null;
+    this.aiProposalRows = [];
+    this.aiWizardError = '';
+    this.aiWizardOpen = true;
+    this.startAiLiveStatusPoll();
+    this.cdr.detectChanges();
+  }
+
+  openAiSubtasksWizard(parent: Task): void {
+    const userId = this.auth.getUserId();
+    if (userId == null || parent.id == null) return;
+    this.aiWizardMode = 'subtasks';
+    this.aiSubtaskParent = parent;
+    this.aiProjectSelectedId = parent.projectId;
+    this.aiProposalRows = [];
+    this.aiWizardError = '';
+    this.aiWizardOpen = true;
+    this.startAiLiveStatusPoll();
+    this.cdr.detectChanges();
+  }
+
+  closeAiWizard(): void {
+    if (this.acceptingAi) return;
+    this.stopAiLiveStatusPoll();
+    this.aiWizardOpen = false;
+    this.aiWizardMode = null;
+    this.aiSubtaskParent = null;
+    this.aiProposalRows = [];
+    this.aiWizardError = '';
+    this.cdr.detectChanges();
+  }
+
+  declineAiProposals(): void {
+    this.closeAiWizard();
+  }
+
+  regenerateAiProposals(): void {
+    const userId = this.auth.getUserId();
+    if (userId == null || this.aiWizardMode == null) return;
+    this.aiWizardLoading = true;
+    this.aiWizardError = '';
+    this.cdr.detectChanges();
+    if (this.aiWizardMode === 'project-tasks') {
+      const pid = this.aiProjectSelectedId;
+      if (pid == null) {
+        this.aiWizardLoading = false;
+        this.aiWizardError = 'Select a project.';
+        this.cdr.detectChanges();
+        return;
+      }
+      this.taskService.proposeProjectTasks({ projectId: pid, freelancerId: userId }).subscribe({
+        next: (rows) => {
+          this.aiWizardLoading = false;
+          this.aiProposalRows = (rows ?? []).map((r) => ({
+            title: r.title ?? '',
+            description: r.description ?? '',
+            suggestedPriority: r.suggestedPriority ?? 'MEDIUM',
+            suggestedDueDate: this.normalizeAiDueDate(r.suggestedDueDate) ?? '',
+          }));
+          this.cdr.detectChanges();
+        },
+        error: (err: { error?: { message?: string } }) => {
+          this.aiWizardLoading = false;
+          this.aiWizardError = err?.error?.message ?? 'AI generation failed.';
+          this.cdr.detectChanges();
+        },
+      });
+      return;
+    }
+    if (this.aiWizardMode === 'subtasks' && this.aiSubtaskParent?.id != null) {
+      this.taskService
+        .proposeSubtasks({ taskId: this.aiSubtaskParent.id, freelancerId: userId })
+        .subscribe({
+          next: (rows) => {
+            this.aiWizardLoading = false;
+            this.aiProposalRows = (rows ?? []).map((r) => ({
+              title: r.title ?? '',
+              description: r.description ?? '',
+              suggestedPriority: r.suggestedPriority ?? 'MEDIUM',
+              suggestedDueDate: this.normalizeAiDueDate(r.suggestedDueDate) ?? '',
+            }));
+            this.cdr.detectChanges();
+          },
+          error: (err: { error?: { message?: string } }) => {
+            this.aiWizardLoading = false;
+            this.aiWizardError = err?.error?.message ?? 'AI generation failed.';
+            this.cdr.detectChanges();
+          },
+        });
+    }
+  }
+
+  acceptAiProposals(): void {
+    const userId = this.auth.getUserId();
+    if (userId == null || this.aiWizardMode == null) return;
+    const rows = this.aiProposalRows.filter((r) => (r.title ?? '').trim().length > 0);
+    if (rows.length === 0) {
+      this.aiWizardError = 'No tasks to create.';
+      this.cdr.detectChanges();
+      return;
+    }
+    this.acceptingAi = true;
+    this.aiWizardError = '';
+    this.cdr.detectChanges();
+    let i = 0;
+    const runNext = (): void => {
+      if (i >= rows.length) {
+        this.acceptingAi = false;
+        const wasSubtasks = this.aiWizardMode === 'subtasks';
+        const subParentId = this.aiSubtaskParent?.id ?? null;
+        if (wasSubtasks && subParentId != null) {
+          this.pendingRevealSubtasksForTaskId = subParentId;
+        }
+        this.closeAiWizard();
+        this.requestTaskReload();
+        this.refreshFreelancerDashboardExtras();
+        if (wasSubtasks) {
+          this.editingTask = null;
+        }
+        this.cdr.detectChanges();
+        return;
+      }
+      const row = rows[i++];
+      const due = (row.suggestedDueDate ?? '').trim();
+      if (this.aiWizardMode === 'subtasks' && this.aiSubtaskParent?.id != null) {
+        const subReq: SubtaskRequest = {
+          title: row.title.trim(),
+          description: row.description?.trim() || null,
+          status: 'TODO',
+          priority: row.suggestedPriority ?? 'MEDIUM',
+          assigneeId: userId,
+          dueDate: due.length >= 8 ? due : null,
+        };
+        this.taskService.createSubtask(this.aiSubtaskParent.id, subReq).subscribe({
+          next: () => runNext(),
+          error: (err: { error?: { message?: string } }) => {
+            this.acceptingAi = false;
+            this.aiWizardError = err?.error?.message ?? 'Failed to create a subtask.';
+            this.cdr.detectChanges();
+          },
+        });
+        return;
+      }
+      const projectId = this.aiProjectSelectedId as number;
+      const request: TaskRequest = {
+        projectId,
+        title: row.title.trim(),
+        description: row.description?.trim() || null,
+        status: 'TODO',
+        priority: row.suggestedPriority ?? 'MEDIUM',
+        assigneeId: userId,
+        dueDate: due.length >= 8 ? due : null,
+      };
+      this.taskService.createTask(request).subscribe({
+        next: () => runNext(),
+        error: (err: { error?: { message?: string } }) => {
+          this.acceptingAi = false;
+          this.aiWizardError = err?.error?.message ?? 'Failed to create a task.';
+          this.cdr.detectChanges();
+        },
+      });
+    };
+    runNext();
+  }
+
+  /** User clicks Generate (project tasks) or Generate (subtasks) — not called on modal open. */
+  generateAiProposalsClick(): void {
+    this.regenerateAiProposals();
+  }
+
+  /** yyyy-MM-dd for <input type="date">; supports Spring array-style LocalDate JSON. */
+  private normalizeAiDueDate(raw: string | string[] | null | undefined): string | null {
+    if (raw == null) return null;
+    const s = Array.isArray(raw) ? raw.join('-') : String(raw);
+    const m = s.trim().match(/^(\d{4})-(\d{2})-(\d{2})/);
+    return m ? `${m[1]}-${m[2]}-${m[3]}` : null;
   }
 }

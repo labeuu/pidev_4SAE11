@@ -17,8 +17,13 @@ export interface Task {
   assigneeId: number | null;
   dueDate: string | null;
   orderIndex: number;
-  parentTaskId: number | null;
   createdBy: number | null;
+  /**
+   * When true (overdue / due-soon merged rows), {@link id} refers to a subtask; use subtask APIs.
+   */
+  subtask?: boolean | null;
+  /** Root task id when {@link subtask} is true (synthetic API rows). */
+  parentTaskId?: number | null;
   createdAt: string;
   updatedAt: string;
 }
@@ -46,8 +51,33 @@ export interface TaskRequest {
   assigneeId?: number | null;
   dueDate?: string | null;
   orderIndex?: number | null;
-  parentTaskId?: number | null;
   createdBy?: number | null;
+}
+
+/** Subtask row (Task MS `subtask` table). */
+export interface Subtask {
+  id: number;
+  parentTaskId?: number | null;
+  projectId: number;
+  title: string;
+  description: string | null;
+  status: TaskStatus;
+  priority: TaskPriority;
+  assigneeId: number | null;
+  dueDate: string | null;
+  orderIndex: number;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
+export interface SubtaskRequest {
+  title: string;
+  description?: string | null;
+  status?: TaskStatus;
+  priority?: TaskPriority;
+  assigneeId?: number | null;
+  dueDate?: string | null;
+  orderIndex?: number | null;
 }
 
 /** Request body for create/update task comment. */
@@ -67,10 +97,11 @@ export interface TaskFilterParams {
   assigneeId?: number | null;
   status?: TaskStatus | null;
   priority?: TaskPriority | null;
-  parentId?: number | null;
   search?: string | null;
   dueDateFrom?: string | null;
   dueDateTo?: string | null;
+  /** When true and status omitted, API excludes DONE and CANCELLED (open root tasks). */
+  openTasksOnly?: boolean | null;
 }
 
 /** Spring Data Page response. */
@@ -89,6 +120,30 @@ export interface TaskStatsDto {
   inProgressCount: number;
   overdueCount: number;
   completionPercentage: number;
+}
+
+/** Count per priority (extended stats). */
+export interface TaskPriorityCountDto {
+  priority: TaskPriority;
+  count: number;
+}
+
+/** Extended task stats: root tasks + subtasks, status split and priority breakdown. */
+export interface TaskStatsExtendedDto {
+  totalTasks: number;
+  doneCount: number;
+  inProgressCount: number;
+  inReviewCount: number;
+  todoCount: number;
+  cancelledCount: number;
+  overdueCount: number;
+  completionPercentage: number;
+  unassignedCount: number;
+  createdInRangeCount?: number;
+  completedInRangeCount?: number;
+  priorityBreakdown?: TaskPriorityCountDto[];
+  /** Projects where you have at least one assigned task/subtask (from task service). */
+  projectIdsWithAssignedWork?: number[];
 }
 
 /** Kanban board: tasks grouped by status. */
@@ -111,6 +166,49 @@ export interface TaskHealth {
   database?: TaskHealthDatabase;
 }
 
+/** AI-suggested task or subtask (Task MS). */
+export interface AiProposedTask {
+  title: string;
+  description: string | null;
+  suggestedPriority: TaskPriority;
+  /** yyyy-MM-dd from backend; optional */
+  suggestedDueDate?: string | null;
+}
+
+export interface TaskAiSuggestDescriptionRequest {
+  projectId: number;
+  freelancerId: number;
+  title: string;
+}
+
+export interface TaskAiSuggestDescriptionResponse {
+  description: string;
+}
+
+export interface TaskAiProjectContextRequest {
+  projectId: number;
+  freelancerId: number;
+}
+
+export interface TaskAiSubtasksRequest {
+  taskId: number;
+  freelancerId: number;
+}
+
+/** Batch subtask completion for root tasks (Task MS). */
+export interface SubtaskProgressRow {
+  parentTaskId: number;
+  total: number;
+  completed: number;
+}
+
+/** Per-project recency for assignee dashboard ordering. */
+export interface ProjectActivity {
+  projectId: number;
+  lastActivityAt: string | null;
+  openTaskCount: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class TaskService {
   constructor(private http: HttpClient) {}
@@ -125,10 +223,10 @@ export class TaskService {
     if (params.assigneeId != null) query.set('assigneeId', String(params.assigneeId));
     if (params.status) query.set('status', params.status);
     if (params.priority) query.set('priority', params.priority);
-    if (params.parentId != null) query.set('parentId', String(params.parentId));
     if (params.search?.trim()) query.set('search', params.search.trim());
     if (params.dueDateFrom?.trim()) query.set('dueDateFrom', params.dueDateFrom.trim());
     if (params.dueDateTo?.trim()) query.set('dueDateTo', params.dueDateTo.trim());
+    if (params.openTasksOnly === true) query.set('openTasksOnly', 'true');
     const qs = query.toString();
     const url = qs ? `${TASK_API}/tasks?${qs}` : `${TASK_API}/tasks`;
     return this.http.get<PageResponse<Task>>(url).pipe(
@@ -157,6 +255,35 @@ export class TaskService {
 
   getTasksByAssigneeId(assigneeId: number): Observable<Task[]> {
     return this.http.get<Task[]>(`${TASK_API}/tasks/assignee/${assigneeId}`).pipe(
+      catchError(() => of([]))
+    );
+  }
+
+  getSubtaskProgress(
+    assigneeId: number,
+    taskIds: number[]
+  ): Observable<Record<number, { total: number; completed: number }>> {
+    if (taskIds.length === 0) {
+      return of({});
+    }
+    const params = { taskIds: taskIds.join(',') };
+    return this.http
+      .get<SubtaskProgressRow[]>(`${TASK_API}/tasks/assignee/${assigneeId}/subtask-progress`, { params })
+      .pipe(
+        map((rows) => {
+          const out: Record<number, { total: number; completed: number }> = {};
+          for (const r of rows ?? []) {
+            if (r.parentTaskId == null) continue;
+            out[r.parentTaskId] = { total: Number(r.total) || 0, completed: Number(r.completed) || 0 };
+          }
+          return out;
+        }),
+        catchError(() => of({}))
+      );
+  }
+
+  getProjectActivity(assigneeId: number): Observable<ProjectActivity[]> {
+    return this.http.get<ProjectActivity[]>(`${TASK_API}/tasks/assignee/${assigneeId}/project-activity`).pipe(
       catchError(() => of([]))
     );
   }
@@ -193,6 +320,27 @@ export class TaskService {
     return this.http.get<TaskStatsDto>(url).pipe(
       catchError(() => of(null))
     );
+  }
+
+  getExtendedStatsByFreelancer(
+    freelancerId: number,
+    options?: { from?: string | null; to?: string | null }
+  ): Observable<TaskStatsExtendedDto | null> {
+    const query = new URLSearchParams();
+    const from = options?.from?.trim();
+    const to = options?.to?.trim();
+    if (from) query.set('from', from);
+    if (to) query.set('to', to);
+    const qs = query.toString();
+    const base = `${TASK_API}/tasks/stats/extended/freelancer/${freelancerId}`;
+    const url = qs ? `${base}?${qs}` : base;
+    return this.http.get<TaskStatsExtendedDto>(url).pipe(catchError(() => of(null)));
+  }
+
+  getExtendedStatsByProject(projectId: number): Observable<TaskStatsExtendedDto | null> {
+    return this.http
+      .get<TaskStatsExtendedDto>(`${TASK_API}/tasks/stats/extended/project/${projectId}`)
+      .pipe(catchError(() => of(null)));
   }
 
   getStatsDashboard(): Observable<TaskStatsDto | null> {
@@ -270,5 +418,89 @@ export class TaskService {
     return this.http.get<TaskHealth>(`${TASK_API}/task/health`).pipe(
       catchError(() => of(null))
     );
+  }
+
+  suggestTaskDescription(request: TaskAiSuggestDescriptionRequest): Observable<TaskAiSuggestDescriptionResponse> {
+    return this.http
+      .post<TaskAiSuggestDescriptionResponse>(`${TASK_API}/tasks/ai/suggest-description`, request)
+      .pipe(catchError((err) => throwError(() => err)));
+  }
+
+  proposeProjectTasks(request: TaskAiProjectContextRequest): Observable<AiProposedTask[]> {
+    return this.http
+      .post<AiProposedTask[]>(`${TASK_API}/tasks/ai/propose-project-tasks`, request)
+      .pipe(catchError((err) => throwError(() => err)));
+  }
+
+  proposeSubtasks(request: TaskAiSubtasksRequest): Observable<AiProposedTask[]> {
+    return this.http
+      .post<AiProposedTask[]>(`${TASK_API}/tasks/ai/propose-subtasks`, request)
+      .pipe(catchError((err) => throwError(() => err)));
+  }
+
+  listSubtasks(parentTaskId: number): Observable<Subtask[]> {
+    return this.http.get<Subtask[]>(`${TASK_API}/tasks/${parentTaskId}/subtasks`).pipe(catchError(() => of([])));
+  }
+
+  createSubtask(parentTaskId: number, body: SubtaskRequest): Observable<Subtask | null> {
+    return this.http.post<Subtask>(`${TASK_API}/tasks/${parentTaskId}/subtasks`, body).pipe(catchError(() => of(null)));
+  }
+
+  updateSubtask(id: number, body: SubtaskRequest): Observable<Subtask | null> {
+    return this.http.put<Subtask>(`${TASK_API}/subtasks/${id}`, body).pipe(catchError(() => of(null)));
+  }
+
+  patchSubtaskStatus(id: number, status: TaskStatus): Observable<Subtask | null> {
+    return this.http
+      .patch<Subtask>(`${TASK_API}/subtasks/${id}/status`, null, { params: { status } })
+      .pipe(catchError(() => of(null)));
+  }
+
+  patchSubtaskDueDate(id: number, dueDate: string | null): Observable<Subtask | null> {
+    const params: Record<string, string> = {};
+    if (dueDate != null && dueDate !== '') params['dueDate'] = dueDate;
+    return this.http
+      .patch<Subtask>(`${TASK_API}/subtasks/${id}/due-date`, null, { params })
+      .pipe(catchError(() => of(null)));
+  }
+
+  deleteSubtask(id: number): Observable<boolean> {
+    return this.http.delete(`${TASK_API}/subtasks/${id}`, { observe: 'response' }).pipe(
+      map((res) => res.status >= 200 && res.status < 300),
+      catchError(() => of(false))
+    );
+  }
+
+  /**
+   * PDF work report. With lastDays + periodEnd, uses a rolling inclusive window ending that day
+   * (e.g. lastDays=7 → 7 calendar days). Otherwise behaves as ISO week (weekStart).
+   */
+  downloadWorkReportPdf(params: {
+    freelancerId: number;
+    lastDays?: number;
+    periodEnd?: string;
+    projectId?: number | null;
+    weekStart?: string | null;
+  }): Observable<Blob> {
+    const q = new URLSearchParams();
+    q.set('freelancerId', String(params.freelancerId));
+    if (params.lastDays != null) q.set('lastDays', String(params.lastDays));
+    if (params.periodEnd?.trim()) q.set('periodEnd', params.periodEnd.trim());
+    if (params.projectId != null) q.set('projectId', String(params.projectId));
+    if (params.weekStart?.trim()) q.set('weekStart', params.weekStart.trim());
+    return this.http.get(`${TASK_API}/tasks/reports/weekly.pdf?${q.toString()}`, { responseType: 'blob' });
+  }
+
+  /** Trigger browser download for a Blob (e.g. PDF). */
+  saveBlobAsFile(blob: Blob, filename: string): void {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.rel = 'noopener';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 }

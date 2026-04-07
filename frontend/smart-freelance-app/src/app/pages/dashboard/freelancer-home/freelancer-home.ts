@@ -102,7 +102,10 @@ export class FreelancerHome implements OnInit {
   }
 
   private loadFreelancerStats(freelancerId: number): void {
-    this.isLoadingStats = true;
+    setTimeout(() => {
+      this.isLoadingStats = true;
+      this.cdr.markForCheck();
+    }, 0);
     forkJoin({
       applications: this.applicationService.getApplicationsByFreelance(freelancerId).pipe(catchError(() => of([]))),
       contracts: this.contractService.getByFreelancer(freelancerId).pipe(catchError(() => of([]))),
@@ -133,7 +136,10 @@ export class FreelancerHome implements OnInit {
   }
 
   private loadRecommendations(userId: number): void {
-    this.isLoadingRecommendations = true;
+    setTimeout(() => {
+      this.isLoadingRecommendations = true;
+      this.cdr.markForCheck();
+    }, 0);
     this.projectService.getRecommendedProjects(userId).pipe(
       catchError(() => of([]))
     ).subscribe((projects) => {

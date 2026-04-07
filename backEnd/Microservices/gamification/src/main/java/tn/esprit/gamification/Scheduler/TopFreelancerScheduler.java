@@ -18,7 +18,8 @@ import java.util.Objects;
 @Component
 @RequiredArgsConstructor
 @Slf4j
-public class TopFreelancerScheduler {
+public class
+TopFreelancerScheduler {
 
     private final UserLevelService userLevelService;
     private final AchievementService achievementService;
