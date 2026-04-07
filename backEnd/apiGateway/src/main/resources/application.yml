@@ -131,6 +131,14 @@ spring:
           filters:
             - StripPrefix=1
 
+        # Subcontracting Management (port 8094)
+        - id: subcontracting
+          uri: http://localhost:8094
+          predicates:
+            - Path=/subcontracting/**
+          filters:
+            - StripPrefix=1
+
         # Task AI: match first — metadata response-timeout in milliseconds (4h) for slow Ollama.
         - id: task-ai
           uri: http://localhost:8091

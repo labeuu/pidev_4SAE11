@@ -186,6 +186,8 @@ export const routes: Routes = [
       { path: 'settings', redirectTo: 'profile', pathMatch: 'full' },
       { path: 'my-vendors', loadComponent: () => import('./pages/dashboard/my-vendors/my-vendors').then(m => m.MyVendors), title: 'Mes Agréments' },
       { path: 'client-vendors', loadComponent: () => import('./pages/dashboard/client-vendors/client-vendors').then(m => m.ClientVendors), title: 'Mes fournisseurs' },
+      { path: 'my-subcontracts', loadComponent: () => import('./pages/dashboard/my-subcontracts/my-subcontracts').then(m => m.MySubcontracts), title: 'Mes Sous-Traitances' },
+      { path: 'subcontractor-work', loadComponent: () => import('./pages/dashboard/subcontractor-work/subcontractor-work').then(m => m.SubcontractorWork), title: 'Travaux sous-traités' },
       { path: 'my-contracts', loadComponent: () => import('./pages/dashboard/my-contracts/my-contracts').then(m => m.MyContracts) },
       { path: 'my-contracts/:id', loadComponent: () => import('./pages/dashboard/my-contracts/contract-detail/contract-detail').then(m => m.ContractDetail) },
       { path: 'freelancer-search', loadComponent: () => import('./pages/dashboard/freelancer-search/freelancer-search').then(m => m.FreelancerSearch), title: 'Find Freelancers' },
@@ -208,6 +210,7 @@ export const routes: Routes = [
     
       { path: 'offers', loadComponent: () => import('./pages/admin/offer-management/offer-management').then(m => m.OfferManagement) },
       { path: 'vendors', loadComponent: () => import('./pages/admin/vendor-management/vendor-management').then(m => m.VendorManagement), title: 'Vendor Management' },
+      { path: 'subcontracts', loadComponent: () => import('./pages/admin/subcontract-management/subcontract-management').then(m => m.SubcontractManagement), title: 'Sous-Traitance' },
       {
         path: 'projects',
         children: [

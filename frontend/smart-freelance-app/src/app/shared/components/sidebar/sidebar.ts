@@ -62,6 +62,7 @@ export class Sidebar {
     user:        'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
     chart:       'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
     portfolio:   'M4 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2V6zM14 6a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2V6zM4 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2H6a2 2 0 01-2-2v-2zM14 16a2 2 0 012-2h2a2 2 0 012 2v2a2 2 0 01-2 2h-2a2 2 0 01-2-2v-2z',
+    subcontracts:'M8 7v8a2 2 0 002 2h6M8 7V5a2 2 0 012-2h4.586a1 1 0 01.707.293l4.414 4.414a1 1 0 01.293.707V15a2 2 0 01-2 2h-2M8 7H6a2 2 0 00-2 2v10a2 2 0 002 2h8a2 2 0 002-2v-2',
   };
 
   // ── Admin nav sections ────────────────────────────────────
@@ -83,6 +84,7 @@ export class Sidebar {
           { label: 'Offers',    route: '/admin/offers',    icon: 'offers'    },
           { label: 'Contracts', route: '/admin/contracts', icon: 'contracts' },
           { label: 'Vendors',   route: '/admin/vendors',   icon: 'vendors'   },
+          { label: 'Subcontracts', route: '/admin/subcontracts', icon: 'subcontracts' },
           { label: 'Planning',  route: '/admin/planning',  icon: 'planning'  },
           { label: 'Calendar',  route: '/admin/calendar',  icon: 'planning'  },
           { label: 'GitHub',    route: '/admin/github',    icon: 'github'    },
@@ -149,6 +151,8 @@ export class Sidebar {
         { label: 'My Reviews',         route: '/dashboard/reviews',           icon: 'star'       },
         { label: 'Reviews about me',   route: '/dashboard/reviews/about-me', icon: 'chat'       },
         { label: 'My Contracts',       route: '/dashboard/my-contracts',     icon: 'contracts'  },
+        { label: 'My Subcontracts',  route: '/dashboard/my-subcontracts', icon: 'subcontracts' },
+        { label: 'Subcontractor Work', route: '/dashboard/subcontractor-work', icon: 'subcontracts' },
         { label: 'My Progress Updates',route: '/dashboard/progress-updates', icon: 'chart'      },
         { label: 'My Portfolio',       route: '/dashboard/my-portfolio',     icon: 'portfolio'  },
         { label: 'Messages',           route: '/dashboard/messages',         icon: 'chat'       },
