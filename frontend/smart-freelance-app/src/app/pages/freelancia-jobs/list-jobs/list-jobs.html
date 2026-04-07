@@ -1,0 +1,249 @@
+<div class="jobs-page">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header__left">
+      <h2 class="page-title">
+        <span *ngIf="userRole === 'CLIENT'">My Jobs</span>
+        <span *ngIf="userRole !== 'CLIENT'">Browse Jobs</span>
+      </h2>
+      <p class="page-subtitle">{{ filteredJobs.length }} job(s) found</p>
+    </div>
+    <div class="page-header__actions">
+      <button *ngIf="userRole === 'CLIENT'" class="btn-primary" routerLink="/dashboard/my-jobs/add">
+        + Post a Job
+      </button>
+      <button *ngIf="userRole === 'CLIENT'" class="btn-secondary" (click)="toggleStats()">
+        Stats
+      </button>
+    </div>
+  </div>
+
+  <!-- Statistics Panel -->
+  <div *ngIf="showStats" class="stats-panel">
+    <h5 class="stats-panel__title">Job Statistics</h5>
+    <div class="stats-grid">
+      <div class="stat-card" *ngFor="let entry of statistics | keyvalue">
+        <div class="stat-card__value">{{ entry.value }}</div>
+        <div class="stat-card__label">{{ entry.key }}</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Search & Filters -->
+  <div class="search-panel">
+
+    <!-- Main bar -->
+    <div class="search-bar-row">
+
+      <!-- Keyword input -->
+      <div class="search-input-wrap">
+        <svg class="search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.8"/>
+          <path d="m13 13 3.5 3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>
+        </svg>
+        <input
+          type="text"
+          class="search-input"
+          placeholder="Search by title, description…"
+          [(ngModel)]="filterKeyword"
+          (ngModelChange)="onFilterChange()"
+          autocomplete="off"
+        />
+        <button *ngIf="filterKeyword" type="button" class="search-clear-btn" (click)="filterKeyword=''; onFilterChange()" aria-label="Clear search">✕</button>
+      </div>
+
+      <!-- Filters toggle -->
+      <button type="button"
+              class="btn-filter-toggle"
+              [class.btn-filter-toggle--active]="showFilters || hasActiveFilters"
+              (click)="toggleFilters()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <line x1="4" y1="6" x2="20" y2="6"/>
+          <line x1="8" y1="12" x2="16" y2="12"/>
+          <line x1="11" y1="18" x2="13" y2="18"/>
+        </svg>
+        Filters
+        <span *ngIf="hasActiveFilters" class="filter-active-dot"></span>
+      </button>
+
+      <!-- Reset -->
+      <button *ngIf="hasActiveFilters" type="button" class="btn-filter-reset" (click)="clearFilters()">Reset</button>
+
+    </div>
+
+    <!-- Advanced filters panel -->
+    <div *ngIf="showFilters" class="filters-advanced-panel">
+      <div class="filters-adv-grid">
+
+        <div class="filter-group">
+          <label class="filter-label">Category</label>
+          <select class="filter-select" [(ngModel)]="filterCategory" (ngModelChange)="onFilterChange()">
+            <option value="">All categories</option>
+            <option *ngFor="let cat of CATEGORIES" [value]="cat">{{ cat }}</option>
+          </select>
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Location</label>
+          <select class="filter-select" [(ngModel)]="filterLocationType" (ngModelChange)="onFilterChange()">
+            <option value="">Any location</option>
+            <option value="REMOTE">Remote</option>
+            <option value="ONSITE">On-site</option>
+            <option value="HYBRID">Hybrid</option>
+          </select>
+        </div>
+
+        <div class="filter-group" *ngIf="userRole !== 'FREELANCER'">
+          <label class="filter-label">Status</label>
+          <select class="filter-select" [(ngModel)]="filterStatus" (ngModelChange)="onFilterChange()">
+            <option value="">All statuses</option>
+            <option value="OPEN">Open</option>
+            <option value="IN_PROGRESS">In Progress</option>
+            <option value="FILLED">Filled</option>
+            <option value="CANCELLED">Cancelled</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Active filter chips -->
+      <div *ngIf="hasActiveFilters" class="active-chips">
+        <span *ngIf="filterCategory" class="filter-chip">
+          📂 {{ filterCategory }}
+          <button type="button" (click)="filterCategory=''; onFilterChange()" aria-label="Remove category filter">✕</button>
+        </span>
+        <span *ngIf="filterLocationType" class="filter-chip">
+          📍 {{ filterLocationType }}
+          <button type="button" (click)="filterLocationType=''; onFilterChange()" aria-label="Remove location filter">✕</button>
+        </span>
+        <span *ngIf="filterStatus" class="filter-chip">
+          ● {{ filterStatus }}
+          <button type="button" (click)="filterStatus=''; onFilterChange()" aria-label="Remove status filter">✕</button>
+        </span>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading jobs...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMessage && !isLoading" class="error-state">
+    <p>{{ errorMessage }}</p>
+  </div>
+
+  <!-- Empty state -->
+  <div *ngIf="!isLoading && filteredJobs.length === 0 && !errorMessage" class="empty-state">
+    <div class="empty-state__icon">🧳</div>
+    <h5 class="empty-state__title">No jobs found</h5>
+    <p class="empty-state__subtitle" *ngIf="userRole === 'CLIENT'">Post your first job to get started.</p>
+    <button *ngIf="userRole === 'CLIENT'" class="btn-primary" routerLink="/dashboard/my-jobs/add">
+      Post a Job
+    </button>
+  </div>
+
+  <!-- Jobs Grid -->
+  <div class="jobs-grid" *ngIf="!isLoading && filteredJobs.length > 0">
+    <div class="job-card" *ngFor="let job of pagedJobs">
+
+      <!-- Card Top: company badge + status -->
+      <div class="job-card__top">
+        <span *ngIf="job.clientType === 'COMPANY'" class="badge badge--company">
+          🏢 {{ job.companyName || 'Company' }}
+        </span>
+        <span *ngIf="job.clientType !== 'COMPANY'" class="badge badge--individual">
+          👤 Individual
+        </span>
+        <span class="badge" [ngClass]="{
+          'badge--open':        job.status === 'OPEN',
+          'badge--in-progress': job.status === 'IN_PROGRESS',
+          'badge--filled':      job.status === 'FILLED',
+          'badge--cancelled':   job.status === 'CANCELLED'
+        }">{{ job.status }}</span>
+      </div>
+
+      <!-- Title -->
+      <h3 class="job-card__title">{{ job.title }}</h3>
+
+      <!-- Meta row -->
+      <div class="job-card__meta">
+        <span class="meta-tag">📂 {{ job.category }}</span>
+        <span class="meta-tag">📍 {{ job.locationType }}</span>
+        <span *ngIf="job.budgetMin || job.budgetMax" class="meta-tag meta-tag--budget">
+          💰 {{ job.budgetMin | number }}–{{ job.budgetMax | number }} {{ job.currency || 'USD' }}
+        </span>
+      </div>
+
+      <!-- Description -->
+      <p class="job-card__description">{{ job.description }}</p>
+
+      <!-- Skills -->
+      <div *ngIf="job.skills && job.skills.length > 0" class="job-card__skills">
+        <span *ngFor="let skill of job.skills.slice(0, 4)" class="skill-tag">{{ skill.name }}</span>
+        <span *ngIf="job.skills.length > 4" class="skill-tag skill-tag--more">+{{ job.skills.length - 4 }}</span>
+      </div>
+
+      <!-- Footer -->
+      <div class="job-card__footer">
+        <span class="job-card__date">
+          Posted {{ job.createdAt | date:'mediumDate' }}
+          <span *ngIf="job.deadline"> · Deadline {{ job.deadline | date:'mediumDate' }}</span>
+        </span>
+      </div>
+
+      <!-- Actions -->
+      <div class="job-card__actions">
+        <button class="btn-outline" (click)="viewJob(job.id!)">View</button>
+        <ng-container *ngIf="userRole === 'CLIENT' && isOwner(job)">
+          <button class="btn-ghost" (click)="editJob(job.id!)">Edit</button>
+          <button class="btn-danger" (click)="confirmDelete(job.id!)">Delete</button>
+        </ng-container>
+        <button *ngIf="userRole === 'FREELANCER'" class="btn-primary"
+                [routerLink]="['/dashboard/my-job-applications/add', job.id]">
+          Apply
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- Pagination -->
+  <nav *ngIf="!isLoading && totalPages > 1" class="feed-pagination">
+    <div class="pagination-info">
+      Showing {{ (currentPage - 1) * pageSize + 1 }}–{{ pageEnd }} of {{ filteredJobs.length }} jobs
+    </div>
+    <div class="pagination-controls">
+      <button class="btn-pagination" [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)">&#8592;</button>
+      <div class="pagination-pages">
+        <ng-container *ngFor="let p of pageNumbers">
+          <span *ngIf="p === '...'" class="pagination-ellipsis">…</span>
+          <button *ngIf="p !== '...'"
+                  class="btn-pagination btn-pagination--num"
+                  [class.btn-pagination--active]="p === currentPage"
+                  (click)="goToPage(+p)">{{ p }}</button>
+        </ng-container>
+      </div>
+      <button class="btn-pagination" [disabled]="currentPage === totalPages" (click)="goToPage(currentPage + 1)">&#8594;</button>
+    </div>
+  </nav>
+
+</div>
+
+<!-- Delete Modal -->
+<div *ngIf="showDeleteModal" class="modal-overlay" (click)="cancelDelete()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <h3 class="modal-box__title">Delete Job</h3>
+    <p class="modal-box__body">Are you sure you want to delete this job? All applications will also be removed.</p>
+    <div *ngIf="deleteError" class="error-state error-state--inline">{{ deleteError }}</div>
+    <div class="modal-box__actions">
+      <button class="btn-ghost" (click)="cancelDelete()">Cancel</button>
+      <button class="btn-danger" (click)="doDelete()">Delete</button>
+    </div>
+  </div>
+</div>
