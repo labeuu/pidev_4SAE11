@@ -1,5 +1,7 @@
 package org.example.vendor.exception;
 
+import feign.FeignException;
+import io.github.resilience4j.circuitbreaker.CallNotPermittedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
@@ -44,6 +46,43 @@ public class GlobalExceptionHandler {
             errors.put(fieldName, errorMessage);
         });
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(errors);
+    }
+
+    /** Appels Feign / clients HTTP — statut HTTP clair côté API gateway / front. */
+    @ExceptionHandler(FeignException.class)
+    public ResponseEntity<ErrorResponse> handleFeign(FeignException ex) {
+        int feignStatus = ex.status();
+        HttpStatus httpStatus;
+        String message;
+        if (feignStatus <= 0) {
+            httpStatus = HttpStatus.SERVICE_UNAVAILABLE;
+            message = "Service externe indisponible (connexion ou délai dépassé). Vérifiez que les microservices dépendants sont démarrés.";
+        } else if (feignStatus >= HttpStatus.INTERNAL_SERVER_ERROR.value()) {
+            httpStatus = HttpStatus.BAD_GATEWAY;
+            message = "Un service partenaire renvoie une erreur serveur. Réessayez plus tard.";
+        } else if (feignStatus >= HttpStatus.BAD_REQUEST.value()) {
+            httpStatus = HttpStatus.BAD_GATEWAY;
+            message = "Réponse inattendue d'un service partenaire. Réessayez ou contactez l'administrateur.";
+        } else {
+            httpStatus = HttpStatus.BAD_GATEWAY;
+            message = "Erreur lors de l'appel à un service partenaire.";
+        }
+        ErrorResponse error = new ErrorResponse(
+                httpStatus.value(),
+                message,
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(httpStatus).body(error);
+    }
+
+    @ExceptionHandler(CallNotPermittedException.class)
+    public ResponseEntity<ErrorResponse> handleCircuitOpen(CallNotPermittedException ex) {
+        ErrorResponse error = new ErrorResponse(
+                HttpStatus.SERVICE_UNAVAILABLE.value(),
+                "Le service est temporairement saturé (circuit ouvert). Réessayez dans quelques instants.",
+                LocalDateTime.now()
+        );
+        return ResponseEntity.status(HttpStatus.SERVICE_UNAVAILABLE).body(error);
     }
 
     @ExceptionHandler(Exception.class)

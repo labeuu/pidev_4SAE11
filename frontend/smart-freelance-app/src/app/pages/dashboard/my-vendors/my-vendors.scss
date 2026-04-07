@@ -6,7 +6,13 @@
   padding: $spacing-xl;
 }
 
-.mv-header { margin-bottom: $spacing-xl; }
+.mv-hero {
+  margin-bottom: $spacing-xl;
+  padding: $spacing-lg $spacing-xl;
+  background: $neutral-50;
+  border: 1px solid $neutral-200;
+  border-radius: $radius-lg;
+}
 
 .mv-title {
   font-size: $font-size-2xl;
@@ -49,16 +55,54 @@
   color: $neutral-500;
 }
 
-.mv-spinner {
-  width: 32px; height: 32px;
-  border: 3px solid $neutral-200;
-  border-top-color: $primary-500;
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  margin: 0 auto $spacing-md;
+.mv-loading--panel {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: $spacing-md;
+  max-width: 520px;
+  margin: 0 auto;
+  padding: $spacing-xl;
+  background: $white;
+  border: 1px solid $neutral-200;
+  border-radius: $radius-lg;
 }
 
-@keyframes spin { to { transform: rotate(360deg); } }
+.mv-loading__hint {
+  margin: 0;
+  font-size: $font-size-sm;
+  color: $neutral-500;
+  text-align: center;
+}
+
+.mv-skeleton {
+  height: 96px;
+  border-radius: $radius-md;
+  background: linear-gradient(90deg, $neutral-100 0%, $neutral-50 50%, $neutral-100 100%);
+  background-size: 200% 100%;
+  animation: mv-shimmer 1.2s ease-in-out infinite;
+  &--card { min-height: 120px; }
+  &--narrow { max-width: 70%; align-self: flex-start; }
+}
+
+@keyframes mv-shimmer {
+  0% { background-position: 200% 0; }
+  100% { background-position: -200% 0; }
+}
+
+.mv-error {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: $spacing-md;
+  padding: $spacing-lg;
+  margin-bottom: $spacing-lg;
+  background: $error-50;
+  border: 1px solid $error-200;
+  border-radius: $radius-lg;
+  color: $error-700;
+  p { margin: 0; font-size: $font-size-sm; }
+}
 
 .mv-empty {
   svg { color: $neutral-300; margin-bottom: $spacing-md; }
@@ -173,6 +217,11 @@
   transition: all $transition-base;
   border: none;
 
+  &--primary {
+    background: $gradient-primary;
+    color: $white;
+    &:hover { background: $gradient-primary-hover; }
+  }
   &--outline { background: $white; color: $neutral-700; border: 1px solid $neutral-300; &:hover { border-color: $neutral-400; background: $neutral-50; } }
   &--sm { padding: $spacing-xs $spacing-sm; font-size: $font-size-xs; }
 }

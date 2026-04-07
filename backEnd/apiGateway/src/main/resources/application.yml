@@ -143,9 +143,9 @@ spring:
           filters:
             - StripPrefix=1
 
-        # Vendor Management (port 8092)
+        # Vendor Management — port must match Config Server VENDOR.properties (8093); 8092 is AImodel.
         - id: vendor
-          uri: http://localhost:8092
+          uri: http://localhost:8093
           predicates:
             - Path=/vendor/**
           filters:

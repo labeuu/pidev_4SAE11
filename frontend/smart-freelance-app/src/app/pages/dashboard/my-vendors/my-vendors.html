@@ -1,8 +1,10 @@
 <div class="my-vendors">
-  <div class="mv-header">
-    <h1 class="mv-title">Mes Agréments Fournisseur</h1>
-    <p class="mv-subtitle">Consultez vos agréments et leur statut de validité</p>
-  </div>
+  <header class="mv-hero">
+    <h1 class="mv-title">Mes agréments fournisseur</h1>
+    <p class="mv-subtitle">
+      Consultez vos agréments, signatures en attente et dates de validité au même format que l’espace administrateur.
+    </p>
+  </header>
 
   <div class="mv-summary">
     <div class="mv-summary__card mv-summary__card--success">
@@ -19,14 +21,23 @@
     </div>
   </div>
 
-  @if (loading) {
-    <div class="mv-loading">
-      <div class="mv-spinner"></div>
-      <p>Chargement…</p>
+  @if (loadError && !loading) {
+    <div class="mv-error" role="alert">
+      <p>{{ loadError }}</p>
+      <button type="button" class="btn btn--outline btn--sm" (click)="loadMyApprovals()">Réessayer</button>
     </div>
   }
 
-  @if (!loading && approvals.length === 0) {
+  @if (loading) {
+    <div class="mv-loading mv-loading--panel" aria-busy="true">
+      <div class="mv-skeleton mv-skeleton--card"></div>
+      <div class="mv-skeleton mv-skeleton--card"></div>
+      <div class="mv-skeleton mv-skeleton--card mv-skeleton--narrow"></div>
+      <p class="mv-loading__hint">Chargement des agréments…</p>
+    </div>
+  }
+
+  @if (!loading && approvals.length === 0 && !loadError) {
     <div class="mv-empty">
       <svg width="56" height="56" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M22 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
       <h3>Aucun agrément</h3>
@@ -59,11 +70,11 @@
             </div>
             <div class="vendor-card__field">
               <span class="vendor-card__label">Valide jusqu'au</span>
-              <span class="vendor-card__value">{{ a.validUntil || '—' }}</span>
+              <span class="vendor-card__value">{{ formatShortDate(a.validUntil) }}</span>
             </div>
             <div class="vendor-card__field">
               <span class="vendor-card__label">Prochaine révision</span>
-              <span class="vendor-card__value">{{ a.nextReviewDate || '—' }}</span>
+              <span class="vendor-card__value">{{ formatShortDate(a.nextReviewDate) }}</span>
             </div>
             <div class="vendor-card__field">
               <span class="vendor-card__label">Nb de révisions</span>

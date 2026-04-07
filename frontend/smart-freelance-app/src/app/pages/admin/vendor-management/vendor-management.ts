@@ -1,4 +1,4 @@
-import { Component, OnInit } from '@angular/core';
+import { afterNextRender, Component, HostListener, inject, Injector, OnInit, runInInjectionContext } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { forkJoin, of } from 'rxjs';
@@ -15,6 +15,19 @@ import { UserService, User } from '../../../core/services/user.service';
 import { ToastService } from '../../../core/services/toast.service';
 import { ProjectService, Project, ProjectApplication } from '../../../core/services/project.service';
 import { ContractService, Contract } from '../../../core/services/contract.service';
+import { AuthService } from '../../../core/services/auth.service';
+import { parseVendorApiMessage } from '../../../core/utils/vendor-api-message';
+
+export interface VendorStatsSnapshot {
+  total: number;
+  pending: number;
+  approved: number;
+  suspended: number;
+  expired: number;
+  reviewsDue: number;
+  reviewsOverdue: number;
+  expiringSoon: number;
+}
 
 /** Candidature enrichie avec le titre du projet (même client que l’agrément). */
 export interface VendorContextApplication extends ProjectApplication {
@@ -37,6 +50,8 @@ export interface VendorContextTimelineItem {
 })
 export class VendorManagement implements OnInit {
 
+  private readonly injector = inject(Injector);
+
   vendors: VendorApproval[] = [];
   reviewsDue: VendorApproval[] = [];
   /** MÉTIER 2 — révisions dont la date planifiée est déjà passée. */
@@ -45,6 +60,21 @@ export class VendorManagement implements OnInit {
   expiringSoon: VendorApproval[] = [];
   loading = true;
   activeTab: 'all' | 'pending' | 'approved' | 'reviews' | 'expiring' = 'all';
+
+  /** Filtre texte sur la liste courante (freelancer, organisation, domaine, statut…). */
+  searchQuery = '';
+
+  /** Compteurs alignés sur le dernier chargement — évite un getter recalculé à chaque CD. */
+  statsSnapshot: VendorStatsSnapshot = {
+    total: 0,
+    pending: 0,
+    approved: 0,
+    suspended: 0,
+    expired: 0,
+    reviewsDue: 0,
+    reviewsOverdue: 0,
+    expiringSoon: 0,
+  };
 
   showCreateModal = false;
   showActionModal = false;
@@ -56,6 +86,9 @@ export class VendorManagement implements OnInit {
   newRequest: VendorApprovalRequest = { organizationId: 0, freelancerId: 0, domain: '', professionalSector: '' };
 
   adminId = 1;
+
+  /** Guards stale responses when `loadAll` is triggered repeatedly (e.g. quick deletes). */
+  private loadAllGeneration = 0;
 
   clients: User[] = [];
   freelancers: User[] = [];
@@ -88,15 +121,40 @@ export class VendorManagement implements OnInit {
     private toast: ToastService,
     private projectService: ProjectService,
     private contractService: ContractService,
+    private auth: AuthService,
   ) {}
 
-  private apiError(err: unknown, fallback: string): string {
-    const e = err as { error?: { message?: string }; message?: string };
-    return e?.error?.message || e?.message || fallback;
+  @HostListener('document:keydown.escape')
+  onEscapeCloseModals(): void {
+    if (this.showCreateModal) {
+      this.showCreateModal = false;
+      return;
+    }
+    if (this.showActionModal) {
+      this.showActionModal = false;
+      return;
+    }
+    if (this.showContextModal) {
+      this.closeContext();
+      return;
+    }
+    if (this.showAuditModal) {
+      this.closeAudit();
+      return;
+    }
+    if (this.showDecisionModal) {
+      this.closeDecision();
+    }
   }
 
   ngOnInit() {
+    const uid = this.auth.getUserId();
+    if (uid != null) this.adminId = uid;
     this.loadUsers();
+    this.loadAll();
+  }
+
+  refreshList(): void {
     this.loadAll();
   }
 
@@ -113,36 +171,127 @@ export class VendorManagement implements OnInit {
     return this.userMap.get(id) || `#${id}`;
   }
 
-  loadAll() {
+  /**
+   * @param afterLoad Optional callback after data and `loading` are settled (e.g. success toast).
+   *
+   * HTTP `subscribe` runs as a microtask; in dev mode Angular can verify bindings twice in one
+   * turn so `stats.*` would change between checks (NG0100). Applying the forkJoin result inside
+   * `setTimeout(0)` defers to a macrotask so change detection completes first.
+   */
+  loadAll(afterLoad?: () => void) {
     this.loading = true;
-    this.vendorService.getAll().subscribe(data => {
-      this.vendors = data;
-      this.loading = false;
+    const generation = ++this.loadAllGeneration;
+    forkJoin({
+      all: this.vendorService.getAll(),
+      due: this.vendorService.getReviewsDue(),
+      overdue: this.vendorService.getReviewsOverdue(),
+      expiring: this.vendorService.getExpiringSoon(30),
+    }).subscribe({
+      next: ({ all, due, overdue, expiring }) => {
+        setTimeout(() => {
+          if (generation !== this.loadAllGeneration) return;
+          this.vendors = all;
+          this.reviewsDue = due;
+          this.reviewsOverdue = overdue;
+          this.expiringSoon = expiring;
+          this.statsSnapshot = {
+            total: all.length,
+            pending: all.filter(v => v.status === 'PENDING').length,
+            approved: all.filter(v => v.status === 'APPROVED').length,
+            suspended: all.filter(v => v.status === 'SUSPENDED').length,
+            expired: all.filter(v => v.status === 'EXPIRED').length,
+            reviewsDue: due.length,
+            reviewsOverdue: overdue.length,
+            expiringSoon: expiring.length,
+          };
+          this.loading = false;
+          if (afterLoad) {
+            const run = afterLoad;
+            runInInjectionContext(this.injector, () => {
+              afterNextRender(() => run());
+            });
+          }
+        });
+      },
+      error: err => {
+        setTimeout(() => {
+          if (generation !== this.loadAllGeneration) return;
+          this.loading = false;
+          runInInjectionContext(this.injector, () => {
+            afterNextRender(() =>
+              this.toast.error(parseVendorApiMessage(err, 'Impossible de charger les agréments.')),
+            );
+          });
+        });
+      },
     });
-    this.vendorService.getReviewsDue().subscribe(data => this.reviewsDue = data);
-    this.vendorService.getReviewsOverdue().subscribe(data => this.reviewsOverdue = data);
-    this.vendorService.getExpiringSoon(30).subscribe(data => this.expiringSoon = data);
   }
 
   get filteredVendors(): VendorApproval[] {
-    if (this.activeTab === 'pending') return this.vendors.filter(v => v.status === 'PENDING');
-    if (this.activeTab === 'approved') return this.vendors.filter(v => v.status === 'APPROVED');
-    if (this.activeTab === 'reviews') return this.reviewsDue;
-    if (this.activeTab === 'expiring') return this.expiringSoon;
-    return this.vendors;
+    let list: VendorApproval[];
+    if (this.activeTab === 'pending') list = this.vendors.filter(v => v.status === 'PENDING');
+    else if (this.activeTab === 'approved') list = this.vendors.filter(v => v.status === 'APPROVED');
+    else if (this.activeTab === 'reviews') list = this.reviewsDue;
+    else if (this.activeTab === 'expiring') list = this.expiringSoon;
+    else list = this.vendors;
+
+    const q = this.searchQuery.trim().toLowerCase();
+    if (!q) return list;
+
+    return list.filter(v => {
+      const hay = [
+        this.userName(v.freelancerId),
+        this.userName(v.organizationId),
+        v.domain,
+        v.professionalSector,
+        this.statusLabelFr(v.status),
+        v.status,
+        String(v.id),
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
   }
 
-  get stats() {
-    return {
-      total: this.vendors.length,
-      pending: this.vendors.filter(v => v.status === 'PENDING').length,
-      approved: this.vendors.filter(v => v.status === 'APPROVED').length,
-      suspended: this.vendors.filter(v => v.status === 'SUSPENDED').length,
-      expired: this.vendors.filter(v => v.status === 'EXPIRED').length,
-      reviewsDue: this.reviewsDue.length,
-      reviewsOverdue: this.reviewsOverdue.length,
-      expiringSoon: this.expiringSoon.length,
+  tabEmptyMessage(): string {
+    const q = this.searchQuery.trim();
+    if (q) {
+      return `Aucun agrément ne correspond à « ${q} » pour cet onglet. Effacez la recherche ou changez d'historique.`;
+    }
+    switch (this.activeTab) {
+      case 'all':
+        return "Aucun agrément enregistré. Utilisez « Nouvel agrément » pour en créer un.";
+      case 'pending':
+        return 'Aucune demande en attente. Les nouvelles demandes apparaîtront ici.';
+      case 'approved':
+        return "Aucun agrément approuvé. Passez à l'onglet « En attente » pour traiter des dossiers.";
+      case 'reviews':
+        return 'Aucune révision à planifier dans la fenêtre des 30 prochains jours.';
+      case 'expiring':
+        return "Aucun agrément n'approche de sa date de fin de validité (30 j.).";
+      default:
+        return 'Aucun agrément dans cette catégorie.';
+    }
+  }
+
+  formatShortDate(iso: string | null | undefined): string {
+    if (!iso) return '—';
+    const d = new Date(iso);
+    if (Number.isNaN(d.getTime())) return String(iso).slice(0, 10);
+    return d.toLocaleDateString('fr-FR', { day: '2-digit', month: 'short', year: 'numeric' });
+  }
+
+  statusLabelFr(status: VendorApprovalStatus): string {
+    const map: Record<VendorApprovalStatus, string> = {
+      PENDING: 'En attente',
+      APPROVED: 'Approuvé',
+      REJECTED: 'Rejeté',
+      SUSPENDED: 'Suspendu',
+      EXPIRED: 'Expiré',
     };
+    return map[status] ?? status;
   }
 
   statusClass(status: VendorApprovalStatus): string {
@@ -162,13 +311,27 @@ export class VendorManagement implements OnInit {
   }
 
   submitCreate() {
-    this.vendorService.create(this.newRequest).subscribe({
+    const { organizationId, freelancerId } = this.newRequest;
+    if (!organizationId || !freelancerId) {
+      this.toast.error('Veuillez sélectionner un client et un freelancer.');
+      return;
+    }
+    const payload: VendorApprovalRequest = { ...this.newRequest };
+    this.showCreateModal = false;
+    this.activeTab = 'pending';
+    this.searchQuery = '';
+
+    this.vendorService.create(payload).subscribe({
       next: () => {
-        this.showCreateModal = false;
-        this.toast.success('Agrément créé (en attente). Icône œil = contexte projets / contrats.');
-        this.loadAll();
+        this.loadAll(() =>
+          this.toast.success('Agrément créé (en attente). Icône œil = contexte projets / contrats.'),
+        );
       },
-      error: err => this.toast.error(this.apiError(err, 'Erreur lors de la création')),
+      error: err => {
+        this.newRequest = { ...payload };
+        this.showCreateModal = true;
+        this.toast.error(parseVendorApiMessage(err, 'Erreur lors de la création'));
+      },
     });
   }
 
@@ -186,10 +349,9 @@ export class VendorManagement implements OnInit {
 
     const done = () => {
       this.showActionModal = false;
-      this.toast.success('Action enregistrée.');
-      this.loadAll();
+      this.loadAll(() => this.toast.success('Action enregistrée.'));
     };
-    const fail = (err: unknown) => this.toast.error(this.apiError(err, 'Action échouée'));
+    const fail = (err: unknown) => this.toast.error(parseVendorApiMessage(err, 'Action échouée'));
 
     switch (this.actionType) {
       case 'approve':
@@ -210,10 +372,9 @@ export class VendorManagement implements OnInit {
   resubmit(vendor: VendorApproval) {
     this.vendorService.resubmit(vendor.id).subscribe({
       next: () => {
-        this.toast.success('Demande re-soumise.');
-        this.loadAll();
+        this.loadAll(() => this.toast.success('Demande re-soumise.'));
       },
-      error: err => this.toast.error(this.apiError(err, 'Re-soumission impossible')),
+      error: err => this.toast.error(parseVendorApiMessage(err, 'Re-soumission impossible')),
     });
   }
 
@@ -221,10 +382,9 @@ export class VendorManagement implements OnInit {
     if (!confirm('Supprimer cet agrément ?')) return;
     this.vendorService.delete(vendor.id).subscribe({
       next: () => {
-        this.toast.success('Agrément supprimé.');
-        this.loadAll();
+        this.loadAll(() => this.toast.success('Agrément supprimé.'));
       },
-      error: err => this.toast.error(this.apiError(err, 'Suppression impossible')),
+      error: err => this.toast.error(parseVendorApiMessage(err, 'Suppression impossible')),
     });
   }
 
@@ -232,14 +392,13 @@ export class VendorManagement implements OnInit {
     this.vendorService.sendExpiryReminders().subscribe({
       next: res => {
         const n = res.remindersSent;
-        this.toast.success(
+        const msg =
           n === 0
             ? 'Aucun rappel à envoyer aujourd’hui (J-30 déjà traité ou aucune échéance).'
-            : `${n} rappel(s) d’expiration envoyé(s).`,
-        );
-        this.loadAll();
+            : `${n} rappel(s) d’expiration envoyé(s).`;
+        this.loadAll(() => this.toast.success(msg));
       },
-      error: err => this.toast.error(this.apiError(err, 'Impossible d’envoyer les rappels')),
+      error: err => this.toast.error(parseVendorApiMessage(err, 'Impossible d’envoyer les rappels')),
     });
   }
 
@@ -247,14 +406,13 @@ export class VendorManagement implements OnInit {
     this.vendorService.expireOutdated().subscribe({
       next: res => {
         const n = res.expiredCount;
-        this.toast.success(
+        const msg =
           n === 0
             ? 'Aucun agrément à expirer pour le moment.'
-            : `${n} agrément(s) passé(s) en expiré.`,
-        );
-        this.loadAll();
+            : `${n} agrément(s) passé(s) en expiré.`;
+        this.loadAll(() => this.toast.success(msg));
       },
-      error: err => this.toast.error(this.apiError(err, 'Impossible de lancer l’expiration')),
+      error: err => this.toast.error(parseVendorApiMessage(err, 'Impossible de lancer l’expiration')),
     });
   }
 
@@ -318,9 +476,9 @@ export class VendorManagement implements OnInit {
         this.auditEntries = rows;
         this.auditLoading = false;
       },
-      error: () => {
+      error: err => {
         this.auditLoading = false;
-        this.toast.error('Impossible de charger le journal d’audit.');
+        this.toast.error(parseVendorApiMessage(err, 'Impossible de charger le journal d’audit.'));
       },
     });
   }
@@ -343,7 +501,7 @@ export class VendorManagement implements OnInit {
       },
       error: err => {
         this.decisionLoading = false;
-        this.toast.error(this.apiError(err, 'Impossible de charger le rapport décision.'));
+        this.toast.error(parseVendorApiMessage(err, 'Impossible de charger le rapport décision.'));
       },
     });
   }
@@ -366,7 +524,8 @@ export class VendorManagement implements OnInit {
         URL.revokeObjectURL(url);
         this.toast.success('PDF téléchargé.');
       },
-      error: err => this.toast.error(this.apiError(err, 'Téléchargement PDF impossible')),
+      error: err =>
+        this.toast.error(parseVendorApiMessage(err, 'Téléchargement PDF impossible')),
     });
   }
 
@@ -385,7 +544,9 @@ export class VendorManagement implements OnInit {
 
   ratingBarWidthPct(star: number): number {
     const c = this.countRatingStar(star);
-    return (c / this.ratingBarMax()) * 100;
+    const max = this.ratingBarMax();
+    if (max <= 0) return 0;
+    return Math.max(0, Math.min(100, (c / max) * 100));
   }
 
   formatAuditDate(iso?: string): string {

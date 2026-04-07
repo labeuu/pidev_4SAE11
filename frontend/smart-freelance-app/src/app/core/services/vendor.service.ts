@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
-import { Observable, catchError, of } from 'rxjs';
+import { Observable } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 const VENDOR_API = `${environment.apiGatewayUrl}/vendor/api/vendors`;
@@ -116,9 +116,7 @@ export class VendorService {
   // ── CRUD ──────────────────────────────────────
 
   getAll(): Observable<VendorApproval[]> {
-    return this.http.get<VendorApproval[]>(VENDOR_API).pipe(
-      catchError(err => { console.error('[VendorService] getAll error:', err); return of([]); })
-    );
+    return this.http.get<VendorApproval[]>(VENDOR_API);
   }
 
   getById(id: number): Observable<VendorApproval> {
@@ -126,15 +124,11 @@ export class VendorService {
   }
 
   getByFreelancer(freelancerId: number): Observable<VendorApproval[]> {
-    return this.http.get<VendorApproval[]>(`${VENDOR_API}/freelancer/${freelancerId}`).pipe(
-      catchError(err => { console.error('[VendorService] getByFreelancer error:', err); return of([]); })
-    );
+    return this.http.get<VendorApproval[]>(`${VENDOR_API}/freelancer/${freelancerId}`);
   }
 
   getByOrganization(orgId: number): Observable<VendorApproval[]> {
-    return this.http.get<VendorApproval[]>(`${VENDOR_API}/organization/${orgId}`).pipe(
-      catchError(err => { console.error('[VendorService] getByOrganization error:', err); return of([]); })
-    );
+    return this.http.get<VendorApproval[]>(`${VENDOR_API}/organization/${orgId}`);
   }
 
   create(req: VendorApprovalRequest): Observable<VendorApproval> {
@@ -187,23 +181,17 @@ export class VendorService {
   }
 
   getReviewsDue(): Observable<VendorApproval[]> {
-    return this.http.get<VendorApproval[]>(`${VENDOR_API}/reviews-due`).pipe(
-      catchError(err => { console.error('[VendorService] getReviewsDue error:', err); return of([]); })
-    );
+    return this.http.get<VendorApproval[]>(`${VENDOR_API}/reviews-due`);
   }
 
   getReviewsOverdue(): Observable<VendorApproval[]> {
-    return this.http.get<VendorApproval[]>(`${VENDOR_API}/reviews-overdue`).pipe(
-      catchError(err => { console.error('[VendorService] getReviewsOverdue error:', err); return of([]); })
-    );
+    return this.http.get<VendorApproval[]>(`${VENDOR_API}/reviews-overdue`);
   }
 
   /** MÉTIER 5 — expire dans les N prochains jours (validUntil). */
   getExpiringSoon(days = 30): Observable<VendorApproval[]> {
     const params = new HttpParams().set('days', String(days));
-    return this.http.get<VendorApproval[]>(`${VENDOR_API}/expiring-soon`, { params }).pipe(
-      catchError(err => { console.error('[VendorService] getExpiringSoon error:', err); return of([]); })
-    );
+    return this.http.get<VendorApproval[]>(`${VENDOR_API}/expiring-soon`, { params });
   }
 
   /** MÉTIER 5 — envoie les rappels J-30 (anti-doublon côté serveur). */
@@ -231,9 +219,7 @@ export class VendorService {
   }
 
   getAuditHistory(vendorApprovalId: number): Observable<VendorAuditEntry[]> {
-    return this.http.get<VendorAuditEntry[]>(`${VENDOR_API}/${vendorApprovalId}/audit-history`).pipe(
-      catchError(err => { console.error('[VendorService] getAuditHistory error:', err); return of([]); })
-    );
+    return this.http.get<VendorAuditEntry[]>(`${VENDOR_API}/${vendorApprovalId}/audit-history`);
   }
 
   // ── STATS (Métier 4) ──────────────────────────

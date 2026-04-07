@@ -2,10 +2,18 @@ import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { catchError, finalize } from 'rxjs/operators';
+import { of } from 'rxjs';
 import { VendorService, VendorApproval, VendorApprovalStatus } from '../../../core/services/vendor.service';
 import { UserService } from '../../../core/services/user.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
+import { parseVendorApiMessage } from '../../../core/utils/vendor-api-message';
+import {
+  formatVendorShortDate,
+  vendorApprovalStatusClass,
+  vendorApprovalStatusLabel,
+} from '../../../core/utils/vendor-ui.helpers';
 
 @Component({
   selector: 'app-my-vendors',
@@ -18,17 +26,18 @@ export class MyVendors implements OnInit {
 
   approvals: VendorApproval[] = [];
   loading = true;
+  loadError: string | null = null;
   userId = 0;
   userMap = new Map<number, string>();
 
   signatureDraft: Record<number, string> = {};
 
   constructor(
-    private vendorService: VendorService,
-    private userService: UserService,
-    private auth: AuthService,
-    private router: Router,
-    private toast: ToastService,
+    private readonly vendorService: VendorService,
+    private readonly userService: UserService,
+    private readonly auth: AuthService,
+    private readonly router: Router,
+    private readonly toast: ToastService,
   ) {}
 
   ngOnInit() {
@@ -47,9 +56,25 @@ export class MyVendors implements OnInit {
       this.loadMyApprovals();
       return;
     }
-    this.auth.fetchUserProfile().subscribe(u => {
-      this.userId = u?.id ?? 0;
-      this.loadMyApprovals();
+    this.auth.fetchUserProfile().subscribe({
+      next: u => {
+        const resolved = u?.id ?? 0;
+        this.userId = resolved;
+        if (!resolved) {
+          this.loading = false;
+          const msg = 'Profil utilisateur introuvable. Reconnectez-vous.';
+          this.loadError = msg;
+          this.toast.error(msg);
+          return;
+        }
+        this.loadMyApprovals();
+      },
+      error: () => {
+        this.loading = false;
+        const msg = 'Impossible de charger votre profil.';
+        this.loadError = msg;
+        this.toast.error(msg);
+      },
     });
   }
 
@@ -65,12 +90,31 @@ export class MyVendors implements OnInit {
   }
 
   loadMyApprovals() {
-    this.loading = true;
-    this.vendorService.getByFreelancer(this.userId).subscribe(data => {
-      this.approvals = data;
+    if (!this.userId || this.userId <= 0) {
       this.loading = false;
-    });
+      return;
+    }
+    this.loading = true;
+    this.loadError = null;
+    this.vendorService
+      .getByFreelancer(this.userId)
+      .pipe(
+        finalize(() => {
+          this.loading = false;
+        }),
+        catchError(err => {
+          const msg = parseVendorApiMessage(err, 'Impossible de charger vos agréments.');
+          this.loadError = msg;
+          this.toast.error(msg);
+          return of([] as VendorApproval[]);
+        }),
+      )
+      .subscribe(data => {
+        this.approvals = data;
+      });
   }
+
+  formatShortDate = formatVendorShortDate;
 
   get activeCount(): number {
     return this.approvals.filter(a => a.status === 'APPROVED' && a.isActive).length;
@@ -81,25 +125,11 @@ export class MyVendors implements OnInit {
   }
 
   statusClass(status: VendorApprovalStatus): string {
-    const map: Record<VendorApprovalStatus, string> = {
-      PENDING: 'badge--warning',
-      APPROVED: 'badge--success',
-      REJECTED: 'badge--error',
-      SUSPENDED: 'badge--error',
-      EXPIRED: 'badge--neutral',
-    };
-    return map[status] || '';
+    return vendorApprovalStatusClass(status);
   }
 
   statusLabel(status: VendorApprovalStatus): string {
-    const map: Record<VendorApprovalStatus, string> = {
-      PENDING: 'En attente',
-      APPROVED: 'Approuvé',
-      REJECTED: 'Rejeté',
-      SUSPENDED: 'Suspendu',
-      EXPIRED: 'Expiré',
-    };
-    return map[status] || status;
+    return vendorApprovalStatusLabel(status);
   }
 
   resubmit(a: VendorApproval) {
@@ -125,8 +155,8 @@ export class MyVendors implements OnInit {
           this.signatureDraft[a.id] = '';
           this.loadMyApprovals();
         },
-        error: (err: { error?: { message?: string } }) =>
-          this.toast.error(err?.error?.message ?? 'Signature impossible.'),
+        error: err =>
+          this.toast.error(parseVendorApiMessage(err, 'Signature impossible.')),
       });
   }
 }

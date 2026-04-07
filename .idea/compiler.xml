@@ -8,7 +8,6 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="Offer" />
-        <module name="Portfolio" />
         <module name="apiGateway" />
         <module name="ConfigServer" />
         <module name="Vendor" />
@@ -25,16 +24,13 @@
         <module name="gamification" />
         <module name="Project" />
       </profile>
-      <profile name="Annotation profile for task" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
-        </processorPath>
-        <module name="gamification" />
-      </profile>
     </annotationProcessing>
+    <bytecodeTargetLevel>
+      <module name="gamification" target="17" />
+      <module name="notification" target="17" />
+      <module name="Portfolio" target="17" />
+      <module name="task" target="17" />
+    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">

@@ -13,15 +13,21 @@ export class ToastService {
 
   /**
    * Affiche un toast en bas à droite, fermeture auto ou au clic.
+   * Double requestAnimationFrame defers past the current CD + dev-mode check
+   * (often scheduled with rAF), avoiding NG0100 when page stats change in the same action.
    */
   show(text: string, variant: ToastVariant = 'info', durationMs?: number): void {
     clearTimeout(this.timer);
-    this.variant.set(variant);
-    this.message.set(text);
     const ms =
       durationMs ??
       (variant === 'error' ? this.errorDurationMs : this.defaultDurationMs);
-    this.timer = setTimeout(() => this.dismiss(), ms);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        this.variant.set(variant);
+        this.message.set(text);
+        this.timer = setTimeout(() => this.dismiss(), ms);
+      });
+    });
   }
 
   success(text: string, durationMs?: number): void {
@@ -38,6 +44,8 @@ export class ToastService {
 
   dismiss(): void {
     clearTimeout(this.timer);
-    this.message.set(null);
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => this.message.set(null));
+    });
   }
 }
