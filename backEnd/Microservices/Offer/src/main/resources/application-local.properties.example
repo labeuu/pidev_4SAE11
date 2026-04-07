@@ -1,8 +1,15 @@
-# Copier ce fichier en application-local.properties et mettre ta clé OpenAI.
-# application-local.properties est ignoré par Git (ne sera pas commité).
+# Copier en application-local.properties (fichier ignore par Git).
+# Ce fichier surcharge OFFER.properties charge depuis le Config Server.
 
-# Clé API OpenAI (chat assistant)
-ai.api.key=sk-proj-VOTRE_CLE_OPENAI_ICI
+# MySQL (port / mot de passe)
+# spring.datasource.url=jdbc:mysql://localhost:3306/gestion_offre_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+# spring.datasource.password=votre_mot_de_passe
 
-# Optionnel : modèle (défaut gpt-4o-mini)
+# OpenAI (chat assistant)
+# ai.api.key=sk-proj-VOTRE_CLE
 # ai.api.model=gpt-4o-mini
+
+# Email (ou variables d'environnement MAIL_USERNAME, MAIL_PASSWORD, MAIL_FROM)
+# spring.mail.username=
+# spring.mail.password=
+# app.mail.from=

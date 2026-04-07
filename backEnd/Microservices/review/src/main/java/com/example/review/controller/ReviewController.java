@@ -45,25 +45,28 @@ public class ReviewController {
         return new ResponseEntity<>(createdReview, HttpStatus.CREATED);
     }
 
-    @Operation(summary = "Get review by ID", description = "Retrieves a review by its ID")
-    @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Review found"),
-        @ApiResponse(responseCode = "404", description = "Review not found")
-    })
-    @GetMapping("/{id}")
-    public ResponseEntity<Review> getReviewById(
-            @Parameter(description = "ID of the review to retrieve") @PathVariable Long id) {
-        return reviewService.getReviewById(id)
-                .map(review -> new ResponseEntity<>(review, HttpStatus.OK))
-                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
-    }
-
     @Operation(summary = "Get all reviews", description = "Retrieves all reviews")
     @ApiResponse(responseCode = "200", description = "Reviews retrieved successfully")
     @GetMapping
     public ResponseEntity<List<Review>> getAllReviews() {
         List<Review> reviews = reviewService.getAllReviews();
         return new ResponseEntity<>(reviews, HttpStatus.OK);
+    }
+
+    @Operation(summary = "Stats avis pour un couple client (reviewer) → freelancer (reviewee)")
+    @GetMapping("/pair/stats")
+    public ResponseEntity<ReviewStats> getStatsByReviewerAndReviewee(
+            @RequestParam Long reviewerId,
+            @RequestParam Long revieweeId) {
+        return ResponseEntity.ok(reviewService.getStatsByReviewerAndReviewee(reviewerId, revieweeId));
+    }
+
+    @Operation(summary = "Liste des avis client → freelancer pour ce couple")
+    @GetMapping("/pair")
+    public ResponseEntity<List<Review>> getReviewsByPair(
+            @RequestParam Long reviewerId,
+            @RequestParam Long revieweeId) {
+        return ResponseEntity.ok(reviewService.getReviewsByReviewerAndReviewee(reviewerId, revieweeId));
     }
 
     @Operation(summary = "Get paginated reviews with search", description = "Returns a page of reviews with optional search and rating filter")
@@ -166,5 +169,18 @@ public class ReviewController {
             @Parameter(description = "ID of the review to delete") @PathVariable Long id) {
         reviewService.deleteReview(id);
         return new ResponseEntity<>(HttpStatus.NO_CONTENT);
+    }
+
+    @Operation(summary = "Get review by ID", description = "Retrieves a review by its ID")
+    @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Review found"),
+            @ApiResponse(responseCode = "404", description = "Review not found")
+    })
+    @GetMapping("/{id}")
+    public ResponseEntity<Review> getReviewById(
+            @Parameter(description = "ID of the review to retrieve") @PathVariable Long id) {
+        return reviewService.getReviewById(id)
+                .map(review -> new ResponseEntity<>(review, HttpStatus.OK))
+                .orElse(new ResponseEntity<>(HttpStatus.NOT_FOUND));
     }
 }

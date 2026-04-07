@@ -15,6 +15,7 @@ import {
 } from '../../../core/services/offer.service';
 import { ChatAssistantService, ChatMessageDto } from '../../../core/services/chat-assistant.service';
 import { ChatMarkdownPipe } from '../../../shared/pipes/chat-markdown.pipe';
+import { environment } from '../../../../environments/environment';
 
 export const CATEGORIES = [
   'Frontend', 'Backend', 'Full Stack', 'UI/UX',
@@ -55,6 +56,8 @@ export class BrowseOffers implements OnInit, OnDestroy {
   searchForm!: FormGroup;
   readonly categories  = CATEGORIES;
   readonly sortOptions = SORT_OPTIONS;
+  /** Désactivé par défaut : pas d’assistant / badge IA à l’écran */
+  readonly showAiUi = environment.showAiUi;
 
   private destroy$ = new Subject<void>();
   private formSub: Subscription | null = null;

@@ -5,6 +5,7 @@ import { Subscription, TimeoutError } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { PortfolioService, Skill, EvaluationTest, EvaluationResult, Domain, DOMAIN_LABELS } from '../../../core/services/portfolio.service';
 import { FormsModule } from '@angular/forms';
+import { environment } from '../../../../environments/environment';
 
 @Component({
   selector: 'app-skill-management',
@@ -14,6 +15,9 @@ import { FormsModule } from '@angular/forms';
   standalone: true,
 })
 export class SkillManagement implements OnInit, OnDestroy {
+  /** Tests de vérification générés par le backend IA — masqués si false */
+  readonly showAiUi = environment.showAiUi;
+
   skills: Skill[] = [];
   showAddModal = false;
   showDomainDropdown = false;

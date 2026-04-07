@@ -7,6 +7,7 @@ import { ContractService, Contract, ContractStatus, ContractConflict, ConflictCo
 import { UserService } from '../../../../core/services/user.service';
 import { ConflictReport } from '../conflict-report/conflict-report';
 import { ElevenLabsService } from '../../../../core/services/elevenlabs.service';
+import { environment } from '../../../../../environments/environment';
 
 @Component({
   selector: 'app-contract-detail',
@@ -16,6 +17,8 @@ import { ElevenLabsService } from '../../../../core/services/elevenlabs.service'
   standalone: true,
 })
 export class ContractDetail implements OnInit {
+  /** Dictée vocale → texte (ElevenLabs) — masquée si showAiUi = false */
+  readonly showAiUi = environment.showAiUi;
   contract: Contract | null = null;
   conflicts: ContractConflict[] = [];
   isLoading = true;
