@@ -1,0 +1,212 @@
+.my-sc { padding: 24px; max-width: 1100px; margin: 0 auto; }
+.header-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: 24px; flex-wrap: wrap; gap: 12px; }
+.header-actions { display: flex; align-items: center; gap: 12px; }
+h2 { font-size: 1.5rem; margin: 0; font-weight: 700; }
+
+// ── Tab switch ──────────────────────────────────
+.tab-switch {
+  display: inline-flex; background: #f1f3f5; border-radius: 10px; padding: 3px; gap: 2px;
+  button {
+    padding: 8px 18px; border: none; border-radius: 8px; background: transparent;
+    font-weight: 600; font-size: 0.85rem; color: #6c757d; cursor: pointer; transition: all 0.2s;
+    &.active { background: #fff; color: #007bff; box-shadow: 0 1px 4px rgba(0,0,0,0.08); }
+    &:hover:not(.active) { color: #495057; }
+  }
+}
+
+// ── Buttons ─────────────────────────────────────
+.btn-primary { background: #007bff; color: #fff; border: none; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 600; font-size: 0.9rem; transition: background 0.2s; &:hover { background: #0056b3; } &:disabled { opacity: .5; cursor: not-allowed; } }
+.btn-secondary { background: #f1f3f5; color: #495057; border: 1px solid #dee2e6; padding: 10px 20px; border-radius: 8px; cursor: pointer; font-weight: 500; &:hover { background: #e9ecef; } }
+.btn-success { background: #28a745; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+.btn-danger { background: #dc3545; color: #fff; border: none; padding: 8px 16px; border-radius: 8px; cursor: pointer; }
+.btn-small { background: #007bff; color: #fff; border: none; padding: 5px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; }
+.btn-xs { padding: 4px 10px; font-size: 0.75rem; border: none; border-radius: 6px; cursor: pointer; color: #fff; }
+.btn-success.btn-xs { background: #28a745; }
+.btn-danger.btn-xs { background: #dc3545; }
+
+// ── Empty state ─────────────────────────────────
+.loading { text-align: center; padding: 60px; color: #6c757d; }
+.empty { text-align: center; padding: 60px 20px; background: #f8f9fa; border-radius: 12px; border: 2px dashed #dee2e6; }
+.empty-icon { font-size: 3rem; margin-bottom: 12px; }
+.empty p { margin: 0; color: #495057; font-size: 1.05rem; }
+.empty-sub { color: #adb5bd !important; font-size: 0.9rem !important; margin-top: 4px !important; }
+
+// ── Card list ───────────────────────────────────
+.sc-list { display: flex; flex-direction: column; gap: 12px; }
+.sc-card { border: 1px solid #e9ecef; border-radius: 10px; padding: 16px; cursor: pointer; transition: all 0.2s; &:hover { border-color: #007bff; box-shadow: 0 2px 8px rgba(0,123,255,0.08); } &.active { border-color: #007bff; background: #f0f7ff; } }
+.sc-card-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px; }
+.sc-title { font-weight: 600; font-size: 1.05rem; }
+.sc-card-body { display: flex; gap: 16px; font-size: 0.85rem; color: #495057; margin-bottom: 10px; }
+.sc-card-footer { display: flex; align-items: center; gap: 10px; }
+
+// ── Badges ──────────────────────────────────────
+.badge { padding: 4px 10px; border-radius: 20px; font-size: 0.72rem; font-weight: 600; color: #fff; text-transform: uppercase; letter-spacing: 0.3px; }
+.badge-secondary { background: #6c757d; }
+.badge-info { background: #17a2b8; }
+.badge-primary { background: #007bff; }
+.badge-danger { background: #dc3545; }
+.badge-warning { background: #ffc107; color: #333; }
+.badge-success { background: #28a745; }
+.badge-dark { background: #343a40; }
+.badge-light { background: #e9ecef; color: #333; }
+
+// ── Progress ────────────────────────────────────
+.progress-bar { flex: 1; height: 6px; background: #e9ecef; border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #28a745, #20c997); transition: width 0.3s; }
+
+// ── Modal ───────────────────────────────────────
+.modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2000; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(2px); }
+.modal-content { background: #fff; border-radius: 16px; padding: 28px; width: 460px; max-height: 85vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.2); }
+.modal-wide { width: 780px; }
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.modal-header h3 { margin: 0; font-size: 1.25rem; font-weight: 700; }
+.modal-close { border: none; background: #f1f3f5; width: 32px; height: 32px; border-radius: 50%; font-size: 1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; &:hover { background: #dee2e6; } }
+
+// ── Form grid (2 columns) ──────────────────────
+.form-grid { display: grid; grid-template-columns: 1fr 280px; gap: 24px; margin-bottom: 20px; }
+.form-col, .picker-col { display: flex; flex-direction: column; gap: 14px; }
+
+.field { display: flex; flex-direction: column; gap: 4px; }
+.field-label { font-size: 0.82rem; font-weight: 600; color: #495057; text-transform: uppercase; letter-spacing: 0.4px; }
+.field-row { display: flex; gap: 12px; }
+.field-row .field { flex: 1; }
+
+.field input, .field textarea, .field select {
+  width: 100%; padding: 10px 12px; border: 1px solid #dee2e6; border-radius: 8px; font-size: 0.9rem;
+  box-sizing: border-box; transition: border-color 0.2s;
+  &:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.1); }
+}
+
+.form-actions { display: flex; justify-content: flex-end; gap: 10px; padding-top: 16px; border-top: 1px solid #f1f3f5; }
+
+// ── Freelancer picker ───────────────────────────
+.fl-search-box {
+  input { width: 100%; padding: 10px 12px; border: 1px solid #dee2e6; border-radius: 8px; font-size: 0.85rem; box-sizing: border-box; &:focus { outline: none; border-color: #007bff; } }
+}
+
+.fl-list { max-height: 320px; overflow-y: auto; border: 1px solid #e9ecef; border-radius: 10px; margin-top: 8px; }
+.fl-item {
+  display: flex; align-items: center; gap: 10px; padding: 10px 12px; cursor: pointer; transition: background 0.15s;
+  &:hover { background: #f0f7ff; }
+  &:not(:last-child) { border-bottom: 1px solid #f1f3f5; }
+}
+.fl-avatar {
+  width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  color: #fff; font-weight: 700; font-size: 0.8rem; flex-shrink: 0; text-transform: uppercase;
+}
+.fl-details { display: flex; flex-direction: column; min-width: 0; }
+.fl-name { font-weight: 600; font-size: 0.9rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-email { font-size: 0.78rem; color: #6c757d; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fl-empty { padding: 24px; text-align: center; color: #adb5bd; font-size: 0.85rem; }
+.fl-loading { padding: 24px; text-align: center; color: #6c757d; font-size: 0.85rem; }
+.fl-count { font-size: 0.78rem; color: #6c757d; margin-top: 6px; margin-bottom: 2px; }
+.fl-select-icon { width: 26px; height: 26px; border-radius: 50%; background: #e9ecef; color: #495057; display: flex; align-items: center; justify-content: center; font-size: 1rem; font-weight: 700; flex-shrink: 0; transition: all 0.15s; }
+.fl-item:hover .fl-select-icon { background: #007bff; color: #fff; }
+
+// ── Selected freelancer card ────────────────────
+.selected-freelancer-card {
+  display: flex; align-items: center; gap: 12px; background: #e8f5e9; border: 1px solid #a5d6a7;
+  border-radius: 10px; padding: 12px 16px; margin-top: 8px;
+}
+.sf-avatar {
+  width: 42px; height: 42px; border-radius: 50%; background: #28a745; color: #fff;
+  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 0.9rem; flex-shrink: 0;
+}
+.sf-info { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.sf-info strong { font-size: 0.95rem; }
+.sf-info span { font-size: 0.8rem; color: #495057; }
+.btn-remove { background: none; border: 1px solid #a5d6a7; color: #2e7d32; padding: 4px 12px; border-radius: 6px; cursor: pointer; font-size: 0.8rem; white-space: nowrap; &:hover { background: #c8e6c9; } }
+
+// ── Detail panel ────────────────────────────────
+.actions { display: flex; gap: 8px; margin: 14px 0; flex-wrap: wrap; }
+
+.detail-panel { position: fixed; top: 0; right: 0; width: 480px; height: 100vh; background: #fff; box-shadow: -4px 0 24px rgba(0,0,0,0.12); z-index: 1000; overflow-y: auto; padding: 24px; }
+.detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.detail-header h3 { margin: 0; font-size: 1.15rem; }
+.detail-header button { border: none; background: #f1f3f5; width: 32px; height: 32px; border-radius: 50%; font-size: 1.1rem; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+
+.deliverables-section { margin-top: 18px; }
+.del-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+h4 { margin: 0; font-size: 1rem; font-weight: 600; }
+.deliverable-card { border: 1px solid #e9ecef; border-radius: 8px; padding: 12px; margin-bottom: 8px; }
+.deliverable-card.overdue { border-color: #dc3545; background: #fff5f5; }
+.del-info { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.del-title { font-weight: 500; }
+.del-deadline { font-size: 0.8rem; color: #6c757d; }
+.overdue-tag { font-size: 0.7rem; background: #dc3545; color: #fff; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.sub-note { font-size: 0.8rem; color: #6c757d; margin: 4px 0; }
+.del-actions { margin-top: 8px; display: flex; gap: 6px; }
+
+// ══════════════════════════════════════════════════
+// MÉTIER 5 — Historique & Timeline
+// ══════════════════════════════════════════════════
+
+.history-stats {
+  display: flex; flex-wrap: wrap; gap: 12px; margin-bottom: 20px;
+}
+.h-stat-card {
+  flex: 1; min-width: 130px; background: #fff; border: 1px solid #e9ecef; border-radius: 12px;
+  padding: 16px; text-align: center; transition: box-shadow 0.2s;
+  &:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.06); }
+}
+.h-stat-mini { min-width: 100px; padding: 12px; }
+.h-stat-value { font-size: 1.6rem; font-weight: 800; color: #212529; line-height: 1.2; }
+.h-stat-mini .h-stat-value { font-size: 1.3rem; }
+.h-stat-label {
+  font-size: 0.75rem; color: #6c757d; text-transform: uppercase;
+  letter-spacing: 0.4px; font-weight: 600; margin-top: 4px;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+
+.history-filter {
+  display: flex; align-items: center; gap: 12px; margin-bottom: 20px;
+  input {
+    flex: 1; padding: 10px 14px; border: 1px solid #dee2e6; border-radius: 10px;
+    font-size: 0.9rem; box-sizing: border-box;
+    &:focus { outline: none; border-color: #007bff; box-shadow: 0 0 0 3px rgba(0,123,255,0.1); }
+  }
+  .filter-count { font-size: 0.82rem; color: #6c757d; white-space: nowrap; }
+}
+
+.timeline { position: relative; padding-left: 28px; }
+
+.tl-item {
+  position: relative; padding-bottom: 24px;
+  &:last-child { padding-bottom: 0; }
+  &:last-child .tl-line { display: none; }
+}
+
+.tl-dot {
+  position: absolute; left: -28px; top: 4px; width: 14px; height: 14px;
+  border-radius: 50%; border: 3px solid #fff; box-shadow: 0 0 0 2px #e9ecef;
+  z-index: 2;
+}
+
+.tl-line {
+  position: absolute; left: -22px; top: 20px; bottom: 0; width: 2px;
+  background: #e9ecef;
+}
+
+.tl-content {
+  background: #fff; border: 1px solid #e9ecef; border-radius: 10px;
+  padding: 14px 16px; transition: box-shadow 0.2s;
+  &:hover { box-shadow: 0 2px 10px rgba(0,0,0,0.05); }
+}
+
+.tl-header {
+  display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;
+}
+.tl-action { font-weight: 700; font-size: 0.9rem; }
+.tl-time { font-size: 0.78rem; color: #adb5bd; }
+
+.tl-title { font-weight: 500; font-size: 0.88rem; color: #495057; margin-bottom: 6px; }
+
+.tl-transition {
+  display: flex; align-items: center; gap: 6px; margin-bottom: 6px;
+  .badge { font-size: 0.68rem; padding: 3px 8px; }
+}
+.tl-arrow { color: #adb5bd; font-weight: 700; }
+
+.tl-detail { font-size: 0.82rem; color: #6c757d; margin-bottom: 4px; line-height: 1.4; }
+.tl-actor { font-size: 0.78rem; color: #adb5bd; }
+.tl-empty { text-align: center; color: #adb5bd; padding: 40px 20px; font-size: 0.9rem; }

@@ -5,6 +5,8 @@ import lombok.RequiredArgsConstructor;
 import org.example.vendor.dto.request.VendorApprovalRequest;
 import org.example.vendor.dto.request.VendorSignatureRequest;
 import org.example.vendor.dto.response.EligibilityDetailResponse;
+import org.example.vendor.dto.response.MatchProfileResponse;
+import org.example.vendor.dto.response.MatchRecommendationResponse;
 import org.example.vendor.dto.response.VendorAiDashboardResponse;
 import org.example.vendor.dto.response.VendorApprovalResponse;
 import org.example.vendor.dto.response.VendorAuditEntryResponse;
@@ -15,6 +17,7 @@ import org.example.vendor.entity.VendorApprovalStatus;
 import org.example.vendor.service.VendorAiDashboardService;
 import org.example.vendor.service.VendorApprovalService;
 import org.example.vendor.service.VendorDecisionInsightService;
+import org.example.vendor.service.VendorMatchingService;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -33,6 +36,7 @@ public class VendorApprovalController {
     private final VendorApprovalService service;
     private final VendorDecisionInsightService decisionInsightService;
     private final VendorAiDashboardService aiDashboardService;
+    private final VendorMatchingService matchingService;
 
     // ── CRUD ───────────────────────────────────────────────────
 
@@ -230,5 +234,71 @@ public class VendorApprovalController {
     @GetMapping("/stats/freelancer/{fId}")
     public ResponseEntity<Map<String, Long>> statsFreelancer(@PathVariable Long fId) {
         return ResponseEntity.ok(Map.of("approvedCount", service.countApprovedForFreelancer(fId)));
+    }
+
+    // ── Talent Matching & Recommandations ─────────────────────
+
+    /** Profil de matching agrégé d'un freelancer (compute ou cache). */
+    @GetMapping("/matching/profile/{freelancerId}")
+    public ResponseEntity<MatchProfileResponse> matchProfile(@PathVariable Long freelancerId) {
+        return ResponseEntity.ok(matchingService.getProfile(freelancerId));
+    }
+
+    /** Recalculer le profil de matching d'un freelancer. */
+    @PostMapping("/matching/profile/{freelancerId}/refresh")
+    public ResponseEntity<MatchProfileResponse> refreshProfile(@PathVariable Long freelancerId) {
+        return ResponseEntity.ok(matchingService.computeProfile(freelancerId));
+    }
+
+    /** Batch : recalculer tous les profils (cron ou manuel). */
+    @PostMapping("/matching/refresh-all")
+    public ResponseEntity<Map<String, Integer>> refreshAllProfiles() {
+        return ResponseEntity.ok(Map.of("refreshed", matchingService.refreshAllProfiles()));
+    }
+
+    /** Top N freelancers par score global. */
+    @GetMapping("/matching/top-freelancers")
+    public ResponseEntity<List<MatchProfileResponse>> topFreelancers(
+            @RequestParam(defaultValue = "10") int limit) {
+        return ResponseEntity.ok(matchingService.getTopFreelancers(limit));
+    }
+
+    /** Freelancers avec agrément vendor actif (boosted en recherche). */
+    @GetMapping("/matching/vendor-boosted")
+    public ResponseEntity<List<MatchProfileResponse>> vendorBoosted() {
+        return ResponseEntity.ok(matchingService.getVendorBoostedFreelancers());
+    }
+
+    /** Générer les top recommandations de freelancers pour un projet/offre. */
+    @PostMapping("/matching/recommend")
+    public ResponseEntity<List<MatchRecommendationResponse>> generateRecommendations(
+            @RequestParam String targetType,
+            @RequestParam Long targetId,
+            @RequestParam List<String> skills,
+            @RequestParam(defaultValue = "10") int topN) {
+        return ResponseEntity.ok(matchingService.generateRecommendations(targetType, targetId, skills, topN));
+    }
+
+    /** Recommandations existantes pour un projet/offre. */
+    @GetMapping("/matching/recommendations")
+    public ResponseEntity<List<MatchRecommendationResponse>> getRecommendations(
+            @RequestParam String targetType,
+            @RequestParam Long targetId) {
+        return ResponseEntity.ok(matchingService.getRecommendationsForTarget(targetType, targetId));
+    }
+
+    /** Projets/offres recommandés pour un freelancer. */
+    @GetMapping("/matching/recommendations/freelancer/{freelancerId}")
+    public ResponseEntity<List<MatchRecommendationResponse>> getFreelancerRecommendations(
+            @PathVariable Long freelancerId) {
+        return ResponseEntity.ok(matchingService.getRecommendationsForFreelancer(freelancerId));
+    }
+
+    /** Mettre à jour le statut d'une recommandation (VIEWED, CONTACTED, HIRED, DISMISSED). */
+    @PatchMapping("/matching/recommendations/{id}/status")
+    public ResponseEntity<MatchRecommendationResponse> updateRecommendationStatus(
+            @PathVariable Long id,
+            @RequestParam String status) {
+        return ResponseEntity.ok(matchingService.updateRecommendationStatus(id, status));
     }
 }

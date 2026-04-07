@@ -1,0 +1,85 @@
+<div class="sub-work">
+  <h2>Travaux en sous-traitance</h2>
+
+  <!-- Score card -->
+  @if (score) {
+    <div class="score-card" [style.border-color]="scoreColor()">
+      <div class="score-value" [style.color]="scoreColor()">{{ score.score }}/100</div>
+      <div class="score-label">{{ score.label }}</div>
+      <div class="score-stats">
+        <span>{{ score.completedSubcontracts }} complétées</span>
+        <span>{{ score.onTimeRate | number:'1.0-0' }}% à temps</span>
+        <span>{{ score.approvedDeliverables }}/{{ score.totalDeliverables }} livrables approuvés</span>
+      </div>
+    </div>
+  }
+
+  @if (loading) {
+    <p class="loading">Chargement...</p>
+  } @else if (subcontracts.length === 0) {
+    <div class="empty">Aucune proposition de sous-traitance reçue.</div>
+  } @else {
+    <div class="sc-list">
+      @for (s of subcontracts; track s.id) {
+        <div class="sc-card" (click)="select(s)" [class.active]="selected?.id === s.id">
+          <div class="sc-card-header">
+            <span class="sc-title">{{ s.title }}</span>
+            <span class="badge" [class]="statusClass(s.status)">{{ s.status }}</span>
+          </div>
+          <div class="sc-card-body">
+            <span>De: <strong>{{ s.mainFreelancerName }}</strong></span>
+            <span>{{ s.category }}</span>
+            <span>{{ s.budget ? (s.budget + ' ' + s.currency) : '-' }}</span>
+          </div>
+        </div>
+      }
+    </div>
+  }
+
+  <!-- Detail Panel -->
+  @if (selected) {
+    <div class="detail-panel">
+      <div class="detail-header">
+        <h3>{{ selected.title }}</h3>
+        <button (click)="closeDetail()">✕</button>
+      </div>
+      <p><strong>Commanditaire:</strong> {{ selected.mainFreelancerName }}</p>
+      <p><strong>Projet:</strong> {{ selected.projectTitle }}</p>
+      <p><strong>Scope:</strong> {{ selected.scope || '-' }}</p>
+      <p><strong>Budget:</strong> {{ selected.budget }} {{ selected.currency }}</p>
+      <p><strong>Deadline:</strong> {{ selected.deadline || '-' }}</p>
+
+      <!-- Accept/Reject for PROPOSED -->
+      @if (selected.status === 'PROPOSED') {
+        <div class="actions">
+          <button class="btn-success" (click)="accept(selected.id)">Accepter</button>
+          <button class="btn-danger" (click)="reject(selected.id)">Refuser</button>
+        </div>
+      }
+
+      <!-- Deliverables -->
+      <h4>Livrables ({{ selected.deliverables.length }})</h4>
+      @for (d of selected.deliverables; track d.id) {
+        <div class="deliverable-card" [class.overdue]="d.overdue">
+          <div class="del-info">
+            <span class="del-title">{{ d.title }}</span>
+            <span class="badge" [class]="statusClass(d.status)">{{ d.status }}</span>
+            @if (d.deadline) { <span class="del-deadline">📅 {{ d.deadline }}</span> }
+            @if (d.overdue) { <span class="overdue-tag">EN RETARD</span> }
+          </div>
+          @if (d.description) { <p class="del-desc">{{ d.description }}</p> }
+          @if (d.reviewNote) { <p class="review-note">Note du client: {{ d.reviewNote }}</p> }
+
+          <!-- Submit form for PENDING / IN_PROGRESS / REJECTED -->
+          @if (d.status === 'PENDING' || d.status === 'IN_PROGRESS' || d.status === 'REJECTED') {
+            <div class="submit-form">
+              <input [(ngModel)]="submitUrl" placeholder="URL du livrable (lien, fichier...)" />
+              <input [(ngModel)]="submitNote" placeholder="Note de soumission" />
+              <button class="btn-primary btn-xs" (click)="submitDeliverable(d.id)">Soumettre</button>
+            </div>
+          }
+        </div>
+      }
+    </div>
+  }
+</div>

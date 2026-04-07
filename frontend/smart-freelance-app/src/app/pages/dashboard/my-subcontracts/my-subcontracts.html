@@ -1,0 +1,293 @@
+<div class="my-sc">
+  <div class="header-row">
+    <h2>Mes Sous-Traitances</h2>
+    <div class="header-actions">
+      <div class="tab-switch">
+        <button [class.active]="activeTab === 'list'" (click)="switchTab('list')">Sous-traitances</button>
+        <button [class.active]="activeTab === 'history'" (click)="switchTab('history')">Historique</button>
+      </div>
+      @if (activeTab === 'list') {
+        <button class="btn-primary" (click)="openForm()">+ Nouvelle sous-traitance</button>
+      }
+    </div>
+  </div>
+
+  <!-- ═══════ TAB: List ═══════ -->
+  @if (activeTab === 'list') {
+    @if (loading) {
+      <p class="loading">Chargement...</p>
+    } @else if (subcontracts.length === 0) {
+      <div class="empty">
+        <div class="empty-icon">📋</div>
+        <p>Aucune sous-traitance pour le moment.</p>
+        <p class="empty-sub">Déléguez une partie de votre travail à un autre freelancer.</p>
+      </div>
+    } @else {
+      <div class="sc-list">
+        @for (s of subcontracts; track s.id) {
+          <div class="sc-card" (click)="select(s)" [class.active]="selected?.id === s.id">
+            <div class="sc-card-header">
+              <span class="sc-title">{{ s.title }}</span>
+              <span class="badge" [class]="statusClass(s.status)">{{ s.status }}</span>
+            </div>
+            <div class="sc-card-body">
+              <span>Sous-traitant: <strong>{{ s.subcontractorName }}</strong></span>
+              <span>{{ s.category }}</span>
+              <span>{{ s.budget ? (s.budget + ' ' + s.currency) : '-' }}</span>
+            </div>
+            <div class="sc-card-footer">
+              <div class="progress-bar"><div class="progress-fill" [style.width.%]="progressPercent(s)"></div></div>
+              <small>{{ s.approvedDeliverables }}/{{ s.totalDeliverables }} livrables</small>
+            </div>
+          </div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ═══════ TAB: History (Métier 5) ═══════ -->
+  @if (activeTab === 'history') {
+    @if (loadingHistory) {
+      <p class="loading">Chargement de l'historique...</p>
+    } @else if (!history || history.totalEvents === 0) {
+      <div class="empty">
+        <div class="empty-icon">📜</div>
+        <p>Aucun historique pour le moment.</p>
+        <p class="empty-sub">Vos actions apparaîtront ici au fur et à mesure.</p>
+      </div>
+    } @else {
+      <!-- Stats cards -->
+      <div class="history-stats">
+        <div class="h-stat-card">
+          <div class="h-stat-value">{{ history.totalEvents }}</div>
+          <div class="h-stat-label">Événements</div>
+        </div>
+        <div class="h-stat-card">
+          <div class="h-stat-value">{{ history.asMainFreelancer }}</div>
+          <div class="h-stat-label">En tant que principal</div>
+        </div>
+        <div class="h-stat-card">
+          <div class="h-stat-value">{{ history.asSubcontractor }}</div>
+          <div class="h-stat-label">En tant que sous-traitant</div>
+        </div>
+        @for (a of topActions(); track a.label) {
+          <div class="h-stat-card h-stat-mini">
+            <div class="h-stat-value" [style.color]="a.color">{{ a.count }}</div>
+            <div class="h-stat-label">{{ a.label }}</div>
+          </div>
+        }
+      </div>
+
+      <!-- Filter -->
+      <div class="history-filter">
+        <input [(ngModel)]="historyFilter" (input)="filterTimeline()"
+               placeholder="Filtrer par action, titre, acteur..." />
+        <span class="filter-count">{{ filteredTimeline.length }} événement(s)</span>
+      </div>
+
+      <!-- Timeline -->
+      <div class="timeline">
+        @for (e of filteredTimeline; track e.id) {
+          <div class="tl-item">
+            <div class="tl-dot" [style.background]="e.color"></div>
+            <div class="tl-line"></div>
+            <div class="tl-content">
+              <div class="tl-header">
+                <span class="tl-action" [style.color]="e.color">{{ e.actionLabel }}</span>
+                <span class="tl-time" [title]="formatDate(e.createdAt)">{{ relativeTime(e.createdAt) }}</span>
+              </div>
+              <div class="tl-title">{{ e.subcontractTitle }}</div>
+              @if (e.fromStatus && e.toStatus) {
+                <div class="tl-transition">
+                  <span class="badge" [class]="statusClass(e.fromStatus)">{{ e.fromStatus }}</span>
+                  <span class="tl-arrow">→</span>
+                  <span class="badge" [class]="statusClass(e.toStatus)">{{ e.toStatus }}</span>
+                </div>
+              }
+              @if (e.detail) {
+                <div class="tl-detail">{{ e.detail }}</div>
+              }
+              <div class="tl-actor">par <strong>{{ e.actorName }}</strong></div>
+            </div>
+          </div>
+        } @empty {
+          <div class="tl-empty">Aucun événement ne correspond au filtre.</div>
+        }
+      </div>
+    }
+  }
+
+  <!-- ═══════ Create Form ═══════ -->
+  @if (showForm) {
+    <div class="modal-overlay" (click)="closeForm()">
+      <div class="modal-content modal-wide" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Nouvelle Sous-Traitance</h3>
+          <button class="modal-close" (click)="closeForm()">✕</button>
+        </div>
+
+        <div class="form-grid">
+          <!-- Left column: form fields -->
+          <div class="form-col">
+            <div class="field">
+              <label class="field-label">Titre *</label>
+              <input [(ngModel)]="form.title" placeholder="Ex: Intégration front-end React" />
+            </div>
+
+            <div class="field">
+              <label class="field-label">Projet *</label>
+              <select [(ngModel)]="form.projectId">
+                <option [value]="0" disabled>-- Choisir un projet --</option>
+                @for (p of myProjects; track p.id) {
+                  <option [value]="p.id">{{ p.title || ('Projet #' + p.id) }}</option>
+                }
+              </select>
+            </div>
+
+            <div class="field-row">
+              <div class="field">
+                <label class="field-label">Catégorie</label>
+                <select [(ngModel)]="form.category">
+                  @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
+                </select>
+              </div>
+              <div class="field">
+                <label class="field-label">Budget (TND)</label>
+                <input type="number" [(ngModel)]="form.budget" placeholder="500" />
+              </div>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Scope / Description</label>
+              <textarea [(ngModel)]="form.scope" rows="3" placeholder="Décrivez le périmètre du travail à sous-traiter..."></textarea>
+            </div>
+
+            <div class="field">
+              <label class="field-label">Deadline</label>
+              <input type="date" [(ngModel)]="form.deadline" />
+            </div>
+          </div>
+
+          <!-- Right column: freelancer picker -->
+          <div class="picker-col">
+            <label class="field-label">Sous-traitant *</label>
+
+            @if (selectedFreelancer) {
+              <div class="selected-freelancer-card">
+                <div class="sf-avatar">{{ selectedFreelancer.firstName.charAt(0) }}{{ selectedFreelancer.lastName.charAt(0) }}</div>
+                <div class="sf-info">
+                  <strong>{{ selectedFreelancer.firstName }} {{ selectedFreelancer.lastName }}</strong>
+                  <span>{{ selectedFreelancer.email }}</span>
+                </div>
+                <button class="btn-remove" (click)="clearFreelancer()">Changer</button>
+              </div>
+            } @else {
+              <div class="fl-search-box">
+                <input [(ngModel)]="freelancerSearch" (input)="onFreelancerSearch()" placeholder="Filtrer par nom ou email..." />
+              </div>
+              @if (loadingFreelancers) {
+                <div class="fl-list"><div class="fl-loading">Chargement des freelancers...</div></div>
+              } @else {
+                <div class="fl-count">{{ filteredFreelancers.length }} freelancer(s) disponible(s)</div>
+                <div class="fl-list">
+                  @for (f of filteredFreelancers; track f.id) {
+                    <div class="fl-item" (click)="selectFreelancer(f)">
+                      <div class="fl-avatar" [style.background]="avatarColor(f.id)">{{ f.firstName.charAt(0) }}{{ f.lastName.charAt(0) }}</div>
+                      <div class="fl-details">
+                        <span class="fl-name">{{ f.firstName }} {{ f.lastName }}</span>
+                        <span class="fl-email">{{ f.email }}</span>
+                      </div>
+                      <div class="fl-select-icon">+</div>
+                    </div>
+                  } @empty {
+                    <div class="fl-empty">Aucun freelancer trouvé</div>
+                  }
+                </div>
+              }
+            }
+          </div>
+        </div>
+
+        <div class="form-actions">
+          <button class="btn-secondary" (click)="closeForm()">Annuler</button>
+          <button class="btn-primary" (click)="createSubcontract()" [disabled]="!form.title || !form.subcontractorId || !form.projectId">Créer la sous-traitance</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- ═══════ Detail Panel ═══════ -->
+  @if (selected) {
+    <div class="detail-panel">
+      <div class="detail-header">
+        <h3>{{ selected.title }}</h3>
+        <button (click)="closeDetail()">✕</button>
+      </div>
+      <p><strong>Sous-traitant:</strong> {{ selected.subcontractorName }}</p>
+      <p><strong>Projet:</strong> {{ selected.projectTitle }}</p>
+      <p><strong>Scope:</strong> {{ selected.scope || '-' }}</p>
+      <p><strong>Statut:</strong> <span class="badge" [class]="statusClass(selected.status)">{{ selected.status }}</span></p>
+
+      <div class="actions">
+        @if (selected.status === 'DRAFT') {
+          <button class="btn-primary" (click)="propose(selected.id)">Proposer</button>
+          <button class="btn-danger" (click)="deleteSubcontract(selected.id)">Supprimer</button>
+        }
+        @if (selected.status === 'ACCEPTED') { <button class="btn-primary" (click)="startWork(selected.id)">Démarrer</button> }
+        @if (selected.status === 'IN_PROGRESS') { <button class="btn-success" (click)="complete(selected.id)">Compléter</button> }
+        @if (selected.status === 'COMPLETED') { <button class="btn-primary" (click)="close(selected.id)">Clôturer</button> }
+        @if (selected.status !== 'CANCELLED' && selected.status !== 'CLOSED' && selected.status !== 'COMPLETED') {
+          <button class="btn-danger" (click)="cancel(selected.id)">Annuler</button>
+        }
+      </div>
+
+      <div class="deliverables-section">
+        <div class="del-header">
+          <h4>Livrables ({{ selected.deliverables.length }})</h4>
+          @if (selected.status !== 'CLOSED' && selected.status !== 'CANCELLED') {
+            <button class="btn-small" (click)="openDeliverableForm()">+ Ajouter</button>
+          }
+        </div>
+        @for (d of selected.deliverables; track d.id) {
+          <div class="deliverable-card" [class.overdue]="d.overdue">
+            <div class="del-info">
+              <span class="del-title">{{ d.title }}</span>
+              <span class="badge" [class]="statusClass(d.status)">{{ d.status }}</span>
+              @if (d.deadline) { <span class="del-deadline">{{ d.deadline }}</span> }
+              @if (d.overdue) { <span class="overdue-tag">EN RETARD</span> }
+            </div>
+            @if (d.submissionNote) { <p class="sub-note">Note: {{ d.submissionNote }}</p> }
+            <div class="del-actions">
+              @if (d.status === 'SUBMITTED') {
+                <button class="btn-success btn-xs" (click)="reviewDeliverable(d.id, true)">Approuver</button>
+                <button class="btn-danger btn-xs" (click)="reviewDeliverable(d.id, false)">Rejeter</button>
+              }
+              @if (d.status === 'PENDING') {
+                <button class="btn-danger btn-xs" (click)="deleteDeliverable(d.id)">Supprimer</button>
+              }
+            </div>
+          </div>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- ═══════ Add Deliverable Modal ═══════ -->
+  @if (showDeliverableForm) {
+    <div class="modal-overlay" (click)="closeDeliverableForm()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>Nouveau Livrable</h3>
+          <button class="modal-close" (click)="closeDeliverableForm()">✕</button>
+        </div>
+        <div class="field"><label class="field-label">Titre *</label><input [(ngModel)]="delForm.title" placeholder="Ex: Maquette Figma" /></div>
+        <div class="field"><label class="field-label">Description</label><textarea [(ngModel)]="delForm.description" rows="3"></textarea></div>
+        <div class="field"><label class="field-label">Deadline</label><input type="date" [(ngModel)]="delForm.deadline" /></div>
+        <div class="form-actions">
+          <button class="btn-secondary" (click)="closeDeliverableForm()">Annuler</button>
+          <button class="btn-primary" (click)="addDeliverable()">Ajouter</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

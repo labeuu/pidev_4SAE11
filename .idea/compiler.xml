@@ -9,6 +9,7 @@
         <outputRelativeToContentRoot value="true" />
         <module name="Offer" />
         <module name="apiGateway" />
+        <module name="Subcontracting" />
         <module name="ConfigServer" />
         <module name="Vendor" />
         <module name="Eureka" />
@@ -22,6 +23,15 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
         </processorPath>
         <module name="gamification" />
+      </profile>
+      <profile name="Annotation profile for Project" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/unknown/lombok-unknown.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.36/lombok-1.18.36.jar" />
+        </processorPath>
         <module name="Project" />
       </profile>
       <profile name="Annotation profile for ticket" enabled="true">
@@ -50,6 +60,7 @@
       <module name="Offer" options="-parameters" />
       <module name="Portfolio" options="-parameters" />
       <module name="Project" options="-parameters" />
+      <module name="Subcontracting" options="-parameters" />
       <module name="Vendor" options="-parameters" />
       <module name="apiGateway" options="-parameters" />
       <module name="gamification" options="-parameters" />
