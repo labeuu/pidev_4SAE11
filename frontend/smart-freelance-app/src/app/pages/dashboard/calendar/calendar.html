@@ -16,10 +16,13 @@
   @if (loading) {
     <p class="loading-msg">Loading calendar events…</p>
   }
+  @if (errorMessage) {
+    <p class="loading-msg" role="alert">{{ errorMessage }}</p>
+  }
 
   <div class="calendar-layout">
     <div class="calendar-grid-wrap">
-      <table class="calendar-grid" role="grid" aria-label="Calendar">
+      <table class="calendar-grid" aria-label="Calendar">
         <thead>
           <tr>
             @for (label of weekdayLabels; track label) {
@@ -37,6 +40,9 @@
                   [class.calendar-cell--today]="day.isToday"
                   [class.calendar-cell--selected]="selectedDay && selectedDay.getTime() === day.date.getTime()"
                   (click)="selectDay(day)"
+                  (keydown.enter)="selectDay(day)"
+                  (keydown.space)="selectDay(day)"
+                  tabindex="0"
                 >
                   <span class="calendar-cell-num">{{ day.dayOfMonth }}</span>
                   <div class="calendar-cell-events">
@@ -94,6 +100,14 @@
       }
     </aside>
   </div>
+
+  @if (!loading && !errorMessage && !hasEventsInCurrentRange) {
+    <section class="calendar-legend">
+      <p class="sidebar-empty">
+        No planning events found for this period. Add progress updates with due dates or sync project deadlines.
+      </p>
+    </section>
+  }
 
   <section class="calendar-legend">
     <h3 class="legend-title">Legend</h3>

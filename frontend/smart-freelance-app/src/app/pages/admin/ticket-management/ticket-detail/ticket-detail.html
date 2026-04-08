@@ -1,0 +1,101 @@
+<div class="ticket-detail-host" *ngIf="ticket as t">
+  <div class="ticket-detail-page">
+    <header class="ticket-detail-hero">
+      <div class="ticket-detail-hero__main">
+        <div class="ticket-detail-meta">
+          Ticket #{{ t.id }}<span *ngIf="ownerLabel"> · {{ ownerLabel }}</span>
+        </div>
+        <h1 class="ticket-detail-title">{{ t.subject }}</h1>
+        <div class="ticket-detail-badges">
+          <span [ngClass]="badgeStatusClasses(t.status)">{{ t.status }}</span>
+          <span [ngClass]="badgePriorityClasses(t.priority)">{{ t.priority }}</span>
+          <span class="ticket-detail-activity">Last activity: {{ t.lastActivityAt | date : 'medium' }}</span>
+        </div>
+      </div>
+      <div class="ticket-detail-hero__actions">
+        <a class="ticket-detail-btn-secondary" routerLink="/admin/tickets">Back</a>
+        <button
+          type="button"
+          class="ticket-detail-btn-danger"
+          (click)="deleteTicket()"
+          [disabled]="deleting"
+        >
+          <span *ngIf="deleting" class="ticket-detail-spinner" aria-hidden="true"></span>
+          Delete
+        </button>
+        <button
+          type="button"
+          class="ticket-detail-btn-primary"
+          (click)="closeTicket()"
+          [disabled]="closing || t.status === 'CLOSED'"
+        >
+          <span *ngIf="closing" class="ticket-detail-spinner" aria-hidden="true"></span>
+          Close ticket
+        </button>
+      </div>
+    </header>
+
+    <div *ngIf="errorMessage" class="ticket-detail-alert ticket-detail-alert--danger" role="alert" aria-live="polite">
+      {{ errorMessage }}
+    </div>
+
+    <section class="ticket-detail-chat" aria-label="Conversation thread">
+      <div class="ticket-detail-chat__head">
+        <span class="ticket-detail-chat__label">Thread</span>
+      </div>
+      <div class="ticket-detail-chat__body">
+        <div *ngFor="let r of replies" class="ticket-bubble-row" [class.ticket-bubble-row--mine]="isMe(r)">
+          <div class="ticket-bubble">
+            <div class="ticket-bubble__meta">
+              <span class="ticket-bubble__sender">{{
+                r.sender === 'ADMIN' ? (isMe(r) ? 'You (support)' : 'Support') : 'User'
+              }}</span>
+              <span class="ticket-bubble__time">{{ r.createdAt | date : 'short' }}</span>
+            </div>
+            <div class="ticket-bubble__text">{{ r.message }}</div>
+          </div>
+        </div>
+        <p *ngIf="replies.length === 0" class="ticket-detail-chat__empty">No replies yet.</p>
+      </div>
+    </section>
+
+    <form [formGroup]="replyForm" class="ticket-detail-reply" (ngSubmit)="sendReply()">
+      <label class="ticket-detail-reply__label" for="admin-reply">Reply as support</label>
+      <textarea
+        id="admin-reply"
+        class="ticket-detail-textarea ticket-detail-textarea--large"
+        rows="3"
+        placeholder="Type a reply…"
+        formControlName="message"
+      ></textarea>
+      <div class="ticket-detail-reply__footer">
+        <span class="ticket-detail-reply__hint" *ngIf="t.status === 'CLOSED'">Ticket is closed. Replies are disabled.</span>
+        <button
+          class="ticket-detail-btn-primary ticket-detail-btn-primary--send"
+          type="submit"
+          [disabled]="sending || t.status === 'CLOSED'"
+        >
+          <span *ngIf="sending" class="ticket-detail-spinner" aria-hidden="true"></span>
+          Send reply
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<div class="ticket-detail-host ticket-detail-host--center" *ngIf="!ticket && !loading">
+  <div class="ticket-detail-panel">
+    <div *ngIf="errorMessage" class="ticket-detail-alert ticket-detail-alert--danger" role="alert" aria-live="polite">
+      {{ errorMessage }}
+    </div>
+    <p *ngIf="!errorMessage" class="ticket-detail-panel__warn">Ticket not found.</p>
+    <a routerLink="/admin/tickets" class="ticket-detail-btn-secondary">Back to queue</a>
+  </div>
+</div>
+
+<div class="ticket-detail-host ticket-detail-host--center" *ngIf="loading">
+  <div class="ticket-detail-loading">
+    <span class="ticket-detail-spinner ticket-detail-spinner--lg" aria-hidden="true"></span>
+    <span>Loading ticket…</span>
+  </div>
+</div>

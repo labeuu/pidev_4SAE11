@@ -48,6 +48,7 @@ public class TaskFreelancerProjectAccessService {
         return false;
     }
 
+    // Checks whether accepted status.
     private static boolean isAcceptedStatus(String status) {
         if (status == null) {
             return false;

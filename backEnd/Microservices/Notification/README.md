@@ -1,8 +1,10 @@
 # Notification Microservice
 
+**Full documentation:** [Documentation/services/notification.md](../../Documentation/services/notification.md)
+
 Spring Boot microservice for user notifications, backed by **Firebase Firestore**.
 
-- **Port:** 8087
+- **Port:** 8098
 - **Eureka:** Registers as `notification`
 - **Gateway:** Exposed at `http://localhost:8078/notification/**` (StripPrefix=1)
 
@@ -28,7 +30,7 @@ Do **not** commit the JSON file; it is ignored via `.gitignore`.
   Body: `{ "userId": "...", "title": "...", "body": "...", "type": "PROJECT_UPDATE", "data": {} }`
 
 - **Direct (same host):**  
-  `POST http://localhost:8087/api/notifications`
+  `POST http://localhost:8098/api/notifications`
 
 - **Via Feign (from another microservice):**  
   Define a `@FeignClient(name = "notification", path = "/api/notifications")` interface and call `create(NotificationRequest)`.

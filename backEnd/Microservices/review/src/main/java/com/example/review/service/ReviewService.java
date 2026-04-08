@@ -38,4 +38,9 @@ public interface ReviewService {
     ReviewStats getStatsByReviewer(Long reviewerId);
 
     ReviewStats getStatsByReviewee(Long revieweeId);
+
+    /** Stats des avis pour un couple reviewer (client) ↔ reviewee (freelancer). */
+    ReviewStats getStatsByReviewerAndReviewee(Long reviewerId, Long revieweeId);
+
+    List<Review> getReviewsByReviewerAndReviewee(Long reviewerId, Long revieweeId);
 }

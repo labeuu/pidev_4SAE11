@@ -1,5 +1,7 @@
 # Keycloak Auth Microservice
 
+**Stack overview:** [Documentation/backend-infrastructure.md](../../Documentation/backend-infrastructure.md) (Keycloak auth microservice)
+
 Authentication microservice for the **Smart Freelance and Project Matching Platform**. It uses **Keycloak** as the identity provider and exposes REST APIs for registration, token (login), userinfo, and token validation. The **User service** (and other microservices) can rely on this service for authentication and JWT validation.
 
 ## Features

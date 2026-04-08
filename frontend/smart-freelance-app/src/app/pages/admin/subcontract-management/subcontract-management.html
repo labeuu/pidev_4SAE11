@@ -1,0 +1,93 @@
+<div class="sc-admin">
+  <h2>Gestion Sous-Traitance</h2>
+
+  <!-- Dashboard KPIs -->
+  @if (dashboard) {
+    <div class="kpi-row">
+      <div class="kpi-card"><span class="kpi-value">{{ dashboard.totalSubcontracts }}</span><span class="kpi-label">Total</span></div>
+      <div class="kpi-card kpi-success"><span class="kpi-value">{{ dashboard.approvedDeliverables }}</span><span class="kpi-label">Livrables approuvés</span></div>
+      <div class="kpi-card kpi-warning"><span class="kpi-value">{{ dashboard.pendingDeliverables }}</span><span class="kpi-label">En attente</span></div>
+      <div class="kpi-card kpi-danger"><span class="kpi-value">{{ dashboard.overdueDeliverables }}</span><span class="kpi-label">En retard</span></div>
+      <div class="kpi-card"><span class="kpi-value">{{ dashboard.globalCompletionRate }}%</span><span class="kpi-label">Taux complétion</span></div>
+    </div>
+    @if (dashboard.alerts.length > 0) {
+      <div class="alerts">
+        @for (alert of dashboard.alerts; track alert) {
+          <div class="alert-item">⚠ {{ alert }}</div>
+        }
+      </div>
+    }
+  }
+
+  <!-- Filters -->
+  <div class="filters">
+    <select [(ngModel)]="filterStatus" (ngModelChange)="applyFilter()">
+      @for (s of statuses; track s) { <option [value]="s">{{ s || 'Tous les statuts' }}</option> }
+    </select>
+    <select [(ngModel)]="filterCategory" (ngModelChange)="applyFilter()">
+      @for (c of categories; track c) { <option [value]="c">{{ c || 'Toutes catégories' }}</option> }
+    </select>
+  </div>
+
+  <!-- Table -->
+  @if (loading) {
+    <p class="loading">Chargement...</p>
+  } @else {
+    <table class="sc-table">
+      <thead>
+        <tr>
+          <th>#</th><th>Titre</th><th>Freelancer principal</th><th>Sous-traitant</th>
+          <th>Catégorie</th><th>Statut</th><th>Budget</th><th>Avancement</th><th>Deadline</th>
+        </tr>
+      </thead>
+      <tbody>
+        @for (s of filtered; track s.id) {
+          <tr (click)="select(s)" class="clickable">
+            <td>{{ s.id }}</td>
+            <td>{{ s.title }}</td>
+            <td>{{ s.mainFreelancerName }}</td>
+            <td>{{ s.subcontractorName }}</td>
+            <td>{{ s.category }}</td>
+            <td><span class="badge" [class]="statusClass(s.status)">{{ s.status }}</span></td>
+            <td>{{ s.budget }} {{ s.currency }}</td>
+            <td>
+              <div class="progress-bar">
+                <div class="progress-fill" [style.width.%]="progressPercent(s)"></div>
+              </div>
+              <small>{{ s.approvedDeliverables }}/{{ s.totalDeliverables }}</small>
+            </td>
+            <td>{{ s.deadline || '-' }}</td>
+          </tr>
+        }
+      </tbody>
+    </table>
+  }
+
+  <!-- Detail panel -->
+  @if (selectedSubcontract) {
+    <div class="detail-panel">
+      <div class="detail-header">
+        <h3>{{ selectedSubcontract.title }}</h3>
+        <button (click)="closeDetail()">✕</button>
+      </div>
+      <div class="detail-body">
+        <p><strong>Projet:</strong> {{ selectedSubcontract.projectTitle }}</p>
+        <p><strong>Freelancer:</strong> {{ selectedSubcontract.mainFreelancerName }} → {{ selectedSubcontract.subcontractorName }}</p>
+        <p><strong>Scope:</strong> {{ selectedSubcontract.scope || 'Non défini' }}</p>
+        <p><strong>Statut:</strong> <span class="badge" [class]="statusClass(selectedSubcontract.status)">{{ selectedSubcontract.status }}</span></p>
+        @if (selectedSubcontract.rejectionReason) { <p class="reason"><strong>Raison rejet:</strong> {{ selectedSubcontract.rejectionReason }}</p> }
+        @if (selectedSubcontract.cancellationReason) { <p class="reason"><strong>Raison annulation:</strong> {{ selectedSubcontract.cancellationReason }}</p> }
+
+        <h4>Livrables ({{ selectedSubcontract.deliverables.length }})</h4>
+        @for (d of selectedSubcontract.deliverables; track d.id) {
+          <div class="deliverable-card" [class.overdue]="d.overdue">
+            <span class="del-title">{{ d.title }}</span>
+            <span class="badge" [class]="statusClass(d.status)">{{ d.status }}</span>
+            @if (d.deadline) { <span class="del-deadline">📅 {{ d.deadline }}</span> }
+            @if (d.overdue) { <span class="overdue-tag">EN RETARD</span> }
+          </div>
+        }
+      </div>
+    </div>
+  }
+</div>

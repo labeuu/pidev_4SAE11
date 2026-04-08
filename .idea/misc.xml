@@ -4,20 +4,27 @@
   <component name="MavenProjectsManager">
     <option name="originalFiles">
       <list>
+        <option value="$PROJECT_DIR$/backEnd/apiGateway/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Eureka/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/KeyCloak/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/apiGateway/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/ConfigServer/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/task/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/user/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Evaluation/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Offer/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/review/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/Project/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/Contract/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/planning/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Project/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/review/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/user/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Vendor/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Configserver/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Contract/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Subcontracting/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/ticket-service/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Portfolio/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Notification/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Meeting/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/gamification/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/FreelanciaJob/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Chat/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/task/pom.xml" />
       </list>
     </option>
   </component>

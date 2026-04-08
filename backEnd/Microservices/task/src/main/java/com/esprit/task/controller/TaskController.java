@@ -79,13 +79,17 @@ public class TaskController {
             @Parameter(description = "Filter by priority") @RequestParam(required = false) TaskPriority priority,
             @Parameter(description = "Search in title and description") @RequestParam(required = false) String search,
             @Parameter(description = "Due date from (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dueDateFrom,
-            @Parameter(description = "Due date to (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dueDateTo) {
+            @Parameter(description = "Due date to (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dueDateTo,
+            @Parameter(description = "When true and status is not set, exclude DONE and CANCELLED (open root tasks only)")
+            @RequestParam(required = false) Boolean openTasksOnly) {
         Sort sortObj = parseSort(sort);
         Pageable pageable = buildPageRequest(page, size, sortObj);
+        Optional<Boolean> openOnly = Boolean.TRUE.equals(openTasksOnly) ? Optional.of(true) : Optional.empty();
         Page<Task> result = taskService.findAllFiltered(
                 Optional.ofNullable(projectId), Optional.ofNullable(contractId), Optional.ofNullable(assigneeId),
                 Optional.ofNullable(status), Optional.ofNullable(priority),
                 Optional.ofNullable(search), Optional.ofNullable(dueDateFrom), Optional.ofNullable(dueDateTo),
+                openOnly,
                 pageable);
         return ResponseEntity.ok(result);
     }
@@ -96,6 +100,7 @@ public class TaskController {
             @ApiResponse(responseCode = "200", description = "Success"),
             @ApiResponse(responseCode = "404", description = "Task not found", content = @Content)
     })
+    // Returns by id.
     public ResponseEntity<Task> getById(@Parameter(description = "Task ID", required = true) @PathVariable Long id) {
         return ResponseEntity.ok(taskService.findById(id));
     }
@@ -111,6 +116,7 @@ public class TaskController {
     @GetMapping("/project/{projectId}")
     @Operation(summary = "List by project", description = "Returns all tasks for the given project.")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Returns by project id.
     public ResponseEntity<List<Task>> getByProjectId(@Parameter(description = "Project ID", required = true) @PathVariable Long projectId) {
         return ResponseEntity.ok(taskService.findByProjectId(projectId));
     }
@@ -118,6 +124,7 @@ public class TaskController {
     @GetMapping("/contract/{contractId}")
     @Operation(summary = "List by contract", description = "Returns all tasks for the given contract.")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Returns by contract id.
     public ResponseEntity<List<Task>> getByContractId(@Parameter(description = "Contract ID", required = true) @PathVariable Long contractId) {
         return ResponseEntity.ok(taskService.findByContractId(contractId));
     }
@@ -125,6 +132,7 @@ public class TaskController {
     @GetMapping("/assignee/{assigneeId}")
     @Operation(summary = "List by assignee", description = "Returns all tasks assigned to the given freelancer.")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Returns by assignee id.
     public ResponseEntity<List<Task>> getByAssigneeId(@Parameter(description = "Assignee ID", required = true) @PathVariable Long assigneeId) {
         return ResponseEntity.ok(taskService.findByAssigneeId(assigneeId));
     }
@@ -150,6 +158,7 @@ public class TaskController {
     @GetMapping("/board/project/{projectId}")
     @Operation(summary = "Kanban board by project", description = "Returns tasks grouped by status for Kanban view.")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Returns board by project.
     public ResponseEntity<?> getBoardByProject(@Parameter(description = "Project ID", required = true) @PathVariable Long projectId) {
         return ResponseEntity.ok(taskService.getBoardByProject(projectId));
     }
@@ -201,6 +210,7 @@ public class TaskController {
             @ApiResponse(responseCode = "201", description = "Created", content = @Content(schema = @Schema(implementation = Task.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
     })
+    // Creates this operation.
     public ResponseEntity<Task> create(@Valid @RequestBody TaskRequest request) {
         Task task = toEntity(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(taskService.create(task));
@@ -261,6 +271,7 @@ public class TaskController {
             @ApiResponse(responseCode = "200", description = "Success"),
             @ApiResponse(responseCode = "400", description = "Invalid body", content = @Content)
     })
+    // Performs bulk patch status.
     public ResponseEntity<List<Task>> bulkPatchStatus(@Valid @RequestBody TaskBulkStatusRequest body) {
         return ResponseEntity.ok(taskService.bulkPatchStatus(body.getTaskIds(), body.getStatus()));
     }
@@ -268,6 +279,7 @@ public class TaskController {
     @PostMapping("/reorder")
     @Operation(summary = "Bulk reorder", description = "Reorders tasks by the given IDs (order = index).")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Performs reorder.
     public ResponseEntity<Void> reorder(@RequestBody List<Long> taskIds) {
         taskService.reorder(taskIds);
         return ResponseEntity.ok().build();
@@ -279,11 +291,13 @@ public class TaskController {
             @ApiResponse(responseCode = "204", description = "No content"),
             @ApiResponse(responseCode = "404", description = "Task not found", content = @Content)
     })
+    // Deletes this operation.
     public ResponseEntity<Void> delete(@Parameter(description = "Task ID", required = true) @PathVariable Long id) {
         taskService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
+    // Performs parse task id list.
     private static List<Long> parseTaskIdList(String taskIds) {
         if (taskIds == null || taskIds.isBlank()) {
             return List.of();
@@ -306,12 +320,14 @@ public class TaskController {
         return out;
     }
 
+    // Builds page request.
     private static PageRequest buildPageRequest(int page, int size, Sort sort) {
         int p = Math.max(0, page);
         int s = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         return PageRequest.of(p, s, sort);
     }
 
+    // Performs parse sort.
     private static Sort parseSort(String sort) {
         if (sort == null || sort.isBlank()) {
             return Sort.by(
@@ -328,6 +344,7 @@ public class TaskController {
         return Sort.by(direction, parts[0].trim());
     }
 
+    // Performs parse date time.
     private static LocalDateTime parseDateTime(String value, LocalDateTime defaultValue) {
         if (value == null || value.isBlank()) {
             return defaultValue;
@@ -348,6 +365,7 @@ public class TaskController {
         return defaultValue;
     }
 
+    // Performs to entity.
     private static Task toEntity(TaskRequest r) {
         return Task.builder()
                 .projectId(r.getProjectId())

@@ -30,6 +30,7 @@ public class TaskHealthController {
     @GetMapping("/health")
     @Operation(summary = "Task health", description = "Health endpoint with database check.")
     @ApiResponse(responseCode = "200", description = "Service is healthy", content = @Content(schema = @Schema(implementation = Map.class)))
+    // Performs health.
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> body = new HashMap<>();
         body.put("service", "task");

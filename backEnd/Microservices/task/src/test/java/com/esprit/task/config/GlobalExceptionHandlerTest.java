@@ -6,8 +6,12 @@ import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.validation.BindingResult;
+import org.springframework.validation.FieldError;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.server.ResponseStatusException;
 
+import java.util.List;
 import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -89,5 +93,54 @@ class GlobalExceptionHandlerTest {
 
         assertThat(GlobalExceptionHandler.resolveFeignClientMessage(ex))
                 .contains("Cannot reach the AI model service");
+    }
+
+    @Test
+    void handleValidation_mapsFieldErrors() {
+        MethodArgumentNotValidException ex = mock(MethodArgumentNotValidException.class);
+        BindingResult br = mock(BindingResult.class);
+        FieldError fe = new FieldError("body", "title", "must not be blank");
+        when(ex.getBindingResult()).thenReturn(br);
+        when(br.getFieldErrors()).thenReturn(List.of(fe));
+
+        ResponseEntity<Map<String, Object>> result = handler.handleValidation(ex);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST);
+        assertThat(result.getBody()).containsKey("errors");
+        @SuppressWarnings("unchecked")
+        Map<String, String> errors = (Map<String, String>) result.getBody().get("errors");
+        assertThat(errors).containsEntry("title", "must not be blank");
+    }
+
+    @Test
+    void handleFeign_408_mapsToGatewayTimeout() {
+        FeignException ex = mock(FeignException.class);
+        when(ex.status()).thenReturn(408);
+        when(ex.contentUTF8()).thenReturn("");
+        when(ex.getMessage()).thenReturn("timeout");
+
+        ResponseEntity<Map<String, String>> result = handler.handleFeign(ex);
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.GATEWAY_TIMEOUT);
+    }
+
+    @Test
+    void handleResponseStatus_whenReasonNull_usesStatusPhrase() {
+        ResponseEntity<Map<String, String>> result =
+                handler.handleResponseStatus(new ResponseStatusException(HttpStatus.NOT_FOUND));
+
+        assertThat(result.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(result.getBody()).containsKey("message");
+        assertThat(result.getBody().get("message")).isNotBlank();
+    }
+
+    @Test
+    void resolveFeignClientMessage_whenMessageContainsTimeout_hint() {
+        FeignException ex = mock(FeignException.class);
+        when(ex.contentUTF8()).thenReturn("");
+        when(ex.getMessage()).thenReturn("Read timed out");
+
+        assertThat(GlobalExceptionHandler.resolveFeignClientMessage(ex))
+                .containsIgnoringCase("timed out");
     }
 }

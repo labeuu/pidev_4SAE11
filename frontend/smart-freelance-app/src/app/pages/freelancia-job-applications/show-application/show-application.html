@@ -1,0 +1,59 @@
+<div class="container py-4" style="max-width:700px">
+  <div *ngIf="isLoading" class="text-center py-5"><div class="spinner-border text-primary"></div></div>
+  <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
+
+  <ng-container *ngIf="!isLoading && application">
+    <button class="btn btn-link px-0 mb-3 text-decoration-none" (click)="back()">
+      <i class="bi bi-arrow-left me-1"></i> Back
+    </button>
+
+    <div class="card border-0 shadow-sm">
+      <div class="card-body p-4">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <h4 class="fw-bold mb-0">Application Details</h4>
+          <span [class]="statusBadgeClass(application.status || '')">{{ application.status }}</span>
+        </div>
+
+        <!-- Job info -->
+        <div *ngIf="job" class="alert alert-light border mb-4">
+          <strong>{{ job.title }}</strong>
+          <span *ngIf="job.clientType === 'COMPANY'" class="badge bg-info text-dark ms-2">
+            <i class="bi bi-building me-1"></i>{{ job.companyName }}
+          </span>
+          <p class="mb-0 small text-muted">{{ job.category }} · {{ job.locationType }}</p>
+        </div>
+
+        <dl class="row">
+          <dt class="col-sm-4">Proposal</dt>
+          <dd class="col-sm-8" style="white-space:pre-wrap">{{ application.proposalMessage }}</dd>
+
+          <dt class="col-sm-4" *ngIf="application.expectedRate">Expected Rate</dt>
+          <dd class="col-sm-8" *ngIf="application.expectedRate">
+            {{ application.expectedRate | number }} {{ job?.currency || 'USD' }}
+          </dd>
+
+          <dt class="col-sm-4" *ngIf="application.availabilityStart">Available From</dt>
+          <dd class="col-sm-8" *ngIf="application.availabilityStart">
+            {{ application.availabilityStart | date:'mediumDate' }}
+          </dd>
+
+          <dt class="col-sm-4">Applied On</dt>
+          <dd class="col-sm-8">{{ application.createdAt | date:'medium' }}</dd>
+
+          <dt class="col-sm-4">Last Updated</dt>
+          <dd class="col-sm-8">{{ application.updatedAt | date:'medium' }}</dd>
+        </dl>
+
+        <div class="d-flex gap-2 mt-3">
+          <a class="btn btn-outline-secondary btn-sm"
+             [routerLink]="['/dashboard/my-job-applications', application.id, 'edit']">
+            <i class="bi bi-pencil me-1"></i>Edit Application
+          </a>
+          <a class="btn btn-outline-primary btn-sm" routerLink="/dashboard/my-job-applications">
+            <i class="bi bi-list me-1"></i>All Applications
+          </a>
+        </div>
+      </div>
+    </div>
+  </ng-container>
+</div>

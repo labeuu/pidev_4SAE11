@@ -1,0 +1,321 @@
+@use '../../../../../styles/variables' as *;
+@use '../../../../../styles/ticket-shell' as tk;
+
+:host {
+  display: block;
+}
+
+.admin-ticket-host {
+  @include tk.ticket-page-host;
+}
+
+.admin-ticket-page {
+  max-width: $container-xl;
+  margin: 0 auto;
+  padding: $spacing-xl $spacing-lg $spacing-3xl;
+}
+
+.admin-ticket-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-lg;
+  padding: $spacing-xl $spacing-lg;
+  margin-bottom: $spacing-lg;
+  @include tk.ticket-hero-surface;
+}
+
+.admin-ticket-hero__leading {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: $spacing-lg;
+  flex: 1;
+  min-width: 0;
+}
+
+@media (min-width: $breakpoint-md) {
+  .admin-ticket-hero__leading {
+    flex-wrap: nowrap;
+    align-items: center;
+  }
+}
+
+.admin-ticket-hero-icon {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  color: $primary-500;
+  background: $gradient-soft;
+  border-radius: $radius-xl;
+  border: 1px solid rgba(227, 126, 51, 0.2);
+}
+
+.admin-ticket-hero-icon svg {
+  width: 2.25rem;
+  height: 2.25rem;
+}
+
+.admin-ticket-hero__copy {
+  flex: 1;
+  min-width: 0;
+}
+
+.admin-ticket-badge {
+  display: inline-block;
+  padding: $spacing-xs $spacing-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $primary-600;
+  background: rgba(227, 126, 51, 0.14);
+  border-radius: $radius-md;
+  margin-bottom: $spacing-sm;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.admin-ticket-title {
+  margin: 0 0 $spacing-sm;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  color: $neutral-900;
+  letter-spacing: $letter-spacing-tight;
+}
+
+.admin-ticket-lead {
+  margin: 0 0 $spacing-md;
+  max-width: 40rem;
+  font-size: $font-size-sm;
+  color: $neutral-600;
+  line-height: $line-height-relaxed;
+}
+
+.admin-ticket-filters {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: $spacing-xs;
+  padding: $spacing-xs;
+  background: rgba($white, 0.85);
+  border: 1px solid $neutral-200;
+  border-radius: $radius-lg;
+}
+
+.admin-ticket-filter {
+  padding: $spacing-sm $spacing-md;
+  font-family: $font-family;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $neutral-600;
+  background: transparent;
+  border: none;
+  border-radius: $radius-md;
+  cursor: pointer;
+  transition: background $transition-fast, color $transition-fast;
+
+  &:hover {
+    color: $primary-600;
+    background: rgba(227, 126, 51, 0.08);
+  }
+
+  &--active {
+    color: $white;
+    background: $gradient-primary;
+    box-shadow: $shadow-sm;
+
+    &:hover {
+      color: $white;
+      background: $gradient-primary-hover;
+    }
+  }
+}
+
+.admin-ticket-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.admin-ticket-btn-secondary {
+  padding: $spacing-sm $spacing-lg;
+  font-family: $font-family;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $neutral-700;
+  background: $white;
+  border: 1.5px solid $neutral-300;
+  border-radius: $radius-lg;
+  cursor: pointer;
+  transition: all $transition-base;
+
+  &:hover:not(:disabled) {
+    border-color: $primary-100;
+    background: $gradient-soft;
+    color: $primary-600;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.admin-ticket-btn-outline {
+  padding: $spacing-xs $spacing-md;
+  font-family: $font-family;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $primary-600;
+  background: $white;
+  border: 1.5px solid rgba(227, 126, 51, 0.45);
+  border-radius: $radius-md;
+  cursor: pointer;
+
+  &:hover {
+    background: rgba(227, 126, 51, 0.08);
+  }
+}
+
+.admin-ticket-alert {
+  padding: $spacing-md;
+  border-radius: $radius-lg;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-lg;
+
+  &--danger {
+    background: $error-50;
+    border: 1px solid $error-200;
+    color: $error-700;
+  }
+}
+
+.admin-ticket-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  padding: $spacing-3xl;
+  color: $neutral-600;
+  font-size: $font-size-sm;
+}
+
+.admin-ticket-spinner {
+  @include tk.tk-spinner(1.25rem);
+}
+
+@include tk.tk-spin-keyframes;
+
+.admin-ticket-panel {
+  padding: $spacing-2xl;
+  text-align: center;
+  background: $white;
+  border: 1px solid $neutral-200;
+  border-radius: $radius-xl;
+
+  &--muted {
+    color: $neutral-600;
+  }
+}
+
+.admin-ticket-panel__title {
+  margin: 0 0 $spacing-xs;
+  font-weight: $font-weight-semibold;
+  color: $neutral-800;
+}
+
+.admin-ticket-panel__sub {
+  margin: 0;
+  font-size: $font-size-sm;
+}
+
+.admin-ticket-table-wrap {
+  background: $white;
+  border: 1px solid $neutral-200;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-sm;
+  overflow: hidden;
+}
+
+.admin-ticket-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: $font-size-sm;
+
+  thead th {
+    text-align: left;
+    padding: $spacing-md $spacing-lg;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: $neutral-500;
+    background: $neutral-50;
+    border-bottom: 1px solid $neutral-200;
+  }
+
+  tbody td {
+    padding: $spacing-md $spacing-lg;
+    border-bottom: 1px solid $neutral-100;
+    vertical-align: middle;
+  }
+
+  tbody tr {
+    transition: background $transition-fast;
+
+    &:hover {
+      background: rgba(227, 126, 51, 0.04);
+    }
+
+    &:last-child td {
+      border-bottom: none;
+    }
+  }
+}
+
+.admin-ticket-table__id {
+  font-weight: $font-weight-semibold;
+  color: $neutral-500;
+  white-space: nowrap;
+}
+
+.admin-ticket-table__subject {
+  color: $neutral-900;
+  font-weight: $font-weight-medium;
+  max-width: min(380px, 32vw);
+  @include truncate;
+}
+
+.admin-ticket-table__requester {
+  font-size: $font-size-xs;
+  color: $neutral-700;
+  max-width: 12rem;
+  @include truncate;
+}
+
+.admin-ticket-table__muted {
+  color: $neutral-500;
+  font-size: $font-size-xs;
+  white-space: nowrap;
+}
+
+.admin-ticket-table__actions {
+  text-align: right;
+  width: 1%;
+}
+
+@include breakpoint(lg) {
+  .admin-ticket-table__hide-lg {
+    display: table-cell;
+  }
+}
+
+@media (max-width: #{$breakpoint-lg - 1px}) {
+  .admin-ticket-table__hide-lg {
+    display: none;
+  }
+}
+
+@include tk.tk-pills;

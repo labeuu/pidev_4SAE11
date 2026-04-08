@@ -17,7 +17,231 @@
       </div>
     }
 
-    <section class="tasks-section" aria-labelledby="list-heading">
+    <section class="task-stats-overview" aria-labelledby="task-stats-heading">
+      <div class="task-stats-overview__head">
+        <div class="task-stats-overview__intro">
+          <h2 id="task-stats-heading" class="task-stats-overview__title">Workload overview</h2>
+          <p class="task-stats-overview__hint">
+            Totals include every task and subtask assigned to you. Filters on the list only change the table, not these numbers.
+            Accepted projects where you have no assignments yet are listed at the bottom of this overview.
+          </p>
+        </div>
+        <button
+          type="button"
+          class="btn-work-report btn-work-report--in-stats"
+          (click)="downloadLastWeekWorkReport()"
+          [disabled]="workReportDownloading"
+        >
+          {{ workReportDownloading ? 'Preparing PDF…' : 'Download report (7 days)' }}
+        </button>
+      </div>
+
+      @if (extendedStatsLoading && !extendedStats) {
+        <div class="task-stats-skeleton" aria-busy="true" aria-label="Loading statistics">
+          <div class="task-stats-skeleton__grid">
+            @for (i of [1, 2, 3, 4]; track i) {
+              <div class="task-stats-skeleton__card"></div>
+            }
+          </div>
+          <div class="task-stats-skeleton__bar"></div>
+          <div class="task-stats-skeleton__priorities"></div>
+        </div>
+      } @else if (extendedStatsError && !extendedStats) {
+        <p class="task-stats-overview__fail" role="status">Statistics could not be loaded. Your task list still works.</p>
+      } @else if (extendedStats) {
+        <div class="task-stats-kpis">
+          <button
+            type="button"
+            class="task-stat-card task-stat-card--interactive task-stat-card--alert"
+            [class.task-stat-card--alert-active]="(extendedStats.overdueCount ?? 0) > 0"
+            [class.task-stat-card--selected]="isStatFocus('overdue')"
+            (click)="applyOverdueDrilldown()"
+          >
+            <span class="task-stat-card__label">Overdue</span>
+            <span class="task-stat-card__value">{{ extendedStats.overdueCount ?? 0 }}</span>
+            <span class="task-stat-card__hint">Open items past due date — click to list. Daily reminders while overdue.</span>
+          </button>
+          <button
+            type="button"
+            class="task-stat-card task-stat-card--interactive"
+            [class.task-stat-card--selected]="isStatFocus('active')"
+            (click)="applyActiveDrilldown()"
+          >
+            <span class="task-stat-card__label">Active</span>
+            <span class="task-stat-card__value">{{ statsActiveOpen }}</span>
+            <span class="task-stat-card__hint">Open root tasks (excludes done/cancelled) — click to list</span>
+          </button>
+          <button
+            type="button"
+            class="task-stat-card task-stat-card--interactive"
+            [class.task-stat-card--selected]="isStatFocus('status_DONE')"
+            (click)="applyStatusDrilldown('DONE')"
+          >
+            <span class="task-stat-card__label">Done</span>
+            <span class="task-stat-card__value">{{ extendedStats.doneCount ?? 0 }}</span>
+            <span class="task-stat-card__hint">Completed (all time) — click to list</span>
+          </button>
+          <button
+            type="button"
+            class="task-stat-card task-stat-card--progress task-stat-card--interactive"
+            (click)="resetStatsListView()"
+          >
+            <span class="task-stat-card__label">Completion</span>
+            <span class="task-stat-card__value">{{ formatCompletionPct(extendedStats.completionPercentage) }}%</span>
+            <div
+              class="task-stat-card__progress-track"
+              role="progressbar"
+              [attr.aria-valuemin]="0"
+              [attr.aria-valuemax]="100"
+              [attr.aria-valuenow]="completionPctForAria(extendedStats)"
+            >
+              <div
+                class="task-stat-card__progress-fill"
+                [style.width.%]="extendedStats.completionPercentage ?? 0"
+              ></div>
+            </div>
+            <span class="task-stat-card__hint">{{ extendedStats.totalTasks ?? 0 }} items total — click to reset list &amp; filters</span>
+          </button>
+        </div>
+
+        <div class="task-stats-pipeline">
+          <h3 class="task-stats-pipeline__title">Status mix</h3>
+          <p class="task-stats-pipeline__subhint">Click a segment or legend item to filter the task list by status.</p>
+          <div
+            class="task-stats-mix"
+            role="group"
+            aria-label="Status mix; each segment filters the list by status"
+          >
+            @if ((extendedStats.todoCount ?? 0) > 0) {
+              <button
+                type="button"
+                class="task-stats-mix__seg task-stats-mix__seg--todo task-stats-mix__hit"
+                [style.flex-grow]="extendedStats.todoCount"
+                [class.task-stats-mix__hit--selected]="isStatFocus('status_TODO')"
+                (click)="applyStatusDrilldown('TODO')"
+              ></button>
+            }
+            @if ((extendedStats.inProgressCount ?? 0) > 0) {
+              <button
+                type="button"
+                class="task-stats-mix__seg task-stats-mix__seg--in-progress task-stats-mix__hit"
+                [style.flex-grow]="extendedStats.inProgressCount"
+                [class.task-stats-mix__hit--selected]="isStatFocus('status_IN_PROGRESS')"
+                (click)="applyStatusDrilldown('IN_PROGRESS')"
+              ></button>
+            }
+            @if ((extendedStats.inReviewCount ?? 0) > 0) {
+              <button
+                type="button"
+                class="task-stats-mix__seg task-stats-mix__seg--in-review task-stats-mix__hit"
+                [style.flex-grow]="extendedStats.inReviewCount"
+                [class.task-stats-mix__hit--selected]="isStatFocus('status_IN_REVIEW')"
+                (click)="applyStatusDrilldown('IN_REVIEW')"
+              ></button>
+            }
+            @if ((extendedStats.doneCount ?? 0) > 0) {
+              <button
+                type="button"
+                class="task-stats-mix__seg task-stats-mix__seg--done task-stats-mix__hit"
+                [style.flex-grow]="extendedStats.doneCount"
+                [class.task-stats-mix__hit--selected]="isStatFocus('status_DONE')"
+                (click)="applyStatusDrilldown('DONE')"
+              ></button>
+            }
+            @if ((extendedStats.cancelledCount ?? 0) > 0) {
+              <button
+                type="button"
+                class="task-stats-mix__seg task-stats-mix__seg--cancelled task-stats-mix__hit"
+                [style.flex-grow]="extendedStats.cancelledCount"
+                [class.task-stats-mix__hit--selected]="isStatFocus('status_CANCELLED')"
+                (click)="applyStatusDrilldown('CANCELLED')"
+              ></button>
+            }
+            @if ((extendedStats.totalTasks ?? 0) === 0) {
+              <span class="task-stats-mix__empty">No assigned items yet</span>
+            }
+          </div>
+          <ul class="task-stats-legend">
+            <li>
+              <button type="button" class="task-stats-legend__btn" [class.task-stats-legend__btn--selected]="isStatFocus('status_TODO')" (click)="applyStatusDrilldown('TODO')">
+                <span class="task-stats-legend__swatch task-stats-mix__seg--todo"></span> To do {{ extendedStats.todoCount ?? 0 }}
+              </button>
+            </li>
+            <li>
+              <button type="button" class="task-stats-legend__btn" [class.task-stats-legend__btn--selected]="isStatFocus('status_IN_PROGRESS')" (click)="applyStatusDrilldown('IN_PROGRESS')">
+                <span class="task-stats-legend__swatch task-stats-mix__seg--in-progress"></span> In progress {{ extendedStats.inProgressCount ?? 0 }}
+              </button>
+            </li>
+            <li>
+              <button type="button" class="task-stats-legend__btn" [class.task-stats-legend__btn--selected]="isStatFocus('status_IN_REVIEW')" (click)="applyStatusDrilldown('IN_REVIEW')">
+                <span class="task-stats-legend__swatch task-stats-mix__seg--in-review"></span> In review {{ extendedStats.inReviewCount ?? 0 }}
+              </button>
+            </li>
+            <li>
+              <button type="button" class="task-stats-legend__btn" [class.task-stats-legend__btn--selected]="isStatFocus('status_DONE')" (click)="applyStatusDrilldown('DONE')">
+                <span class="task-stats-legend__swatch task-stats-mix__seg--done"></span> Done {{ extendedStats.doneCount ?? 0 }}
+              </button>
+            </li>
+            <li>
+              <button type="button" class="task-stats-legend__btn" [class.task-stats-legend__btn--selected]="isStatFocus('status_CANCELLED')" (click)="applyStatusDrilldown('CANCELLED')">
+                <span class="task-stats-legend__swatch task-stats-mix__seg--cancelled"></span> Cancelled {{ extendedStats.cancelledCount ?? 0 }}
+              </button>
+            </li>
+          </ul>
+        </div>
+
+        <div class="task-stats-priorities">
+          <h3 class="task-stats-priorities__title">Priority distribution</h3>
+          <p class="task-stats-priorities__subhint">Click a row to filter by priority (root tasks in the list).</p>
+          <ul class="task-stats-priority-bars" role="list">
+            @for (p of ['LOW', 'MEDIUM', 'HIGH', 'URGENT']; track p) {
+              <li class="task-stats-priority-row task-stats-priority-row--interactive" (click)="applyPriorityDrilldown($any(p))" (keydown.enter)="applyPriorityDrilldown($any(p))" [class.task-stats-priority-row--selected]="isStatFocus('priority_' + p)" role="button" tabindex="0" [attr.aria-label]="'Filter by priority ' + p">
+                <span
+                  class="task-stats-priority-row__label priority-badge priority-badge--{{ p | lowercase }}"
+                  >{{ p === 'LOW' ? 'Low' : p === 'MEDIUM' ? 'Medium' : p === 'HIGH' ? 'High' : 'Urgent' }}</span
+                >
+                <div class="task-stats-priority-row__track">
+                  <div
+                    class="task-stats-priority-row__fill task-stats-priority-row__fill--{{ p | lowercase }}"
+                    [style.width.%]="
+                      (extendedStats.totalTasks ?? 0) > 0
+                        ? (100 * priorityBreakdownCount($any(p))) / (extendedStats.totalTasks ?? 1)
+                        : 0
+                    "
+                  ></div>
+                </div>
+                <span class="task-stats-priority-row__count">{{ priorityBreakdownCount($any(p)) }}</span>
+              </li>
+            }
+          </ul>
+        </div>
+
+        @if ((extendedStats.unassignedCount ?? 0) > 0) {
+          <p class="task-stats-unassigned" role="status">
+            {{ extendedStats.unassignedCount }} item(s) in your workload have no assignee — worth checking with the client if that shows up here.
+          </p>
+        }
+
+        @if (associatedProjectsAwaitingTasks.length > 0) {
+          <div class="task-stats-idle-projects" role="region" aria-labelledby="idle-projects-heading">
+            <h3 id="idle-projects-heading" class="task-stats-idle-projects__title">Accepted projects — no tasks assigned yet</h3>
+            <p class="task-stats-idle-projects__hint">
+              You are associated with these projects (accepted application), but nothing is assigned to you yet. Ask the client to assign tasks or add one if you have access.
+            </p>
+            <ul class="task-stats-idle-projects__list">
+              @for (p of associatedProjectsAwaitingTasks; track p.id) {
+                <li class="task-stats-idle-projects__item">
+                  <span class="task-stats-idle-projects__name">{{ getProjectTitle(p.id) || p.title }}</span>
+                  <span class="task-stats-idle-projects__meta">Project #{{ p.id }}</span>
+                </li>
+              }
+            </ul>
+          </div>
+        }
+      }
+    </section>
+
+    <section class="tasks-section" id="tasks-section" aria-labelledby="list-heading">
       <app-card class="card-list">
         <div class="tasks-layout">
           <div class="tasks-layout__sidebar">
@@ -110,9 +334,24 @@
             [class.tasks-layout__main--refreshing]="searching"
             [attr.aria-busy]="loading || searching ? 'true' : 'false'"
           >
+        @if (showStatsDrilldownBanner) {
+          <div class="task-drilldown-banner" role="status">
+            <p class="task-drilldown-banner__text">{{ statsDrilldownBannerMessage }}</p>
+            <button type="button" class="task-drilldown-banner__clear" (click)="clearStatDrilldownAndReload()">
+              Clear and show all
+            </button>
+          </div>
+        }
+
         @if (totalPages > 0 || totalElements > 0) {
           <div class="toolbar toolbar--count">
-            <span class="toolbar-count">{{ totalElements }} total · Page {{ page + 1 }} of {{ totalPages || 1 }}</span>
+            <span class="toolbar-count">
+              @if (listViewMode === 'overdue') {
+                {{ totalElements }} overdue item(s)
+              } @else {
+                {{ totalElements }} total · Page {{ page + 1 }} of {{ totalPages || 1 }}
+              }
+            </span>
           </div>
         }
 
@@ -123,8 +362,13 @@
           </div>
         } @else if (tasks.length === 0) {
           <div class="state-box state-box--empty">
-            <p class="state-box__text">No tasks assigned to you yet.</p>
-            <p class="state-box__hint">Add a task or wait for a client to assign you to a project.</p>
+            @if (listViewMode === 'overdue') {
+              <p class="state-box__text">No overdue items — you're all caught up on due dates.</p>
+              <p class="state-box__hint">Click <strong>Clear and show all</strong> above to return to the full list.</p>
+            } @else {
+              <p class="state-box__text">No tasks assigned to you yet.</p>
+              <p class="state-box__hint">Add a task or wait for a client to assign you to a project.</p>
+            }
           </div>
         } @else {
         @for (g of projectTaskGroups; track g.projectId) {
@@ -134,26 +378,50 @@
               @if (formatProjectActivityHint(g.projectId)) {
                 <p class="project-panel__meta">{{ formatProjectActivityHint(g.projectId) }}</p>
               }
-              <span class="project-panel__count" aria-live="polite">{{ g.tasks.length }} task(s) on this page</span>
+              <span class="project-panel__count" aria-live="polite">{{ g.tasks.length }} {{ listViewMode === 'overdue' ? 'here' : 'on this page' }}</span>
             </div>
             <ul class="task-list" role="list">
-              @for (t of g.tasks; track t.id) {
-                <li class="task-block">
-                  <div class="task-item">
-                    <button
-                      type="button"
-                      class="btn-expand"
-                      (click)="toggleRootExpanded(t)"
-                      [attr.aria-expanded]="isRootExpanded(t.id)"
-                      [attr.aria-controls]="'subtasks-' + t.id"
-                      [attr.aria-label]="expandLabel(t)"
-                    >
-                      <span class="btn-expand__chevron" [class.btn-expand__chevron--open]="isRootExpanded(t.id)" aria-hidden="true"></span>
-                    </button>
+              @for (t of g.tasks; track taskRowTrackId(t)) {
+                <li
+                  class="task-block"
+                  [class.task-block--subtask-row]="taskRowLooksLikeSubtask(t)"
+                  [class.task-block--overdue]="isOverdueDueDate(t.dueDate, t.status)"
+                >
+                  <div
+                    class="task-item"
+                    [class.task-item--overdue]="isOverdueDueDate(t.dueDate, t.status)"
+                  >
+                    @if (!taskRowLooksLikeSubtask(t)) {
+                      <button
+                        type="button"
+                        class="btn-expand"
+                        (click)="toggleRootExpanded(t)"
+                        [attr.aria-expanded]="isRootExpanded(t.id)"
+                        [attr.aria-controls]="'subtasks-' + t.id"
+                        [attr.aria-label]="expandLabel(t)"
+                      >
+                        <span class="btn-expand__chevron" [class.btn-expand__chevron--open]="isRootExpanded(t.id)" aria-hidden="true"></span>
+                      </button>
+                    } @else {
+                      <span class="btn-expand btn-expand--placeholder" aria-hidden="true"></span>
+                    }
                     <div class="task-item__main">
-                      <span class="task-item__title">{{ t.title }}</span>
-                      <span class="task-item__meta">Due {{ formatDueDate(t.dueDate) }}</span>
-                      @if (subtaskProgressForTask(t.id); as prog) {
+                      <span class="task-item__title">
+                        @if (taskRowLooksLikeSubtask(t)) {
+                          <span class="task-item__subtask-badge">Subtask</span>
+                        }
+                        {{ t.title }}
+                      </span>
+                      <div class="task-item__due-row">
+                        <span
+                          class="task-item__meta"
+                          [class.task-item__meta--overdue]="isOverdueDueDate(t.dueDate, t.status)"
+                        >{{ dueDateDisplayLine(t.dueDate, t.status) }}</span>
+                        @if (isOverdueDueDate(t.dueDate, t.status)) {
+                          <span class="task-overdue-badge" title="Past due date — please update progress">Overdue</span>
+                        }
+                      </div>
+                      @if (!taskRowLooksLikeSubtask(t) && subtaskProgressForTask(t.id); as prog) {
                         @if (prog.total > 0) {
                           <div
                             class="task-progress"
@@ -184,13 +452,17 @@
                         >{{ formatPriorityLabel(t.priority) }}</span>
                         @if (t.status !== 'DONE' && t.status !== 'CANCELLED') {
                           <div class="status-dropdown-wrap">
-                            <label class="visually-hidden" [attr.for]="'task-status-' + t.id">Status for {{ t.title }}</label>
+                            <label class="visually-hidden" [attr.for]="'task-status-' + taskRowTrackId(t)">Status for {{ t.title }}</label>
                             <select
                               class="status-dropdown"
-                              [id]="'task-status-' + t.id"
+                              [id]="'task-status-' + taskRowTrackId(t)"
                               [value]="t.status"
-                              (change)="updateStatusFromSelect(t, $any($event).target.value)"
-                              [disabled]="updatingStatus"
+                              (change)="
+                                taskRowLooksLikeSubtask(t) && t.parentTaskId != null
+                                  ? updateSubtaskStatusFromSelect(t.parentTaskId, overdueRowToSubtask(t), $any($event).target.value)
+                                  : updateStatusFromSelect(t, $any($event).target.value)
+                              "
+                              [disabled]="updatingStatus || updatingSubtaskStatus"
                             >
                               <option value="TODO">To Do</option>
                               <option value="IN_PROGRESS">In Progress</option>
@@ -204,12 +476,19 @@
                         }
                       </div>
                       <div class="task-item__quick-actions" role="group" [attr.aria-label]="'Actions for ' + t.title">
-                        <button type="button" class="btn-task btn-task--edit" (click)="openEdit(t)">Edit</button>
-                        <button type="button" class="btn-task btn-task--delete" (click)="openDeleteModal(t)">Delete</button>
+                        @if (taskRowLooksLikeSubtask(t) && t.parentTaskId != null) {
+                          <button type="button" class="btn-task btn-task--edit" (click)="openEditSubtask(parentTaskStubForOverdueSubtask(t), overdueRowToSubtask(t))">Edit</button>
+                          <button type="button" class="btn-task btn-task--delete" (click)="openDeleteSubtask(t.parentTaskId, overdueRowToSubtask(t))">Delete</button>
+                        } @else if (!taskRowLooksLikeSubtask(t)) {
+                          <button type="button" class="btn-task btn-task--edit" (click)="openEdit(t)">Edit</button>
+                          <button type="button" class="btn-task btn-task--delete" (click)="openDeleteModal(t)">Delete</button>
+                        } @else {
+                          <span class="task-item__no-actions-hint">Update the task service to load parent links for subtasks.</span>
+                        }
                       </div>
                     </div>
                   </div>
-                  @if (isRootExpanded(t.id)) {
+                  @if (!taskRowLooksLikeSubtask(t) && isRootExpanded(t.id)) {
                     <div class="subtasks-region" [id]="'subtasks-' + t.id" role="region" [attr.aria-label]="'Subtasks for ' + t.title">
                       @if (subtasksLoading[t.id!]) {
                         <p class="subtasks-region__loading">Loading subtasks…</p>
@@ -240,10 +519,18 @@
                         } @else {
                           <ul class="subtask-list" role="list">
                             @for (st of subtasksFor(t.id); track st.id) {
-                              <li class="subtask-item">
+                              <li class="subtask-item" [class.subtask-item--overdue]="isOverdueDueDate(st.dueDate, st.status)">
                                 <div class="subtask-item__main">
                                   <span class="subtask-item__title">{{ st.title }}</span>
-                                  <span class="subtask-item__meta">Due {{ formatDueDate(st.dueDate) }}</span>
+                                  <div class="task-item__due-row task-item__due-row--compact">
+                                    <span
+                                      class="subtask-item__meta"
+                                      [class.subtask-item__meta--overdue]="isOverdueDueDate(st.dueDate, st.status)"
+                                    >{{ dueDateDisplayLine(st.dueDate, st.status) }}</span>
+                                    @if (isOverdueDueDate(st.dueDate, st.status)) {
+                                      <span class="task-overdue-badge task-overdue-badge--sm" title="Subtask is overdue">Overdue</span>
+                                    }
+                                  </div>
                                 </div>
                                 <div class="subtask-item__actions">
                                   @if (st.status !== 'DONE' && st.status !== 'CANCELLED') {
@@ -286,7 +573,7 @@
             </ul>
           </section>
         }
-        @if (totalPages > 1) {
+        @if (totalPages > 1 && listViewMode !== 'overdue') {
           <nav class="pagination" aria-label="Tasks pagination">
             <button type="button" class="btn-pagination" (click)="goToPage(0)" [disabled]="page === 0 || loading || searching" aria-label="First page">First</button>
             <button type="button" class="btn-pagination" (click)="goToPage(page - 1)" [disabled]="page === 0 || loading || searching" aria-label="Previous">Prev</button>

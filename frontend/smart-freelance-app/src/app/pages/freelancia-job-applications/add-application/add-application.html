@@ -1,0 +1,62 @@
+<div class="container py-4" style="max-width:700px">
+  <div class="card border-0 shadow-sm">
+    <div class="card-header bg-white border-bottom py-3">
+      <h4 class="fw-bold mb-0"><i class="bi bi-send-fill me-2 text-success"></i>Apply for Job</h4>
+    </div>
+    <div class="card-body p-4">
+      <div *ngIf="isLoading" class="text-center py-4"><div class="spinner-border text-primary"></div></div>
+
+      <ng-container *ngIf="!isLoading">
+        <!-- Job summary -->
+        <div *ngIf="job" class="alert alert-light border mb-4">
+          <strong>{{ job.title }}</strong>
+          <span *ngIf="job.clientType === 'COMPANY'" class="badge bg-info text-dark ms-2">
+            <i class="bi bi-building me-1"></i>{{ job.companyName }}
+          </span>
+          <p class="mb-0 small text-muted">{{ job.category }} · {{ job.locationType }}</p>
+        </div>
+
+        <div *ngIf="submitSuccess" class="alert alert-success">
+          <i class="bi bi-check-circle me-2"></i>Application submitted! Redirecting...
+        </div>
+        <div *ngIf="submitError" class="alert alert-danger">{{ submitError }}</div>
+
+        <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+          <div class="mb-3">
+            <label class="form-label fw-semibold">Proposal Message *</label>
+            <textarea class="form-control" rows="6" formControlName="proposalMessage"
+                      placeholder="Describe why you're a great fit, your relevant experience, and your approach to this job..."></textarea>
+            <div *ngIf="f('proposalMessage')?.invalid && f('proposalMessage')?.touched" class="text-danger small mt-1">
+              Proposal message is required (min 20 characters).
+            </div>
+          </div>
+
+          <div class="row mb-3">
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Expected Rate</label>
+              <div class="input-group">
+                <input type="number" class="form-control" formControlName="expectedRate" placeholder="500">
+                <span class="input-group-text">{{ job?.currency || 'USD' }}</span>
+              </div>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label fw-semibold">Available From</label>
+              <input type="date" class="form-control" formControlName="availabilityStart">
+            </div>
+          </div>
+
+          <div class="d-flex gap-2">
+            <button type="submit" class="btn btn-success" [disabled]="isSubmitting">
+              <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
+              <i *ngIf="!isSubmitting" class="bi bi-send me-2"></i>
+              {{ isSubmitting ? 'Submitting...' : 'Submit Application' }}
+            </button>
+            <button type="button" class="btn btn-outline-secondary" routerLink="/dashboard/browse-jobs">
+              Cancel
+            </button>
+          </div>
+        </form>
+      </ng-container>
+    </div>
+  </div>
+</div>

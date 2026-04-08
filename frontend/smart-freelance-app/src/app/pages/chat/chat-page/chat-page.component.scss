@@ -1,0 +1,134 @@
+// ─── Messenger-style full-page chat layout ────────────────────────────────────
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+.chat-layout {
+  display: flex;
+  // Account for header (64px) + dashboard-content padding (var(--spacing-2xl) * 2) + self margins (var(--spacing-md) * 2)
+  height: calc(100vh - 64px - var(--spacing-2xl) * 2 - var(--spacing-md) * 2);
+  overflow: hidden;
+  background: var(--bg-base);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border-light);
+  margin: var(--spacing-md);
+}
+
+// ─── Left sidebar ─────────────────────────────────────────────────────────────
+
+.chat-sidebar {
+  width: 340px;
+  flex-shrink: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-card);
+  border-right: 1px solid var(--border-light);
+  overflow: hidden;
+  transition: transform 0.25s ease;
+
+  &--hidden {
+    display: none;
+  }
+}
+
+// ─── Main panel ───────────────────────────────────────────────────────────────
+
+.chat-main {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-base);
+
+  &--hidden {
+    display: none;
+  }
+}
+
+// ─── Empty state ──────────────────────────────────────────────────────────────
+
+.chat-empty {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--spacing-md);
+  text-align: center;
+  padding: var(--spacing-xl);
+  animation: slide-in 0.3s ease both;
+
+  &__icon {
+    width: 80px;
+    height: 80px;
+    border-radius: var(--radius-full);
+    background: var(--accent-gradient);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 4px;
+
+    svg {
+      width: 40px;
+      height: 40px;
+      color: #fff;
+    }
+  }
+
+  &__title {
+    font-family: var(--font-heading);
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--text-primary);
+    margin: 0;
+  }
+
+  &__sub {
+    font-size: 0.875rem;
+    color: var(--text-muted);
+    max-width: 260px;
+    line-height: 1.5;
+    margin: 0;
+  }
+}
+
+// ─── Responsive ───────────────────────────────────────────────────────────────
+
+@media (max-width: 1024px) {
+  // dashboard-content uses var(--spacing-xl) padding at this breakpoint
+  .chat-layout {
+    height: calc(100vh - 64px - var(--spacing-xl) * 2 - var(--spacing-md) * 2);
+  }
+}
+
+@media (max-width: 768px) {
+  .chat-layout {
+    margin: 0;
+    border-radius: 0;
+    border: none;
+    box-shadow: none;
+    // dashboard-content uses var(--spacing-lg) padding; no margins on mobile
+    height: calc(100vh - 64px - var(--spacing-lg) * 2);
+    position: relative;
+  }
+
+  .chat-sidebar {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    z-index: 10;
+
+    &--hidden { display: none; }
+  }
+
+  .chat-main {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+
+    &--hidden { display: none; }
+  }
+}

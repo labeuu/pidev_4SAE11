@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import tn.esprit.project.Dto.response.JointProjectsResponse;
 import tn.esprit.project.Dto.response.ProjectResponse;
 import tn.esprit.project.Entities.Project;
 import tn.esprit.project.Services.IProjectService;
@@ -50,6 +51,14 @@ public class ProjectController {
     @GetMapping("/client/{clientId}")
     public List<Project> getProjectsByClientId(@PathVariable Long clientId) {
         return projectService.getProjectsByClientId(clientId);
+    }
+
+    /** Projets communs : offres du client pour lesquelles le freelancer a postulé. */
+    @GetMapping("/joint")
+    public JointProjectsResponse getJointProjects(
+            @RequestParam Long clientId,
+            @RequestParam Long freelancerId) {
+        return projectService.getJointProjects(clientId, freelancerId);
     }
 
     /** Single project by id (numeric only, so /client/14 is not matched here). */

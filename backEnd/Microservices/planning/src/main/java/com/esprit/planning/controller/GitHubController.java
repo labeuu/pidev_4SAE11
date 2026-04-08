@@ -102,6 +102,7 @@ public class GitHubController {
     @GetMapping("/enabled")
     @Operation(summary = "Check if GitHub integration is enabled")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Checks whether enabled.
     public ResponseEntity<Boolean> isEnabled() {
         return ResponseEntity.ok(githubApiService.isEnabled());
     }

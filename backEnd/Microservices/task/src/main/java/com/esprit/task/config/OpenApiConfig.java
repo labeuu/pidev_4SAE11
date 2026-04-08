@@ -17,6 +17,7 @@ public class OpenApiConfig {
     private String serverPort;
 
     @Bean
+    // Performs task open api.
     public OpenAPI taskOpenAPI() {
         return new OpenAPI()
                 .info(new Info()
@@ -24,7 +25,8 @@ public class OpenApiConfig {
                         .description("""
                                 REST API for **Tasks and Subtasks** microservice.
                                 
-                                - **Tasks**: CRUD, filters, board, overdue, stats, calendar events.
+                                - **Tasks**: CRUD, filters, board, overdue, stats (including extended metrics), weekly PDF report, calendar events.
+                                - **Schedulers**: daily overdue reminder notifications (freelancers with assigned overdue tasks/subtasks), priority escalation, cancelled-task purge (see `task.scheduler.*` properties).
                                 - **Task Comments**: Create and manage comments on tasks.
                                 
                                 Tasks integrate with the Planning calendar via dueDate.

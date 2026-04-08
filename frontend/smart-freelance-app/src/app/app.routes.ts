@@ -96,6 +96,16 @@ export const routes: Routes = [
       { path: 'my-offer-applications', loadComponent: () => import('./pages/dashboard/my-offer-applications/my-offer-applications').then(m => m.MyOfferApplications) },
       { path: 'design-brief', loadComponent: () => import('./pages/dashboard/design-brief/design-brief').then(m => m.DesignBrief), title: 'Design Brief Builder' },
       {
+        path: 'tickets',
+        title: 'Support',
+        children: [
+          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/dashboard/tickets/ticket-user/ticket-user').then(m => m.TicketUser), title: 'My tickets' },
+          { path: 'new', loadComponent: () => import('./pages/dashboard/tickets/ticket-form/ticket-form').then(m => m.TicketForm), title: 'New ticket' },
+          { path: ':id/edit', loadComponent: () => import('./pages/dashboard/tickets/ticket-form/ticket-form').then(m => m.TicketForm), title: 'Edit ticket' },
+          { path: ':id', loadComponent: () => import('./pages/dashboard/tickets/ticket-detail/ticket-detail').then(m => m.TicketDetail), title: 'Ticket' },
+        ]
+      },
+      {
         path: 'reviews',
         children: [
           { path: '', pathMatch: 'full', loadComponent: () => import('./pages/dashboard/reviews/my-reviews/my-reviews').then(m => m.MyReviews) },
@@ -176,6 +186,10 @@ export const routes: Routes = [
       { path: 'notifications', loadComponent: () => import('./pages/dashboard/notifications/notifications').then(m => m.Notifications) },
       { path: 'profile', loadComponent: () => import('./pages/dashboard/profile/profile').then(m => m.Profile) },
       { path: 'settings', redirectTo: 'profile', pathMatch: 'full' },
+      { path: 'my-vendors', loadComponent: () => import('./pages/dashboard/my-vendors/my-vendors').then(m => m.MyVendors), title: 'Mes Agréments' },
+      { path: 'client-vendors', loadComponent: () => import('./pages/dashboard/client-vendors/client-vendors').then(m => m.ClientVendors), title: 'Mes fournisseurs' },
+      { path: 'my-subcontracts', loadComponent: () => import('./pages/dashboard/my-subcontracts/my-subcontracts').then(m => m.MySubcontracts), title: 'Mes Sous-Traitances' },
+      { path: 'subcontractor-work', loadComponent: () => import('./pages/dashboard/subcontractor-work/subcontractor-work').then(m => m.SubcontractorWork), title: 'Travaux sous-traités' },
       { path: 'my-contracts', loadComponent: () => import('./pages/dashboard/my-contracts/my-contracts').then(m => m.MyContracts) },
       { path: 'my-contracts/:id', loadComponent: () => import('./pages/dashboard/my-contracts/contract-detail/contract-detail').then(m => m.ContractDetail) },
       { path: 'freelancer-search', loadComponent: () => import('./pages/dashboard/freelancer-search/freelancer-search').then(m => m.FreelancerSearch), title: 'Find Freelancers' },
@@ -197,6 +211,8 @@ export const routes: Routes = [
 
     
       { path: 'offers', loadComponent: () => import('./pages/admin/offer-management/offer-management').then(m => m.OfferManagement) },
+      { path: 'vendors', loadComponent: () => import('./pages/admin/vendor-management/vendor-management').then(m => m.VendorManagement), title: 'Vendor Management' },
+      { path: 'subcontracts', loadComponent: () => import('./pages/admin/subcontract-management/subcontract-management').then(m => m.SubcontractManagement), title: 'Sous-Traitance' },
       {
         path: 'projects',
         children: [
@@ -223,6 +239,13 @@ export const routes: Routes = [
 
       { path: 'planning', loadComponent: () => import('./pages/admin/planning-management/planning-management').then(m => m.PlanningManagement) },
       { path: 'tasks', loadComponent: () => import('./pages/admin/task-management/task-management').then(m => m.TaskManagement) },
+      {
+        path: 'tickets',
+        children: [
+          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/admin/ticket-management/ticket-list/ticket-list').then(m => m.AdminTicketList) },
+          { path: ':id', loadComponent: () => import('./pages/admin/ticket-management/ticket-detail/ticket-detail').then(m => m.AdminTicketDetail) },
+        ]
+      },
       { path: 'calendar', loadComponent: () => import('./pages/dashboard/calendar/calendar').then(m => m.Calendar), title: 'Calendar' },
       { path: 'github', loadComponent: () => import('./pages/dashboard/github/github').then(m => m.Github), title: 'GitHub' },
       { path: 'evaluations', loadComponent: () => import('./pages/admin/admin-dashboard/admin-dashboard').then(m => m.AdminDashboard) },

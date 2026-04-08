@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 /**
@@ -27,6 +28,10 @@ public class TaskNotificationService {
 
     public static final String TYPE_TASK_STATUS_UPDATE = "TASK_STATUS_UPDATE";
     public static final String TYPE_TASK_PRIORITY_ESCALATED = "TASK_PRIORITY_ESCALATED";
+    /** Daily cron: reminder to freelancers with any overdue assigned work (tasks + subtasks). */
+    public static final String TYPE_TASK_OVERDUE_DAILY_REMINDER = "TASK_OVERDUE_DAILY_REMINDER";
+
+    private static final int MAX_OVERDUE_LINES_IN_BODY = 12;
 
     /**
      * Notify the project client when a task's status was updated.
@@ -111,6 +116,33 @@ public class TaskNotificationService {
         notifyUser(userId, title, body, TYPE_TASK_PRIORITY_ESCALATED, data);
     }
 
+    /**
+     * Daily digest for one freelancer: lists overdue tasks/subtasks assigned to them.
+     * Fire-and-forget; failures are logged only.
+     */
+    public void notifyFreelancerDailyOverdueReminder(Long assigneeId, List<String> itemLines) {
+        if (assigneeId == null || itemLines == null || itemLines.isEmpty()) {
+            return;
+        }
+        String userId = String.valueOf(assigneeId);
+        int n = itemLines.size();
+        String title = "Overdue work — daily reminder";
+        StringBuilder body = new StringBuilder();
+        body.append("You have ").append(n).append(" overdue item(s). Please prioritize them in My Tasks as soon as possible.\n\n");
+        int show = Math.min(n, MAX_OVERDUE_LINES_IN_BODY);
+        for (int i = 0; i < show; i++) {
+            body.append("• ").append(itemLines.get(i)).append('\n');
+        }
+        if (n > show) {
+            body.append("… and ").append(n - show).append(" more (see My Tasks → Overdue).\n");
+        }
+        Map<String, String> data = new HashMap<>();
+        data.put("overdueCount", String.valueOf(n));
+        data.put("reminderKind", "OVERDUE_DAILY");
+        notifyUser(userId, title, body.toString().trim(), TYPE_TASK_OVERDUE_DAILY_REMINDER, data);
+    }
+
+    // Performs notify user.
     private void notifyUser(String userId, String title, String body, String type, Map<String, String> data) {
         if (userId == null || title == null) {
             return;

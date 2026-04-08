@@ -17,6 +17,7 @@ public class OpenApiConfig {
     private String serverPort;
 
     @Bean
+    // Performs planning open api.
     public OpenAPI planningOpenAPI() {
         return new OpenAPI()
                 .info(new Info()

@@ -2,6 +2,8 @@ package com.esprit.task.service;
 
 import com.esprit.task.client.ProjectClient;
 import com.esprit.task.dto.TaskStatsDto;
+import com.esprit.task.dto.TaskStatsExtendedDto;
+import com.esprit.task.entity.Subtask;
 import com.esprit.task.entity.Task;
 import com.esprit.task.entity.TaskPriority;
 import com.esprit.task.entity.TaskStatus;
@@ -29,6 +31,7 @@ import com.esprit.task.dto.TaskCalendarEventDto;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -246,6 +249,7 @@ class TaskServiceTest {
                 Optional.of(1L), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(),
+                Optional.empty(),
                 PageRequest.of(0, 20));
 
         assertThat(result.getContent()).hasSize(1);
@@ -460,6 +464,110 @@ class TaskServiceTest {
     }
 
     @Test
+    void getExtendedStatsByProject_returnsBreakdown() {
+        List<Object[]> taskStatuses = new ArrayList<>();
+        taskStatuses.add(new Object[] {TaskStatus.TODO, 2L});
+        taskStatuses.add(new Object[] {TaskStatus.DONE, 1L});
+        taskStatuses.add(new Object[] {TaskStatus.IN_PROGRESS, 1L});
+        when(taskRepository.countGroupByStatusForProject(1L)).thenReturn(taskStatuses);
+        List<Object[]> subStatuses = new ArrayList<>();
+        subStatuses.add(new Object[] {TaskStatus.IN_REVIEW, 1L});
+        when(subtaskRepository.countGroupByStatusForProject(1L)).thenReturn(subStatuses);
+        List<Object[]> taskPri = new ArrayList<>();
+        taskPri.add(new Object[] {TaskPriority.HIGH, 3L});
+        taskPri.add(new Object[] {TaskPriority.MEDIUM, 2L});
+        when(taskRepository.countGroupByPriorityForProject(1L)).thenReturn(taskPri);
+        when(subtaskRepository.countGroupByPriorityForProject(1L)).thenReturn(List.of());
+        when(taskRepository.countByProjectId(1L)).thenReturn(4L);
+        when(subtaskRepository.countByProjectId(1L)).thenReturn(1L);
+        when(taskRepository.countByProjectIdAndAssigneeIdIsNull(1L)).thenReturn(1L);
+        when(subtaskRepository.countByProjectIdAndAssigneeIdIsNull(1L)).thenReturn(0L);
+        when(taskRepository.findOverdueTasksByProject(eq(1L), any(LocalDate.class))).thenReturn(List.of());
+        when(subtaskRepository.findOverdueSubtasksByProject(eq(1L), any(LocalDate.class))).thenReturn(List.of());
+
+        TaskStatsExtendedDto r = taskService.getExtendedStatsByProject(1L);
+
+        assertThat(r.getTotalTasks()).isEqualTo(5);
+        assertThat(r.getDoneCount()).isEqualTo(1);
+        assertThat(r.getTodoCount()).isEqualTo(2);
+        assertThat(r.getInProgressCount()).isEqualTo(1);
+        assertThat(r.getInReviewCount()).isEqualTo(1);
+        assertThat(r.getPriorityBreakdown()).hasSize(4);
+        assertThat(r.getUnassignedCount()).isEqualTo(1);
+        assertThat(r.getCreatedInRangeCount()).isZero();
+        assertThat(r.getProjectIdsWithAssignedWork()).isEmpty();
+    }
+
+    @Test
+    void getExtendedStatsByFreelancer_includesDistinctSortedProjectIds() {
+        Task t = task(1L);
+        t.setProjectId(10L);
+        t.setAssigneeId(9L);
+        Subtask s = new Subtask();
+        s.setId(2L);
+        s.setProjectId(20L);
+        s.setTitle("S");
+        s.setStatus(TaskStatus.IN_PROGRESS);
+        s.setPriority(TaskPriority.LOW);
+        s.setAssigneeId(9L);
+        s.setOrderIndex(0);
+        when(taskRepository.findAll(any(Specification.class))).thenReturn(List.of(t));
+        when(subtaskRepository.findByAssigneeId(9L)).thenReturn(List.of(s));
+
+        TaskStatsExtendedDto r = taskService.getExtendedStatsByFreelancer(
+                9L, Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+
+        assertThat(r.getProjectIdsWithAssignedWork()).containsExactly(10L, 20L);
+    }
+
+    @Test
+    void getExtendedStatsForWeeklyWindow_setsActivityCountsForProject() {
+        LocalDate mon = LocalDate.of(2026, 4, 6);
+        LocalDate sun = mon.plusDays(6);
+        List<Object[]> doneOnly = new ArrayList<>();
+        doneOnly.add(new Object[] {TaskStatus.DONE, 1L});
+        when(taskRepository.countGroupByStatusForProject(1L)).thenReturn(doneOnly);
+        when(subtaskRepository.countGroupByStatusForProject(1L)).thenReturn(List.of());
+        when(taskRepository.countGroupByPriorityForProject(1L)).thenReturn(List.of());
+        when(subtaskRepository.countGroupByPriorityForProject(1L)).thenReturn(List.of());
+        when(taskRepository.countByProjectId(1L)).thenReturn(1L);
+        when(subtaskRepository.countByProjectId(1L)).thenReturn(0L);
+        when(taskRepository.countByProjectIdAndAssigneeIdIsNull(1L)).thenReturn(0L);
+        when(subtaskRepository.countByProjectIdAndAssigneeIdIsNull(1L)).thenReturn(0L);
+        when(taskRepository.findOverdueTasksByProject(eq(1L), eq(sun))).thenReturn(List.of());
+        when(subtaskRepository.findOverdueSubtasksByProject(eq(1L), eq(sun))).thenReturn(List.of());
+        LocalDateTime start = mon.atStartOfDay();
+        LocalDateTime endEx = sun.plusDays(1).atStartOfDay();
+        when(taskRepository.countCreatedInRangeForProject(eq(1L), eq(start), eq(endEx))).thenReturn(2L);
+        when(subtaskRepository.countCreatedInRangeForProject(eq(1L), eq(start), eq(endEx))).thenReturn(0L);
+        when(taskRepository.countCompletedInRangeForProject(eq(1L), eq(start), eq(endEx))).thenReturn(1L);
+        when(subtaskRepository.countCompletedInRangeForProject(eq(1L), eq(start), eq(endEx))).thenReturn(0L);
+
+        TaskStatsExtendedDto r = taskService.getExtendedStatsForWeeklyWindow(Optional.of(1L), Optional.empty(), mon, sun);
+
+        assertThat(r.getCreatedInRangeCount()).isEqualTo(2);
+        assertThat(r.getCompletedInRangeCount()).isEqualTo(1);
+    }
+
+    @Test
+    void getExtendedStatsForWeeklyWindow_freelancer_loadsAssigneeTasks() {
+        LocalDate mon = LocalDate.of(2026, 4, 6);
+        LocalDate sun = mon.plusDays(6);
+        Task t = task(1L);
+        t.setAssigneeId(9L);
+        t.setStatus(TaskStatus.TODO);
+        t.setCreatedAt(mon.atStartOfDay());
+        t.setUpdatedAt(mon.atStartOfDay());
+        when(taskRepository.findAll(any(Specification.class))).thenReturn(List.of(t));
+        when(subtaskRepository.findByAssigneeId(9L)).thenReturn(List.of());
+
+        TaskStatsExtendedDto r = taskService.getExtendedStatsForWeeklyWindow(Optional.empty(), Optional.of(9L), mon, sun);
+
+        assertThat(r.getTotalTasks()).isEqualTo(1);
+        assertThat(r.getTodoCount()).isEqualTo(1);
+    }
+
+    @Test
     void deleteById_deletesRootOnly_subtasksCascadeAtPersistenceLayer() {
         Task parent = task(1L);
         when(taskRepository.findById(1L)).thenReturn(Optional.of(parent));
@@ -515,6 +623,52 @@ class TaskServiceTest {
         assertThat(n).isZero();
         verify(taskRepository, never()).save(any());
         verify(taskNotificationService, never()).notifyTaskPriorityEscalated(any());
+    }
+
+    @Test
+    void sendDailyOverdueReminders_groupsByAssignee_andNotifiesOnce() {
+        Task t1 = task(1L);
+        t1.setTitle("Root A");
+        t1.setAssigneeId(5L);
+        t1.setDueDate(LocalDate.now().minusDays(1));
+        Subtask s = new Subtask();
+        s.setId(99L);
+        s.setProjectId(1L);
+        s.setTitle("Sub B");
+        s.setStatus(TaskStatus.TODO);
+        s.setPriority(TaskPriority.MEDIUM);
+        s.setAssigneeId(5L);
+        s.setDueDate(LocalDate.now().minusDays(3));
+        s.setOrderIndex(0);
+        when(taskRepository.findOverdueTasks(any(LocalDate.class))).thenReturn(List.of(t1));
+        when(subtaskRepository.findOverdueSubtasks(any(LocalDate.class))).thenReturn(List.of(s));
+
+        int n = taskService.sendDailyOverdueReminders();
+
+        assertThat(n).isEqualTo(1);
+        verify(taskNotificationService, times(1)).notifyFreelancerDailyOverdueReminder(eq(5L), anyList());
+    }
+
+    @Test
+    void sendDailyOverdueReminders_whenNone_returnsZero() {
+        when(taskRepository.findOverdueTasks(any(LocalDate.class))).thenReturn(List.of());
+        when(subtaskRepository.findOverdueSubtasks(any(LocalDate.class))).thenReturn(List.of());
+
+        assertThat(taskService.sendDailyOverdueReminders()).isZero();
+        verify(taskNotificationService, never()).notifyFreelancerDailyOverdueReminder(anyLong(), anyList());
+    }
+
+    @Test
+    void sendDailyOverdueReminders_skipsUnassignedRoots() {
+        Task unassigned = task(1L);
+        unassigned.setTitle("No one");
+        unassigned.setAssigneeId(null);
+        unassigned.setDueDate(LocalDate.now().minusDays(1));
+        when(taskRepository.findOverdueTasks(any(LocalDate.class))).thenReturn(List.of(unassigned));
+        when(subtaskRepository.findOverdueSubtasks(any(LocalDate.class))).thenReturn(List.of());
+
+        assertThat(taskService.sendDailyOverdueReminders()).isZero();
+        verify(taskNotificationService, never()).notifyFreelancerDailyOverdueReminder(anyLong(), anyList());
     }
 
     @Test
@@ -722,5 +876,241 @@ class TaskServiceTest {
         assertThat(r.get(0).getProjectId()).isEqualTo(5L);
         assertThat(r.get(0).getOpenTaskCount()).isEqualTo(3L);
         assertThat(r.get(0).getLastActivityAt()).isNull();
+    }
+
+    @Test
+    void getExtendedStatsDashboard_aggregatesGlobalCounts() {
+        List<Object[]> taskSt = new ArrayList<>();
+        taskSt.add(new Object[] { TaskStatus.DONE, 1L });
+        taskSt.add(new Object[] { TaskStatus.TODO, 2L });
+        when(taskRepository.countGroupByStatusAll()).thenReturn(taskSt);
+        when(subtaskRepository.countGroupByStatusAll()).thenReturn(List.of());
+        when(taskRepository.countGroupByPriorityAll())
+                .thenReturn(Collections.singletonList(new Object[] { TaskPriority.MEDIUM, 3L }));
+        when(subtaskRepository.countGroupByPriorityAll()).thenReturn(List.of());
+        when(taskRepository.count()).thenReturn(3L);
+        when(subtaskRepository.count()).thenReturn(0L);
+        when(taskRepository.findOverdueTasks(any(LocalDate.class))).thenReturn(List.of());
+        when(subtaskRepository.findOverdueSubtasks(any(LocalDate.class))).thenReturn(List.of());
+        when(taskRepository.countByAssigneeIdIsNull()).thenReturn(0L);
+        when(subtaskRepository.countByAssigneeIdIsNull()).thenReturn(0L);
+
+        TaskStatsExtendedDto r = taskService.getExtendedStatsDashboard();
+
+        assertThat(r.getTotalTasks()).isEqualTo(3);
+        assertThat(r.getDoneCount()).isEqualTo(1);
+        assertThat(r.getTodoCount()).isEqualTo(2);
+    }
+
+    @Test
+    void getExtendedStatsForWeeklyWindow_projectAndFreelancer_filtersToAssigneeWork() {
+        LocalDate mon = LocalDate.of(2026, 4, 6);
+        LocalDate sun = mon.plusDays(6);
+        Task mine = task(1L);
+        mine.setAssigneeId(9L);
+        mine.setProjectId(1L);
+        mine.setStatus(TaskStatus.TODO);
+        mine.setCreatedAt(mon.atStartOfDay());
+        mine.setUpdatedAt(mon.atStartOfDay());
+        Task other = task(2L);
+        other.setAssigneeId(8L);
+        other.setProjectId(1L);
+        other.setStatus(TaskStatus.TODO);
+        other.setCreatedAt(mon.atStartOfDay());
+        other.setUpdatedAt(mon.atStartOfDay());
+
+        Subtask subMine = new Subtask();
+        subMine.setId(10L);
+        subMine.setProjectId(1L);
+        subMine.setAssigneeId(9L);
+        subMine.setTitle("Sub");
+        subMine.setStatus(TaskStatus.IN_PROGRESS);
+        subMine.setPriority(TaskPriority.MEDIUM);
+        subMine.setOrderIndex(0);
+        subMine.setCreatedAt(mon.atStartOfDay());
+        subMine.setUpdatedAt(mon.atStartOfDay());
+
+        when(taskRepository.findByProjectIdOrderByOrderIndexAsc(1L)).thenReturn(List.of(mine, other));
+        when(subtaskRepository.findByProjectIdOrderByParent_IdAscOrderIndexAsc(1L)).thenReturn(List.of(subMine));
+
+        TaskStatsExtendedDto r = taskService.getExtendedStatsForWeeklyWindow(
+                Optional.of(1L), Optional.of(9L), mon, sun);
+
+        assertThat(r.getTotalTasks()).isEqualTo(2);
+        assertThat(r.getTodoCount()).isEqualTo(1);
+        assertThat(r.getInProgressCount()).isEqualTo(1);
+    }
+
+    @Test
+    void getExtendedStatsForWeeklyWindow_global_usesAllRepositories() {
+        LocalDate mon = LocalDate.of(2026, 4, 6);
+        LocalDate sun = mon.plusDays(6);
+        List<Object[]> taskSt = new ArrayList<>();
+        taskSt.add(new Object[] { TaskStatus.DONE, 1L });
+        when(taskRepository.countGroupByStatusAll()).thenReturn(taskSt);
+        when(subtaskRepository.countGroupByStatusAll()).thenReturn(List.of());
+        when(taskRepository.countGroupByPriorityAll()).thenReturn(List.of());
+        when(subtaskRepository.countGroupByPriorityAll()).thenReturn(List.of());
+        when(taskRepository.count()).thenReturn(2L);
+        when(subtaskRepository.count()).thenReturn(1L);
+        when(taskRepository.findOverdueTasks(eq(sun))).thenReturn(List.of());
+        when(subtaskRepository.findOverdueSubtasks(eq(sun))).thenReturn(List.of());
+        when(taskRepository.countByAssigneeIdIsNull()).thenReturn(0L);
+        when(subtaskRepository.countByAssigneeIdIsNull()).thenReturn(0L);
+        LocalDateTime start = mon.atStartOfDay();
+        LocalDateTime endEx = sun.plusDays(1).atStartOfDay();
+        when(taskRepository.countCreatedInRangeAll(eq(start), eq(endEx))).thenReturn(1L);
+        when(subtaskRepository.countCreatedInRangeAll(eq(start), eq(endEx))).thenReturn(0L);
+        when(taskRepository.countCompletedInRangeAll(eq(start), eq(endEx))).thenReturn(1L);
+        when(subtaskRepository.countCompletedInRangeAll(eq(start), eq(endEx))).thenReturn(0L);
+
+        TaskStatsExtendedDto r = taskService.getExtendedStatsForWeeklyWindow(
+                Optional.empty(), Optional.empty(), mon, sun);
+
+        assertThat(r.getTotalTasks()).isEqualTo(3);
+        assertThat(r.getCreatedInRangeCount()).isEqualTo(1);
+        assertThat(r.getCompletedInRangeCount()).isEqualTo(1);
+    }
+
+    @Test
+    void getHighPriorityOpenLinesForReport_projectOnly_formatsTasksAndSubtasks() {
+        Task t = task(1L);
+        t.setTitle("Root");
+        t.setPriority(TaskPriority.HIGH);
+        Subtask s = new Subtask();
+        s.setId(2L);
+        s.setTitle(null);
+        s.setPriority(TaskPriority.URGENT);
+        when(taskRepository.findHighPriorityOpenForProject(7L)).thenReturn(List.of(t));
+        when(subtaskRepository.findHighPriorityOpenForProject(7L)).thenReturn(List.of(s));
+
+        List<String> lines = taskService.getHighPriorityOpenLinesForReport(Optional.of(7L), Optional.empty(), 10);
+
+        assertThat(lines).hasSize(2);
+        assertThat(lines.get(0)).contains("[Task]").contains("Root").contains("HIGH");
+        assertThat(lines.get(1)).contains("[Subtask]").contains("#2").contains("URGENT");
+    }
+
+    @Test
+    void getHighPriorityOpenLinesForReport_assigneeOnly_usesAssigneeQueries() {
+        Task t = task(1L);
+        t.setTitle("Mine");
+        t.setPriority(TaskPriority.HIGH);
+        when(taskRepository.findHighPriorityOpenForAssignee(5L)).thenReturn(List.of(t));
+        when(subtaskRepository.findHighPriorityOpenForAssignee(5L)).thenReturn(List.of());
+
+        List<String> lines = taskService.getHighPriorityOpenLinesForReport(Optional.empty(), Optional.of(5L), 5);
+
+        assertThat(lines).hasSize(1);
+        assertThat(lines.get(0)).contains("Mine");
+    }
+
+    @Test
+    void getHighPriorityOpenLinesForReport_global_usesAllQueries() {
+        when(taskRepository.findHighPriorityOpenAll()).thenReturn(List.of());
+        when(subtaskRepository.findHighPriorityOpenAll()).thenReturn(List.of());
+
+        assertThat(taskService.getHighPriorityOpenLinesForReport(Optional.empty(), Optional.empty(), 3)).isEmpty();
+    }
+
+    @Test
+    void getHighPriorityOpenLinesForReport_projectAndAssignee_filtersBoth() {
+        Task t = task(1L);
+        t.setAssigneeId(9L);
+        t.setTitle("Hit");
+        t.setPriority(TaskPriority.HIGH);
+        Task other = task(2L);
+        other.setAssigneeId(8L);
+        other.setTitle("Miss");
+        other.setPriority(TaskPriority.HIGH);
+        when(taskRepository.findHighPriorityOpenForProject(1L)).thenReturn(List.of(t, other));
+        when(subtaskRepository.findHighPriorityOpenForProject(1L)).thenReturn(List.of());
+
+        List<String> lines = taskService.getHighPriorityOpenLinesForReport(Optional.of(1L), Optional.of(9L), 10);
+
+        assertThat(lines).hasSize(1);
+        assertThat(lines.get(0)).contains("Hit");
+    }
+
+    @Test
+    void getOverdueTasks_mergesSubtasksAsTaskViews() {
+        Task t = task(1L);
+        Subtask s = new Subtask();
+        s.setId(50L);
+        s.setProjectId(1L);
+        s.setTitle("Sub");
+        s.setStatus(TaskStatus.TODO);
+        s.setPriority(TaskPriority.LOW);
+        s.setOrderIndex(0);
+        LocalDate today = LocalDate.now();
+        when(taskRepository.findOverdueTasksByProject(1L, today)).thenReturn(List.of(t));
+        when(subtaskRepository.findOverdueSubtasksByProject(1L, today)).thenReturn(List.of(s));
+
+        List<Task> merged = taskService.getOverdueTasks(Optional.of(1L), Optional.empty());
+
+        assertThat(merged).hasSize(2);
+        assertThat(merged.stream().filter(x -> Boolean.TRUE.equals(x.getSubtask())).count()).isEqualTo(1L);
+    }
+
+    @Test
+    void findDueSoon_withProjectAndAssignee_mergesFilteredSubtasks() {
+        Task root = task(1L);
+        root.setDueDate(LocalDate.now().plusDays(2));
+        Subtask s = new Subtask();
+        s.setId(99L);
+        s.setProjectId(3L);
+        s.setAssigneeId(9L);
+        s.setTitle("Soon sub");
+        s.setStatus(TaskStatus.TODO);
+        s.setPriority(TaskPriority.MEDIUM);
+        s.setDueDate(LocalDate.now().plusDays(1));
+        s.setOrderIndex(0);
+        when(taskRepository.findAll(any(Specification.class), any(Sort.class))).thenReturn(List.of(root));
+        LocalDate today = LocalDate.now();
+        LocalDate end = today.plusDays(7);
+        when(subtaskRepository.findDueSoonSubtasksByAssignee(today, end, 9L)).thenReturn(List.of(s));
+
+        List<Task> out = taskService.findDueSoon(Optional.of(3L), Optional.of(9L), 7);
+
+        assertThat(out.stream().anyMatch(x -> Boolean.TRUE.equals(x.getSubtask()) && "Soon sub".equals(x.getTitle())))
+                .isTrue();
+    }
+
+    @Test
+    void escalateOverduePriorities_escalatesMediumSubtask() {
+        Subtask s = new Subtask();
+        s.setId(1L);
+        s.setPriority(TaskPriority.MEDIUM);
+        s.setDueDate(LocalDate.now().minusDays(1));
+        s.setStatus(TaskStatus.TODO);
+        when(taskRepository.findOverdueTasks(any(LocalDate.class))).thenReturn(List.of());
+        when(subtaskRepository.findOverdueSubtasks(any(LocalDate.class))).thenReturn(List.of(s));
+        when(subtaskRepository.save(any(Subtask.class))).thenAnswer(inv -> inv.getArgument(0));
+
+        int n = taskService.escalateOverduePriorities();
+
+        assertThat(n).isEqualTo(1);
+        assertThat(s.getPriority()).isEqualTo(TaskPriority.HIGH);
+    }
+
+    @Test
+    void getCalendarEvents_includesSubtasksInRange() {
+        Task t = task(1L);
+        t.setDueDate(LocalDate.now().plusDays(1));
+        Subtask s = new Subtask();
+        s.setId(2L);
+        s.setDueDate(LocalDate.now().plusDays(2));
+        s.setTitle("Cal sub");
+        LocalDateTime min = LocalDateTime.now();
+        LocalDateTime max = min.plusMonths(1);
+        LocalDate start = min.toLocalDate();
+        LocalDate end = max.toLocalDate();
+        when(taskRepository.findByDueDateBetween(start, end)).thenReturn(List.of(t));
+        when(subtaskRepository.findByDueDateBetween(start, end)).thenReturn(List.of(s));
+
+        List<TaskCalendarEventDto> ev = taskService.getCalendarEvents(min, max, Optional.empty());
+
+        assertThat(ev).hasSize(2);
+        assertThat(ev.stream().anyMatch(e -> e.getId().equals("subtask-2"))).isTrue();
     }
 }

@@ -1,0 +1,71 @@
+// Shared ticket UI tokens — @use from ticket-related component stylesheets
+@use 'variables' as *;
+
+@mixin ticket-page-host {
+  min-height: calc(100vh - 120px);
+  background: linear-gradient(180deg, $neutral-50 0%, $white 14%, $neutral-50 100%);
+  font-family: $font-family;
+}
+
+@mixin ticket-hero-surface {
+  border: 1px solid $neutral-200;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-md;
+  background-color: $white;
+  background-image: linear-gradient(135deg, rgba(227, 126, 51, 0.08) 0%, rgba(226, 61, 89, 0.05) 100%);
+}
+
+/** Status / priority pills — use with [ngClass]="badgeStatusClasses(...)" */
+@mixin tk-pills {
+  .tk-pill {
+    display: inline-block;
+    padding: $spacing-xs $spacing-sm;
+    font-size: $font-size-xs;
+    font-weight: $font-weight-semibold;
+    border-radius: $radius-full;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .tk-pill--open {
+    background: $info-100;
+    color: $info-600;
+  }
+
+  .tk-pill--closed {
+    background: $neutral-200;
+    color: $neutral-700;
+  }
+
+  .tk-pill--high {
+    background: $error-100;
+    color: $error-700;
+  }
+
+  .tk-pill--medium {
+    background: $warning-100;
+    color: $warning-700;
+  }
+
+  .tk-pill--low {
+    background: $neutral-100;
+    color: $neutral-600;
+  }
+}
+
+@mixin tk-spinner($size: 1.25rem) {
+  width: $size;
+  height: $size;
+  border: 2px solid $neutral-200;
+  border-top-color: $primary-500;
+  border-radius: 50%;
+  animation: tk-spin 0.7s linear infinite;
+}
+
+@mixin tk-spin-keyframes {
+  @keyframes tk-spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+}

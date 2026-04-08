@@ -132,14 +132,15 @@ export class AuthService {
     if (!token) return of(null);
 
     const decoded = this.decodeToken(token);
-    const userEmail = decoded?.email;
+    // Align with ticket-service CurrentUserService: email preferred, else preferred_username (Keycloak often maps username to email).
+    const userEmail = decoded?.email ?? decoded?.preferred_username;
 
-    if (!userEmail) {
-      console.warn('[AuthService] No email found in token, cannot fetch user ID');
+    if (!userEmail || typeof userEmail !== 'string') {
+      console.warn('[AuthService] No email or preferred_username in token; user-service and ticket flows need one of these claims.');
       return of(null);
     }
 
-    return this.http.get<UserProfile>(`${this.userUrl}/email/${userEmail}`).pipe(
+    return this.http.get<UserProfile>(`${this.userUrl}/email/${encodeURIComponent(userEmail)}`).pipe(
       tap((user) => {
         if (user?.id) {
           this.storage.setItem(USER_ID_KEY, String(user.id));

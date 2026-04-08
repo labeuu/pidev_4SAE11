@@ -1,0 +1,95 @@
+<div class="admin-ticket-host">
+  <div class="admin-ticket-page">
+    <header class="admin-ticket-hero">
+      <div class="admin-ticket-hero__leading">
+        <div class="admin-ticket-hero-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+            <path
+              stroke-linecap="round"
+              stroke-linejoin="round"
+              d="M3.75 6A2.25 2.25 0 016 3.75h2.25A2.25 2.25 0 0110.5 6v2.25a2.25 2.25 0 01-2.25 2.25H6a2.25 2.25 0 01-2.25-2.25V6zM3.75 15.75A2.25 2.25 0 016 13.5h2.25a2.25 2.25 0 012.25 2.25V18a2.25 2.25 0 01-2.25 2.25H6A2.25 2.25 0 013.75 18v-2.25zM13.5 6a2.25 2.25 0 012.25-2.25H18A2.25 2.25 0 0120.25 6v2.25A2.25 2.25 0 0118 10.5h-2.25a2.25 2.25 0 01-2.25-2.25V6zM13.5 15.75a2.25 2.25 0 012.25-2.25H18a2.25 2.25 0 012.25 2.25V18A2.25 2.25 0 0118 20.25h-2.25A2.25 2.25 0 0113.5 18v-2.25z"
+            />
+          </svg>
+        </div>
+        <div class="admin-ticket-hero__copy">
+          <span class="admin-ticket-badge">Admin</span>
+          <h1 class="admin-ticket-title">Support queue</h1>
+          <p class="admin-ticket-lead">Review and respond to user requests. Close or delete when resolved.</p>
+          <div class="admin-ticket-filters" role="group" aria-label="Filter by status">
+            <button
+              type="button"
+              class="admin-ticket-filter"
+              [class.admin-ticket-filter--active]="statusFilter === 'ALL'"
+              (click)="setFilter('ALL')"
+            >
+              All
+            </button>
+            <button
+              type="button"
+              class="admin-ticket-filter"
+              [class.admin-ticket-filter--active]="statusFilter === 'OPEN'"
+              (click)="setFilter('OPEN')"
+            >
+              Open
+            </button>
+            <button
+              type="button"
+              class="admin-ticket-filter"
+              [class.admin-ticket-filter--active]="statusFilter === 'CLOSED'"
+              (click)="setFilter('CLOSED')"
+            >
+              Closed
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="admin-ticket-hero__actions">
+        <button type="button" class="admin-ticket-btn-secondary" (click)="loadTickets()" [disabled]="loading">Refresh</button>
+      </div>
+    </header>
+
+    <div *ngIf="errorMessage" class="admin-ticket-alert admin-ticket-alert--danger" role="alert" aria-live="polite">
+      {{ errorMessage }}
+    </div>
+
+    <div *ngIf="loading" class="admin-ticket-loading">
+      <span class="admin-ticket-spinner" aria-hidden="true"></span>
+      <span>Loading tickets…</span>
+    </div>
+
+    <div *ngIf="!loading && filteredTickets.length === 0 && !errorMessage" class="admin-ticket-panel admin-ticket-panel--muted">
+      <p class="admin-ticket-panel__title">No tickets in this view</p>
+      <p class="admin-ticket-panel__sub" *ngIf="statusFilter !== 'ALL'">Try another filter or refresh.</p>
+      <p class="admin-ticket-panel__sub" *ngIf="statusFilter === 'ALL'">New requests will appear here.</p>
+    </div>
+
+    <div *ngIf="!loading && filteredTickets.length > 0" class="admin-ticket-table-wrap">
+      <table class="admin-ticket-table">
+        <thead>
+          <tr>
+            <th scope="col">ID</th>
+            <th scope="col">Subject</th>
+            <th scope="col">Requester</th>
+            <th scope="col">Status</th>
+            <th scope="col">Priority</th>
+            <th scope="col" class="admin-ticket-table__hide-lg">Last activity</th>
+            <th scope="col" class="admin-ticket-table__actions"></th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr *ngFor="let t of filteredTickets">
+            <td class="admin-ticket-table__id">#{{ t.id }}</td>
+            <td class="admin-ticket-table__subject">{{ t.subject }}</td>
+            <td class="admin-ticket-table__requester" [title]="userLabel(t.userId)">{{ userLabel(t.userId) }}</td>
+            <td><span [ngClass]="badgeStatusClasses(t.status)">{{ t.status }}</span></td>
+            <td><span [ngClass]="badgePriorityClasses(t.priority)">{{ t.priority }}</span></td>
+            <td class="admin-ticket-table__hide-lg admin-ticket-table__muted">{{ t.lastActivityAt | date : 'medium' }}</td>
+            <td class="admin-ticket-table__actions">
+              <button type="button" class="admin-ticket-btn-outline" (click)="openTicket(t)">Open</button>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>

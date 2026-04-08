@@ -36,6 +36,7 @@ public class TaskAiService {
     private final TaskFreelancerProjectAccessService accessService;
     private final ObjectMapper objectMapper;
 
+    // Performs suggest description.
     public TaskAiSuggestDescriptionResponse suggestDescription(Long projectId, Long freelancerId, String title) {
         if (!accessService.canFreelancerUseProject(freelancerId, projectId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot use AI for this project");
@@ -46,6 +47,7 @@ public class TaskAiService {
         return TaskAiSuggestDescriptionResponse.builder().description(text).build();
     }
 
+    // Performs propose project tasks.
     public List<AiProposedTaskDto> proposeProjectTasks(Long projectId, Long freelancerId) {
         if (!accessService.canFreelancerUseProject(freelancerId, projectId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot use AI for this project");
@@ -63,6 +65,7 @@ public class TaskAiService {
         return parseProposedTasksArray(raw, "tasks");
     }
 
+    // Performs propose subtasks.
     public List<AiProposedTaskDto> proposeSubtasks(Long taskId, Long freelancerId) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found: " + taskId));
@@ -78,6 +81,7 @@ public class TaskAiService {
         return parseProposedTasksArray(raw, "subtasks");
     }
 
+    // Performs safe load project.
     private ProjectDto safeLoadProject(Long projectId) {
         try {
             ProjectDto p = projectClient.getProjectById(projectId);
@@ -92,6 +96,7 @@ public class TaskAiService {
         }
     }
 
+    // Builds suggest description prompt.
     private static String buildSuggestDescriptionPrompt(String title, ProjectDto project) {
         StringBuilder sb = new StringBuilder();
         sb.append("You are helping a freelancer write a task description.\n");
@@ -107,6 +112,7 @@ public class TaskAiService {
         return sb.toString();
     }
 
+    // Builds project tasks context.
     private static String buildProjectTasksContext(ProjectDto project, List<String> existingTitles) {
         StringBuilder sb = new StringBuilder();
         if (project.getTitle() != null) {
@@ -126,6 +132,7 @@ public class TaskAiService {
         return sb.toString();
     }
 
+    // Builds subtask context.
     private static String buildSubtaskContext(Task task) {
         StringBuilder sb = new StringBuilder();
         sb.append("Parent task title: ").append(task.getTitle() != null ? task.getTitle() : "").append("\n");
@@ -136,11 +143,13 @@ public class TaskAiService {
         return sb.toString();
     }
 
+    // Performs call generate.
     private String callGenerate(String prompt) {
         AiGenerateResponse resp = aiModelClient.generate(new AiPromptRequest(prompt));
         return extractAiPayload(resp);
     }
 
+    // Performs extract ai payload.
     private static String extractAiPayload(AiGenerateResponse resp) {
         if (resp == null || !resp.isSuccess() || resp.getData() == null || resp.getData().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI service returned an empty response");
@@ -148,6 +157,7 @@ public class TaskAiService {
         return resp.getData().trim();
     }
 
+    // Performs parse proposed tasks array.
     private List<AiProposedTaskDto> parseProposedTasksArray(String json, String arrayKey) {
         try {
             String normalized = normalizeModelJsonPayload(json);
@@ -191,6 +201,7 @@ public class TaskAiService {
         return firstTopLevelJsonObject(s);
     }
 
+    // Performs strip markdown code fence.
     private static String stripMarkdownCodeFence(String s) {
         String t = s.trim();
         if (!t.startsWith("```")) {
@@ -209,6 +220,7 @@ public class TaskAiService {
         return t.trim();
     }
 
+    // Performs first top level json object.
     private static String firstTopLevelJsonObject(String s) {
         int start = s.indexOf('{');
         if (start < 0) {
@@ -245,11 +257,13 @@ public class TaskAiService {
         return s.substring(start);
     }
 
+    // Performs text.
     private static String text(JsonNode node, String field) {
         JsonNode v = node.get(field);
         return v == null || v.isNull() ? null : v.asText();
     }
 
+    // Performs parse suggested due date.
     private static LocalDate parseSuggestedDueDate(JsonNode node) {
         String raw = text(node, "dueDate");
         if (raw == null || raw.isBlank()) {
@@ -273,6 +287,7 @@ public class TaskAiService {
         }
     }
 
+    // Performs map priority.
     private static TaskPriority mapPriority(String raw) {
         if (raw == null) {
             return TaskPriority.MEDIUM;

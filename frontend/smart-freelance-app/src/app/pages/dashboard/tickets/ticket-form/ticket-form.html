@@ -1,0 +1,78 @@
+<div class="ticket-form-host">
+  <div class="ticket-form-page">
+    <div class="ticket-form-card">
+      <div class="ticket-form-card__head">
+        <div>
+          <span class="ticket-form-badge">{{ editingTicket ? 'Edit' : 'New request' }}</span>
+          <h1 class="ticket-form-title">{{ editingTicket ? 'Edit ticket' : 'Create a support ticket' }}</h1>
+          <p class="ticket-form-lead">
+            <span *ngIf="!editingTicket">Describe your issue in a few words. Our team will reply here once you submit.</span>
+            <span *ngIf="editingTicket">Update the subject or priority while the ticket is open.</span>
+          </p>
+        </div>
+        <a class="ticket-form-back" routerLink="/dashboard/tickets">Back</a>
+      </div>
+
+      <div class="ticket-form-card__body">
+        <div *ngIf="errorMessage" class="ticket-form-alert ticket-form-alert--danger" role="alert" aria-live="polite">
+          {{ errorMessage }}
+        </div>
+
+        <div *ngIf="loading" class="ticket-form-loading">
+          <span class="ticket-form-spinner" aria-hidden="true"></span>
+          <span>Loading ticket…</span>
+        </div>
+
+        <div *ngIf="syncingProfile && !loading" class="ticket-form-loading ticket-form-loading--subtle">
+          <span class="ticket-form-spinner" aria-hidden="true"></span>
+          <span>Syncing your profile…</span>
+        </div>
+
+        <form *ngIf="!loading" [formGroup]="form" (ngSubmit)="save()" class="ticket-form-fields">
+          <div class="ticket-field">
+            <div class="ticket-label-row">
+              <label class="ticket-label" for="ticket-subject">Subject</label>
+              <span class="ticket-char-count" aria-live="polite">
+                {{ form.get('subject')?.value?.length ?? 0 }}/200
+              </span>
+            </div>
+            <input
+              id="ticket-subject"
+              class="ticket-input"
+              type="text"
+              formControlName="subject"
+              maxlength="200"
+              placeholder="e.g. Cannot upload portfolio images"
+              autocomplete="off"
+            />
+            <p class="ticket-hint ticket-hint--error" *ngIf="form.get('subject')?.touched && form.get('subject')?.invalid">
+              Subject is required (max 200 characters).
+            </p>
+          </div>
+
+          <div class="ticket-field" *ngIf="editingTicket">
+            <label class="ticket-label" for="ticket-priority">Priority</label>
+            <select id="ticket-priority" class="ticket-select" formControlName="priority">
+              <option [ngValue]="null">Keep current / auto</option>
+              <option value="LOW">Low</option>
+              <option value="MEDIUM">Medium</option>
+              <option value="HIGH">High</option>
+            </select>
+            <p class="ticket-hint">Priority is auto-assigned on creation; you can override while the ticket is open.</p>
+          </div>
+
+          <div class="ticket-form-actions">
+            <button
+              class="ticket-btn-primary"
+              type="submit"
+              [disabled]="saving || syncingProfile || form.disabled"
+            >
+              <span *ngIf="saving" class="ticket-form-spinner ticket-form-spinner--btn" aria-hidden="true"></span>
+              {{ editingTicket ? 'Save changes' : 'Submit ticket' }}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>

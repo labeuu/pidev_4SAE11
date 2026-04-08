@@ -45,4 +45,7 @@ public class OfferResponse {
 
     private Boolean canReceiveApplications;
     private Boolean isValid;
+
+    /** Missions réservées aux clients ayant un agrément avec ce freelancer. */
+    private Boolean requiresVendorApproval;
 }

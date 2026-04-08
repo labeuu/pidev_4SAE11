@@ -37,6 +37,7 @@ public class PlanningHealthController {
             description = "Simple health/readiness endpoint for the Planning microservice, including a lightweight database check."
     )
     @ApiResponse(responseCode = "200", description = "Service is healthy", content = @Content(schema = @Schema(implementation = Map.class)))
+    // Performs health.
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> body = new HashMap<>();
         body.put("service", "planning");

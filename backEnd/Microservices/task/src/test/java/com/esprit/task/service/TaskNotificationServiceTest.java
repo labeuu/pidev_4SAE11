@@ -3,6 +3,7 @@ package com.esprit.task.service;
 import com.esprit.task.client.NotificationClient;
 import com.esprit.task.client.ProjectClient;
 import com.esprit.task.dto.ProjectDto;
+import com.esprit.task.entity.Subtask;
 import com.esprit.task.entity.Task;
 import com.esprit.task.entity.TaskStatus;
 import org.junit.jupiter.api.Test;
@@ -11,6 +12,8 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
@@ -202,5 +205,77 @@ class TaskNotificationServiceTest {
 
         assertThatCode(() -> taskNotificationService.notifyTaskStatusUpdate(t))
                 .doesNotThrowAnyException();
+    }
+
+    @Test
+    void notifyFreelancerDailyOverdueReminder_callsClientWithDigest() {
+        ArgumentCaptor<com.esprit.task.dto.NotificationRequestDto> captor =
+                ArgumentCaptor.forClass(com.esprit.task.dto.NotificationRequestDto.class);
+        taskNotificationService.notifyFreelancerDailyOverdueReminder(15L,
+                List.of("Task: A — due 2026-01-01", "Subtask: B — due 2026-01-02"));
+
+        verify(notificationClient).create(captor.capture());
+        var dto = captor.getValue();
+        assertThat(dto.getUserId()).isEqualTo("15");
+        assertThat(dto.getType()).isEqualTo(TaskNotificationService.TYPE_TASK_OVERDUE_DAILY_REMINDER);
+        assertThat(dto.getBody()).contains("2 overdue").contains("Task: A").contains("Subtask: B");
+        assertThat(dto.getData()).containsEntry("overdueCount", "2").containsEntry("reminderKind", "OVERDUE_DAILY");
+        verify(projectClient, never()).getProjectById(any());
+    }
+
+    @Test
+    void notifyFreelancerDailyOverdueReminder_whenEmpty_doesNotCallClient() {
+        taskNotificationService.notifyFreelancerDailyOverdueReminder(1L, List.of());
+        taskNotificationService.notifyFreelancerDailyOverdueReminder(1L, null);
+        taskNotificationService.notifyFreelancerDailyOverdueReminder(null, List.of("x"));
+        verify(notificationClient, never()).create(any());
+    }
+
+    @Test
+    void notifySubtaskStatusUpdate_sendsPayloadWithTaskAndSubtaskIds() {
+        Task parent = task(1L);
+        Subtask st = new Subtask();
+        st.setId(9L);
+        st.setProjectId(1L);
+        st.setParent(parent);
+        st.setTitle("Child");
+        st.setStatus(TaskStatus.IN_PROGRESS);
+        ProjectDto project = new ProjectDto(1L, 100L, "Project A", null, null);
+        when(projectClient.getProjectById(1L)).thenReturn(project);
+
+        ArgumentCaptor<com.esprit.task.dto.NotificationRequestDto> captor =
+                ArgumentCaptor.forClass(com.esprit.task.dto.NotificationRequestDto.class);
+        taskNotificationService.notifySubtaskStatusUpdate(st);
+
+        verify(notificationClient).create(captor.capture());
+        assertThat(captor.getValue().getTitle()).isEqualTo("Subtask status updated");
+        assertThat(captor.getValue().getBody()).contains("Child").contains("IN PROGRESS");
+        assertThat(captor.getValue().getData()).containsEntry("taskId", "1").containsEntry("subtaskId", "9");
+    }
+
+    @Test
+    void notifySubtaskStatusUpdate_whenProjectClientFails_doesNotNotify() {
+        Subtask st = new Subtask();
+        st.setId(9L);
+        st.setProjectId(1L);
+        when(projectClient.getProjectById(1L)).thenThrow(new RuntimeException("down"));
+
+        taskNotificationService.notifySubtaskStatusUpdate(st);
+
+        verify(notificationClient, never()).create(any());
+    }
+
+    @Test
+    void notifyFreelancerDailyOverdueReminder_truncatesBodyAtMaxLines() {
+        List<String> lines = java.util.stream.IntStream.range(0, 15)
+                .mapToObj(i -> "Line " + i)
+                .toList();
+        ArgumentCaptor<com.esprit.task.dto.NotificationRequestDto> captor =
+                ArgumentCaptor.forClass(com.esprit.task.dto.NotificationRequestDto.class);
+
+        taskNotificationService.notifyFreelancerDailyOverdueReminder(1L, lines);
+
+        verify(notificationClient).create(captor.capture());
+        assertThat(captor.getValue().getBody()).contains("and 3 more");
     }
 }

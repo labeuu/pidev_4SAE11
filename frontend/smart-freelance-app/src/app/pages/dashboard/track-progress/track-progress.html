@@ -135,6 +135,9 @@
                       }
                     </div>
                   }
+                  @if ((commentsByUpdateId[u.id] || []).length === 0) {
+                    <p class="no-comments">No comments yet. Add feedback to guide your freelancer.</p>
+                  }
                   <button type="button" class="btn-add-comment" (click)="openAddComment(u.id)">Add comment</button>
                 }
 

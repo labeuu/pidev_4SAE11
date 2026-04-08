@@ -49,7 +49,8 @@ public final class TaskSpecification {
             Optional<TaskPriority> priority,
             Optional<String> search,
             Optional<LocalDate> dueDateFrom,
-            Optional<LocalDate> dueDateTo) {
+            Optional<LocalDate> dueDateTo,
+            Optional<Boolean> openTasksOnly) {
         return (Root<Task> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
@@ -58,6 +59,10 @@ public final class TaskSpecification {
             assigneeId.ifPresent(id -> predicates.add(cb.equal(root.get("assigneeId"), id)));
             status.ifPresent(s -> predicates.add(cb.equal(root.get("status"), s)));
             priority.ifPresent(p -> predicates.add(cb.equal(root.get("priority"), p)));
+
+            if (openTasksOnly.map(Boolean::booleanValue).orElse(false) && status.isEmpty()) {
+                predicates.add(cb.not(root.get("status").in(TaskStatus.DONE, TaskStatus.CANCELLED)));
+            }
 
             dueDateFrom.ifPresent(from -> predicates.add(cb.greaterThanOrEqualTo(root.get("dueDate"), from)));
             dueDateTo.ifPresent(to -> predicates.add(cb.lessThanOrEqualTo(root.get("dueDate"), to)));

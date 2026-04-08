@@ -246,7 +246,8 @@
     </div>
   }
 
-  <!-- ── Chatbot Assistant ──────────────────────────────────────── -->
+  <!-- ── Chatbot Assistant (masqué si showAiUi = false) ──────────── -->
+  @if (showAiUi) {
   <div class="chatbot-widget">
     @if (chatOpen) {
       <div class="chatbot-panel">
@@ -311,5 +312,6 @@
       }
     </button>
   </div>
+  }
 
 </div>

@@ -1,0 +1,91 @@
+<div class="conv-list">
+
+  <!-- Header -->
+  <div class="conv-list__header">
+    <h2 class="conv-list__title">Chats</h2>
+    <span class="conv-list__badge" *ngIf="unreadTotal > 0" aria-label="{{ unreadTotal }} unread">
+      {{ unreadTotal > 99 ? '99+' : unreadTotal }}
+    </span>
+  </div>
+
+  <!-- Search -->
+  <div class="conv-search">
+    <svg class="conv-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+      <circle cx="11" cy="11" r="8"/>
+      <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+    </svg>
+    <input
+      class="conv-search__input"
+      type="search"
+      placeholder="Search messages"
+      [(ngModel)]="searchQuery"
+      aria-label="Search conversations"
+      autocomplete="off"
+    />
+  </div>
+
+  <!-- Skeleton -->
+  <div *ngIf="isLoading" class="conv-skeletons">
+    <div class="conv-skel" *ngFor="let _ of [1,2,3,4,5]">
+      <div class="conv-skel__avatar"></div>
+      <div class="conv-skel__lines">
+        <div class="conv-skel__line conv-skel__line--name"></div>
+        <div class="conv-skel__line conv-skel__line--preview"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Empty -->
+  <div *ngIf="!isLoading && filteredConvs.length === 0" class="conv-empty">
+    <div class="conv-empty__icon">💬</div>
+    <p>{{ searchQuery ? 'No results for "' + searchQuery + '"' : 'No conversations yet' }}</p>
+  </div>
+
+  <!-- Conversation items -->
+  <div class="conv-items">
+    <button
+      class="conv-item"
+      *ngFor="let conv of filteredConvs; trackBy: trackByPartnerId"
+      [class.conv-item--active]="conv.partnerId === selectedPartnerId"
+      [class.conv-item--unread]="conv.unreadCount > 0 && conv.partnerId !== selectedPartnerId"
+      (click)="selectConversation(conv.partnerId)"
+      [attr.aria-label]="'Chat with ' + getDisplayName(conv.partnerId)"
+      [attr.aria-pressed]="conv.partnerId === selectedPartnerId"
+    >
+      <!-- Avatar -->
+      <div class="conv-avatar">
+        <img
+          *ngIf="userAvatars[conv.partnerId]"
+          [src]="userAvatars[conv.partnerId]"
+          [alt]="getDisplayName(conv.partnerId)"
+          class="conv-avatar__img"
+        />
+        <span *ngIf="!userAvatars[conv.partnerId]" class="conv-avatar__initials">
+          {{ getDisplayName(conv.partnerId).charAt(0).toUpperCase() }}
+        </span>
+        <span
+          class="conv-avatar__dot"
+          [class.conv-avatar__dot--online]="conv.isOnline"
+          [attr.aria-label]="conv.isOnline ? 'Online' : 'Offline'"
+        ></span>
+      </div>
+
+      <!-- Info -->
+      <div class="conv-body">
+        <div class="conv-row">
+          <span class="conv-name">{{ getDisplayName(conv.partnerId) }}</span>
+          <span class="conv-time">{{ conv.lastMessageTime | date:'shortTime' }}</span>
+        </div>
+        <div class="conv-row conv-row--bottom">
+          <span class="conv-preview">
+            {{ (conv.lastMessage || '') | slice:0:44 }}{{ (conv.lastMessage?.length ?? 0) > 44 ? '…' : '' }}
+          </span>
+          <span class="conv-badge" *ngIf="conv.unreadCount > 0 && conv.partnerId !== selectedPartnerId">
+            {{ conv.unreadCount > 9 ? '9+' : conv.unreadCount }}
+          </span>
+        </div>
+      </div>
+    </button>
+  </div>
+
+</div>

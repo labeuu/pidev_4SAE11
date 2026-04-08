@@ -1,0 +1,580 @@
+<div class="vendor-page">
+  <header class="vendor-page__hero">
+    <div class="vendor-page__hero-text">
+      <h1 class="page-title">Gestion des agréments fournisseurs</h1>
+      <p class="vendor-page__lede">
+        Suivez les demandes, signatures, révisions et échéances. Contexte projet, audit et rapport d’aide à la décision sont accessibles depuis chaque ligne.
+      </p>
+    </div>
+  </header>
+
+  @if (!loading && statsSnapshot.reviewsOverdue > 0) {
+    <div class="vendor-alert vendor-alert--danger" role="status">
+      <svg class="vendor-alert__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+      <div>
+        <strong>Révisions en retard</strong>
+        <span>{{ statsSnapshot.reviewsOverdue }} agrément(s) — priorisez l’onglet « Révisions dues » ou traitez-les depuis le tableau.</span>
+      </div>
+    </div>
+  }
+
+  @if (!loading && statsSnapshot.expiringSoon > 0 && statsSnapshot.reviewsOverdue === 0) {
+    <div class="vendor-alert vendor-alert--warn" role="status">
+      <svg class="vendor-alert__icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+      <div>
+        <strong>Fin de validité proche</strong>
+        <span>{{ statsSnapshot.expiringSoon }} agrément(s) expire(nt) dans moins de 30 jours — pensez aux rappels J-30.</span>
+      </div>
+    </div>
+  }
+
+  <div class="page-header">
+    <div class="page-header__left">
+      <h2 class="page-header__eyebrow">Actions rapides</h2>
+    </div>
+    <div class="page-header__actions">
+      <button class="btn btn--outline" type="button" (click)="sendExpiryReminders()" title="Notifications J-30 (une fois par agrément)">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 0 1-3.46 0"/></svg>
+        Rappels fin de validité (J-30)
+      </button>
+      <button class="btn btn--outline" type="button" (click)="expireOutdated()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+        Expirer les obsolètes
+      </button>
+      <button class="btn btn--primary" type="button" (click)="openCreate()">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Nouvel agrément
+      </button>
+    </div>
+  </div>
+
+  <div class="vendor-toolbar">
+    <div class="vendor-toolbar__search">
+      <label class="visually-hidden" for="vendor-search">Rechercher dans la liste</label>
+      <svg class="vendor-toolbar__search-icon" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input
+        id="vendor-search"
+        type="search"
+        class="vendor-toolbar__input"
+        [(ngModel)]="searchQuery"
+        placeholder="Rechercher (client, freelancer, domaine, n°…)"
+        autocomplete="off"
+      />
+      @if (searchQuery.trim()) {
+        <button type="button" class="vendor-toolbar__clear" (click)="searchQuery = ''" aria-label="Effacer la recherche">×</button>
+      }
+    </div>
+    <button
+      type="button"
+      class="btn btn--outline vendor-toolbar__refresh"
+      (click)="refreshList()"
+      [disabled]="loading"
+      title="Recharger les données"
+    >
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" [class.vendor-toolbar__spin]="loading" aria-hidden="true"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+      Actualiser
+    </button>
+  </div>
+
+  @if (loading) {
+    <div class="stats-row stats-row--loading" aria-busy="true" aria-label="Chargement des indicateurs">
+      @for (i of [1, 2, 3, 4, 5, 6, 7, 8]; track i) {
+        <div class="stat-card stat-card--skeleton"></div>
+      }
+    </div>
+  } @else {
+    <div class="stats-row" aria-label="Synthèse des agréments">
+      <div class="stat-card">
+        <span class="stat-card__number">{{ statsSnapshot.total }}</span>
+        <span class="stat-card__label">Total</span>
+      </div>
+      <div class="stat-card stat-card--warning">
+        <span class="stat-card__number">{{ statsSnapshot.pending }}</span>
+        <span class="stat-card__label">En attente</span>
+      </div>
+      <div class="stat-card stat-card--success">
+        <span class="stat-card__number">{{ statsSnapshot.approved }}</span>
+        <span class="stat-card__label">Approuvés</span>
+      </div>
+      <div class="stat-card stat-card--error">
+        <span class="stat-card__number">{{ statsSnapshot.suspended }}</span>
+        <span class="stat-card__label">Suspendus</span>
+      </div>
+      <div class="stat-card stat-card--neutral">
+        <span class="stat-card__number">{{ statsSnapshot.expired }}</span>
+        <span class="stat-card__label">Expirés</span>
+      </div>
+      <div class="stat-card stat-card--info">
+        <span class="stat-card__number">{{ statsSnapshot.reviewsDue }}</span>
+        <span class="stat-card__label">Révisions dues (30 j.)</span>
+      </div>
+      <div class="stat-card stat-card--error">
+        <span class="stat-card__number">{{ statsSnapshot.reviewsOverdue }}</span>
+        <span class="stat-card__label">Révisions en retard</span>
+      </div>
+      <div class="stat-card stat-card--warning">
+        <span class="stat-card__number">{{ statsSnapshot.expiringSoon }}</span>
+        <span class="stat-card__label">Expire sous 30 j. (validité)</span>
+      </div>
+    </div>
+  }
+
+  <div class="tabs" role="tablist" aria-label="Filtrer les agréments">
+    <button type="button" role="tab" class="tab" [attr.aria-selected]="activeTab === 'all'" [class.tab--active]="activeTab === 'all'" (click)="activeTab = 'all'">Tous</button>
+    <button type="button" role="tab" class="tab" [attr.aria-selected]="activeTab === 'pending'" [class.tab--active]="activeTab === 'pending'" (click)="activeTab = 'pending'">En attente</button>
+    <button type="button" role="tab" class="tab" [attr.aria-selected]="activeTab === 'approved'" [class.tab--active]="activeTab === 'approved'" (click)="activeTab = 'approved'">Approuvés</button>
+    <button type="button" role="tab" class="tab" [attr.aria-selected]="activeTab === 'reviews'" [class.tab--active]="activeTab === 'reviews'" (click)="activeTab = 'reviews'">
+      Révisions dues
+      @if (!loading && statsSnapshot.reviewsDue > 0) {
+        <span class="tab__badge">{{ statsSnapshot.reviewsDue }}</span>
+      }
+    </button>
+    <button type="button" role="tab" class="tab" [attr.aria-selected]="activeTab === 'expiring'" [class.tab--active]="activeTab === 'expiring'" (click)="activeTab = 'expiring'">
+      Fin validité &lt; 30 j.
+      @if (!loading && statsSnapshot.expiringSoon > 0) {
+        <span class="tab__badge">{{ statsSnapshot.expiringSoon }}</span>
+      }
+    </button>
+  </div>
+
+  @if (loading) {
+    <div class="loading-state">
+      <div class="spinner"></div>
+      <p>Chargement des agréments…</p>
+    </div>
+  }
+
+  @if (!loading) {
+    @if (filteredVendors.length === 0) {
+      <div class="empty-state">
+        <svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><line x1="19" y1="8" x2="19" y2="14"/><line x1="22" y1="11" x2="16" y2="11"/></svg>
+        <p class="empty-state__text">{{ tabEmptyMessage() }}</p>
+      </div>
+    } @else {
+      <div class="table-wrap">
+        <p class="table-wrap__hint">La colonne <strong>Actions</strong> regroupe le contexte projet, l’audit et le rapport d’aide à la décision (PDF).</p>
+        <table class="data-table">
+          <thead>
+            <tr>
+              <th>Freelancer</th>
+              <th>Organisation</th>
+              <th>Domaine</th>
+              <th>Secteur métier</th>
+              <th>Statut</th>
+              <th>Signatures</th>
+              <th>Valide jusqu'au</th>
+              <th>J. restants</th>
+              <th>Prochaine révision</th>
+              <th>Nb révisions</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (v of filteredVendors; track v.id) {
+              <tr [class.row--overdue]="v.isReviewOverdue" [class.row--upcoming]="v.isReviewUpcoming">
+                <td>{{ userName(v.freelancerId) }}</td>
+                <td>{{ userName(v.organizationId) }}</td>
+                <td>{{ v.domain || '—' }}</td>
+                <td>{{ v.professionalSector || '—' }}</td>
+                <td>
+                  <span class="badge" [ngClass]="statusClass(v.status)">{{ statusLabelFr(v.status) }}</span>
+                  @if (v.isReviewOverdue) {
+                    <span class="badge badge--error badge--sm">Révision en retard</span>
+                  }
+                </td>
+                <td>
+                  @if (v.status === 'PENDING') {
+                    <span class="badge" [ngClass]="v.clientSignedAt ? 'badge--success' : 'badge--warning'">C {{ v.clientSignedAt ? '✓' : '—' }}</span>
+                    <span class="badge" [ngClass]="v.freelancerSignedAt ? 'badge--success' : 'badge--warning'">F {{ v.freelancerSignedAt ? '✓' : '—' }}</span>
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>{{ formatShortDate(v.validUntil) }}</td>
+                <td class="cell-center">
+                  @if (v.daysUntilValidUntilExpiry != null && v.daysUntilValidUntilExpiry !== undefined) {
+                    <span [class.cell-days--warn]="v.daysUntilValidUntilExpiry <= 30 && v.daysUntilValidUntilExpiry >= 0" [class.cell-days--critical]="v.daysUntilValidUntilExpiry < 0">{{ v.daysUntilValidUntilExpiry }}</span>
+                  } @else {
+                    —
+                  }
+                </td>
+                <td>{{ formatShortDate(v.nextReviewDate) }}</td>
+                <td class="cell-center">{{ v.reviewCount }}</td>
+                <td class="cell-actions">
+                  <button type="button" class="btn-icon btn-icon--neutral" title="Contexte projet" (click)="openContext(v)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+                  </button>
+                  <button type="button" class="btn-icon btn-icon--neutral" title="Journal d'audit" (click)="openAudit(v)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                  </button>
+                  <button type="button" class="btn-icon btn-icon--primary" title="Rapport décision (avis + projets + PDF)" (click)="openDecision(v)">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+                  </button>
+                  @if (v.status === 'PENDING') {
+                    <button type="button" class="btn-icon btn-icon--success" title="Approuver" (click)="openAction(v, 'approve')">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                    <button type="button" class="btn-icon btn-icon--error" title="Rejeter" (click)="openAction(v, 'reject')">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  }
+                  @if (v.status === 'APPROVED') {
+                    <button type="button" class="btn-icon btn-icon--warning" title="Suspendre" (click)="openAction(v, 'suspend')">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>
+                    </button>
+                    <button type="button" class="btn-icon btn-icon--info" title="Renouveler" (click)="openAction(v, 'renew')">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
+                    </button>
+                  }
+                  @if (v.status === 'REJECTED' || v.status === 'EXPIRED') {
+                    <button type="button" class="btn-icon btn-icon--info" title="Re-soumettre" (click)="resubmit(v)">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/></svg>
+                    </button>
+                  }
+                  @if (v.status === 'SUSPENDED') {
+                    <button type="button" class="btn-icon btn-icon--success" title="Ré-approuver" (click)="openAction(v, 'approve')">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                    </button>
+                    <button type="button" class="btn-icon btn-icon--error" title="Rejeter" (click)="openAction(v, 'reject')">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                    </button>
+                  }
+                  @if (v.status !== 'APPROVED') {
+                    <button type="button" class="btn-icon btn-icon--delete" title="Supprimer" (click)="deleteVendor(v)">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
+                    </button>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    }
+  }
+
+  @if (showCreateModal) {
+    <div class="modal-overlay" (click)="showCreateModal = false" role="presentation">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vm-modal-create-title" (click)="$event.stopPropagation()">
+        <div class="modal__header">
+          <h2 class="modal__title" id="vm-modal-create-title">Créer un agrément fournisseur</h2>
+          <button type="button" class="modal__close" (click)="showCreateModal = false" aria-label="Fermer">×</button>
+        </div>
+        <div class="form-group">
+          <label>Organisation (Client)</label>
+          <select [(ngModel)]="newRequest.organizationId" class="form-input">
+            <option [ngValue]="0" disabled>— Sélectionnez un client —</option>
+            @for (c of clients; track c.id) {
+              <option [ngValue]="c.id">{{ c.firstName }} {{ c.lastName }} ({{ c.email }})</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Freelancer</label>
+          <select [(ngModel)]="newRequest.freelancerId" class="form-input">
+            <option [ngValue]="0" disabled>— Sélectionnez un freelancer —</option>
+            @for (f of freelancers; track f.id) {
+              <option [ngValue]="f.id">{{ f.firstName }} {{ f.lastName }} ({{ f.email }})</option>
+            }
+          </select>
+        </div>
+        <div class="form-group">
+          <label>Domaine</label>
+          <input type="text" [(ngModel)]="newRequest.domain" class="form-input" placeholder="Ex: Développement Web" />
+          <p class="form-hint">Les notes du dossier sont générées automatiquement à la création.</p>
+        </div>
+        <div class="form-group">
+          <label>Secteur métier (optionnel)</label>
+          <input type="text" [(ngModel)]="newRequest.professionalSector" class="form-input" placeholder="Ex: IT, Design, Marketing" />
+        </div>
+        <div class="modal__actions">
+          <button type="button" class="btn btn--outline" (click)="showCreateModal = false">Annuler</button>
+          <button type="button" class="btn btn--primary" (click)="submitCreate()">Créer</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showActionModal && selectedVendor) {
+    <div class="modal-overlay" (click)="showActionModal = false" role="presentation">
+      <div class="modal" role="dialog" aria-modal="true" aria-labelledby="vm-modal-action-title" (click)="$event.stopPropagation()">
+        <div class="modal__header">
+          <h2 class="modal__title" id="vm-modal-action-title">
+            @switch (actionType) {
+              @case ('approve')  { Approuver — {{ userName(selectedVendor.freelancerId) }} }
+              @case ('reject')   { Rejeter — {{ userName(selectedVendor.freelancerId) }} }
+              @case ('suspend')  { Suspendre — {{ userName(selectedVendor.freelancerId) }} }
+              @case ('renew')    { Renouveler — {{ userName(selectedVendor.freelancerId) }} }
+            }
+          </h2>
+          <button type="button" class="modal__close" (click)="showActionModal = false" aria-label="Fermer">×</button>
+        </div>
+        @if (actionType === 'approve') {
+          <div class="form-group">
+            <label>Notes d'approbation</label>
+            <textarea [(ngModel)]="actionNotes" class="form-input" rows="3" placeholder="Notes (optionnel)"></textarea>
+          </div>
+          @if (selectedVendor.status === 'PENDING' && !selectedVendor.fullySigned) {
+            <p class="modal__info">Les signatures client et freelancer sont requises avant approbation.</p>
+          }
+        }
+        @if (actionType === 'reject' || actionType === 'suspend') {
+          <div class="form-group">
+            <label>Motif</label>
+            <textarea [(ngModel)]="actionReason" class="form-input" rows="3" placeholder="Raison obligatoire…" required></textarea>
+          </div>
+        }
+        @if (actionType === 'renew') {
+          <p class="modal__info">L'agrément sera prolongé d'un an. La prochaine révision sera dans 11 mois.</p>
+        }
+        <div class="modal__actions">
+          <button type="button" class="btn btn--outline" (click)="showActionModal = false">Annuler</button>
+          <button type="button" class="btn btn--primary" (click)="submitAction()">Confirmer</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showContextModal && contextVendor) {
+    <div class="modal-overlay" (click)="closeContext()" role="presentation">
+      <div class="modal modal--context" role="dialog" aria-modal="true" aria-labelledby="vm-modal-context-title" (click)="$event.stopPropagation()">
+        <div class="modal__header">
+          <h2 class="modal__title" id="vm-modal-context-title">Contexte projet</h2>
+          <button type="button" class="modal__close" (click)="closeContext()" aria-label="Fermer">×</button>
+        </div>
+        <p class="modal__lead">
+          <strong>{{ userName(contextVendor.freelancerId) }}</strong>
+          ↔
+          <strong>{{ userName(contextVendor.organizationId) }}</strong>
+        </p>
+
+        @if (contextLoading) {
+          <div class="context-loading">
+            <div class="spinner"></div>
+            <p>Chargement…</p>
+          </div>
+        } @else {
+          @if (!hasContextData) {
+            <div class="context-empty">
+              <p>Aucun projet, candidature ou contrat trouvé pour cette paire.</p>
+            </div>
+          } @else {
+            <section class="context-section">
+              <h3 class="context-section__title">Chronologie</h3>
+              <ul class="context-timeline">
+                @for (item of contextTimeline; track $index) {
+                  <li class="context-timeline__item" [class.context-timeline__item--project]="item.kind === 'project'" [class.context-timeline__item--application]="item.kind === 'application'" [class.context-timeline__item--contract]="item.kind === 'contract'">
+                    <span class="context-timeline__date">{{ item.date }}</span>
+                    <span>
+                      <span class="context-timeline__label">{{ item.label }}</span>
+                      <span class="context-timeline__detail">{{ item.detail }}</span>
+                    </span>
+                  </li>
+                }
+              </ul>
+            </section>
+            @if (contextProjects.length > 0) {
+              <section class="context-section">
+                <h3 class="context-section__title">Projets</h3>
+                <ul class="context-list">
+                  @for (p of contextProjects; track p.id) {
+                    <li>
+                      <strong>{{ p.title }}</strong>
+                      <span class="context-list__meta">#{{ p.id }} · {{ p.status ?? '—' }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+            @if (contextApplications.length > 0) {
+              <section class="context-section">
+                <h3 class="context-section__title">Candidatures</h3>
+                <ul class="context-list">
+                  @for (a of contextApplications; track a.id) {
+                    <li>
+                      <strong>{{ a.projectTitle }}</strong>
+                      <span class="context-list__meta">#{{ a.id }} · {{ a.status ?? '—' }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+            @if (contextContracts.length > 0) {
+              <section class="context-section">
+                <h3 class="context-section__title">Contrats</h3>
+                <ul class="context-list">
+                  @for (c of contextContracts; track c.id) {
+                    <li>
+                      <strong>{{ c.title }}</strong>
+                      <span class="context-list__meta">#{{ c.id }} · {{ c.status ?? '—' }}</span>
+                    </li>
+                  }
+                </ul>
+              </section>
+            }
+          }
+        }
+        <div class="modal__actions">
+          <button type="button" class="btn btn--primary" (click)="closeContext()">Fermer</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showAuditModal && auditVendor) {
+    <div class="modal-overlay" (click)="closeAudit()" role="presentation">
+      <div class="modal modal--audit" role="dialog" aria-modal="true" aria-labelledby="vm-modal-audit-title" (click)="$event.stopPropagation()">
+        <div class="modal__header">
+          <h2 class="modal__title" id="vm-modal-audit-title">Journal d'audit — agrément #{{ auditVendor.id }}</h2>
+          <button type="button" class="modal__close" (click)="closeAudit()" aria-label="Fermer">×</button>
+        </div>
+        <p class="modal__lead">
+          <strong>{{ userName(auditVendor.freelancerId) }}</strong> ↔ <strong>{{ userName(auditVendor.organizationId) }}</strong>
+        </p>
+
+        @if (auditLoading) {
+          <div class="context-loading">
+            <div class="spinner"></div>
+            <p>Chargement…</p>
+          </div>
+        } @else if (auditEntries.length === 0) {
+          <p class="context-empty">Aucune entrée d'audit.</p>
+        } @else {
+          <ul class="context-timeline context-timeline--audit">
+            @for (e of auditEntries; track e.id) {
+              <li class="context-timeline__item">
+                <span class="context-timeline__date">{{ formatAuditDate(e.createdAt) }}</span>
+                <span>
+                  <span class="context-timeline__label">{{ auditActionLabel(e.action) }}</span>
+                  <span class="context-timeline__detail">
+                    {{ e.fromStatus ?? '—' }} → {{ e.toStatus }}
+                    @if (e.actorUserId != null) { · Acteur #{{ e.actorUserId }} }
+                    @if (e.detail) { — {{ e.detail }} }
+                  </span>
+                </span>
+              </li>
+            }
+          </ul>
+        }
+
+        <div class="modal__actions">
+          <button type="button" class="btn btn--primary" (click)="closeAudit()">Fermer</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  @if (showDecisionModal && decisionVendor) {
+    <div class="modal-overlay" (click)="closeDecision()" role="presentation">
+      <div class="modal modal--decision" role="dialog" aria-modal="true" aria-labelledby="vm-modal-decision-title" (click)="$event.stopPropagation()">
+        <div class="modal__header">
+          <h2 class="modal__title" id="vm-modal-decision-title">Rapport d'aide à la décision</h2>
+          <button type="button" class="modal__close" (click)="closeDecision()" aria-label="Fermer">×</button>
+        </div>
+        <p class="modal__lead">
+          Agrément #{{ decisionVendor.id }} —
+          <strong>@if (decisionInsight) {
+            {{ decisionInsight.clientDisplayName || userName(decisionVendor.organizationId) }}
+          } @else {
+            {{ userName(decisionVendor.organizationId) }}
+          }</strong>
+          →
+          <strong>@if (decisionInsight) {
+            {{ decisionInsight.freelancerDisplayName || userName(decisionVendor.freelancerId) }}
+          } @else {
+            {{ userName(decisionVendor.freelancerId) }}
+          }</strong>
+        </p>
+
+        @if (decisionLoading) {
+          <div class="context-loading">
+            <div class="spinner"></div>
+            <p>Chargement des statistiques…</p>
+          </div>
+        } @else if (decisionInsight) {
+          @if (decisionInsight.dataWarnings.length) {
+            <div class="decision-warnings">
+              @for (w of decisionInsight.dataWarnings; track w) {
+                <p class="decision-warnings__item">{{ w }}</p>
+              }
+            </div>
+          }
+
+          <section class="decision-section">
+            <h3 class="decision-section__title">Projets en commun</h3>
+            <p class="decision-kpi">
+              <span class="decision-kpi__num">{{ decisionInsight.sharedProjectCount }}</span>
+              <span class="decision-kpi__label">projet(s) du client où ce freelancer a candidaté</span>
+            </p>
+            @if (decisionInsight.sharedProjects.length) {
+              <ul class="decision-list">
+                @for (p of decisionInsight.sharedProjects; track p.id) {
+                  <li>
+                    <strong>{{ p.title }}</strong>
+                    <span class="decision-list__meta">{{ p.status }} · {{ p.category || '—' }}</span>
+                  </li>
+                }
+              </ul>
+            } @else {
+              <p class="context-empty">Aucun projet lié pour cette paire (pas encore de candidature du freelancer sur une offre du client).</p>
+            }
+          </section>
+
+          <section class="decision-section">
+            <h3 class="decision-section__title">Avis du client vers le freelancer</h3>
+            <p class="decision-kpi">
+              <span class="decision-kpi__num">{{ decisionInsight.reviewCount }}</span>
+              <span class="decision-kpi__label">avis · moyenne</span>
+              <span class="decision-kpi__num decision-kpi__num--accent">{{ decisionInsight.averageRatingFromClient | number:'1.1-2' }}</span>
+              <span class="decision-kpi__label">/ 5</span>
+            </p>
+
+            @if (decisionInsight.reviewCount > 0) {
+              <div class="rating-bars">
+                @for (star of [1,2,3,4,5]; track star) {
+                  <div class="rating-bars__row">
+                    <span class="rating-bars__label">{{ star }} ★</span>
+                    <div class="rating-bars__track">
+                      <div class="rating-bars__fill" [style.width.%]="ratingBarWidthPct(star)"></div>
+                    </div>
+                    <span class="rating-bars__count">{{ countRatingStar(star) }}</span>
+                  </div>
+                }
+              </div>
+
+              <table class="decision-reviews-table">
+                <thead>
+                  <tr>
+                    <th>Date</th>
+                    <th>Projet</th>
+                    <th>Note</th>
+                    <th>Commentaire</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (r of decisionInsight.reviews; track r.id) {
+                    <tr>
+                      <td>{{ r.createdAt ? (r.createdAt | slice:0:16) : '—' }}</td>
+                      <td>#{{ r.projectId }}</td>
+                      <td>{{ r.rating }}</td>
+                      <td>{{ r.comment || '—' }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+            } @else {
+              <p class="context-empty">Aucun avis enregistré de ce client vers ce freelancer sur ce périmètre.</p>
+            }
+          </section>
+        }
+
+        <div class="modal__actions modal__actions--split">
+          <button type="button" class="btn btn--outline" (click)="closeDecision()">Fermer</button>
+          <button type="button" class="btn btn--primary" [disabled]="decisionLoading || !decisionInsight" (click)="downloadDecisionPdf()">
+            Télécharger le PDF
+          </button>
+        </div>
+      </div>
+    </div>
+  }
+</div>

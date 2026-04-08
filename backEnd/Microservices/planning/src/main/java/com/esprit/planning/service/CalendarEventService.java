@@ -113,6 +113,7 @@ public class CalendarEventService {
         return events;
     }
 
+    // Checks whether progress update visible to user.
     private boolean isProgressUpdateVisibleToUser(ProgressUpdate pu, Long userId, java.util.Map<Long, Long> projectIdToClientId) {
         if (pu.getFreelancerId() != null && pu.getFreelancerId().equals(userId)) return true;
         Long projectId = pu.getProjectId();
@@ -128,6 +129,7 @@ public class CalendarEventService {
         return clientId != null && clientId.equals(userId);
     }
 
+    // Checks whether project deadline visible to user.
     private boolean isProjectDeadlineVisibleToUser(ProjectDto p, Long userId, Set<Long> freelancerProjectIds) {
         if (p.getClientId() != null && p.getClientId().equals(userId)) return true;
         if (p.getId() != null && freelancerProjectIds != null && freelancerProjectIds.contains(p.getId())) return true;

@@ -21,12 +21,14 @@ public class GlobalExceptionHandler {
     private static final ObjectMapper FEIGN_BODY_MAPPER = new ObjectMapper();
 
     @ExceptionHandler(EntityNotFoundException.class)
+    // Handles entity not found.
     public ResponseEntity<Map<String, String>> handleEntityNotFound(EntityNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(Map.of("message", ex.getMessage()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
+    // Handles validation.
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         Map<String, String> fieldErrors = new LinkedHashMap<>();
         ex.getBindingResult().getFieldErrors()
@@ -37,17 +39,20 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
+    // Handles illegal argument.
     public ResponseEntity<Map<String, String>> handleIllegalArgument(IllegalArgumentException ex) {
         String msg = ex.getMessage() != null ? ex.getMessage() : "Bad request";
         return ResponseEntity.badRequest().body(Map.of("message", msg));
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
+    // Handles unreadable json.
     public ResponseEntity<Map<String, String>> handleUnreadableJson(HttpMessageNotReadableException ex) {
         return ResponseEntity.badRequest().body(Map.of("message", "Invalid or missing JSON body"));
     }
 
     @ExceptionHandler(ResponseStatusException.class)
+    // Handles response status.
     public ResponseEntity<Map<String, String>> handleResponseStatus(ResponseStatusException ex) {
         HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
         String reason = ex.getReason() != null ? ex.getReason() : status.getReasonPhrase();
@@ -55,6 +60,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(FeignException.class)
+    // Handles feign.
     public ResponseEntity<Map<String, String>> handleFeign(FeignException ex) {
         int s = ex.status();
         HttpStatus status;
@@ -94,6 +100,7 @@ public class GlobalExceptionHandler {
         return "AI or upstream service error";
     }
 
+    // Performs safe feign body.
     private static String safeFeignBody(FeignException ex) {
         try {
             return ex.contentUTF8();
@@ -102,6 +109,7 @@ public class GlobalExceptionHandler {
         }
     }
 
+    // Performs extract message from json body.
     private static String extractMessageFromJsonBody(String body) {
         if (body == null || body.isBlank()) {
             return null;

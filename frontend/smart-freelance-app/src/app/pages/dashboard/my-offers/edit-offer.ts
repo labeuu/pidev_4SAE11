@@ -53,6 +53,7 @@ export class EditOffer implements OnInit {
       deadline: [''],
       category: [''],
       tags: [''],
+      requiresVendorApproval: [false],
     });
   }
 
@@ -192,6 +193,7 @@ export class EditOffer implements OnInit {
       deadline: v.deadline ? (v.deadline as string) : undefined,
       category: (v.category as string)?.trim() || undefined,
       tags: (v.tags as string)?.trim() || undefined,
+      requiresVendorApproval: !!v.requiresVendorApproval,
     };
     this.offerService.updateOffer(this.id, req).subscribe({
       next: () => {
