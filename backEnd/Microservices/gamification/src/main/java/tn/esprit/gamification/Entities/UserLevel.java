@@ -19,6 +19,7 @@ public class UserLevel {
     private Long userId;
     private int xp = 0;
     private int level = 1;
+    private String userRole; // "CLIENT" or "FREELANCER"
 
     // 🆕 Nouveaux champs
     private int fastResponderStreak = 0;  // compteur de réponses rapides

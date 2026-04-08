@@ -5,7 +5,7 @@ import { ProjectService, Project } from '../../../core/services/project.service'
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 import { Router } from '@angular/router';
-import { PortfolioService, Skill, Domain } from '../../../core/services/portfolio.service';
+import { PortfolioService, Skill, Domain, DOMAIN_LABELS } from '../../../core/services/portfolio.service';
 
 @Component({
   selector: 'app-add-project',
@@ -26,6 +26,9 @@ export class AddProject implements OnInit {
   newSkillDomain = '';
   skillFormErrors: Record<string, string> = {};
   errorMessage: string | null = null;
+
+  availableDomains: Domain[] = [];
+  DOMAIN_LABELS = DOMAIN_LABELS;
 
   constructor(
     private projectService: ProjectService,
@@ -58,6 +61,18 @@ export class AddProject implements OnInit {
     });
     
     this.loadSkills();
+    this.loadDomains();
+  }
+
+  loadDomains() {
+    this.portfolioService.getDomains().subscribe({
+      next: (domains) => {
+        this.availableDomains = domains;
+      },
+      error: (err) => {
+        console.error('Error loading domains', err);
+      }
+    });
   }
 
   openAddSkillModal() {

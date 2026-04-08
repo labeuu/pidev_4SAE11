@@ -7,4 +7,7 @@ import java.util.List;
 public interface UserAchievementService {
     void unlockAchievement(Long userId, Long achievementId);
     List<UserAchievement> getUserAchievements(Long userId);
+
+    // 🆕 Nouveau calcul en temps réel
+    List<tn.esprit.gamification.Dto.AchievementProgressDTO> getUserProgress(Long userId);
 }

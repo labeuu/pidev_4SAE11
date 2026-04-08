@@ -1,0 +1,99 @@
+<div class="leaderboard-page">
+  <header class="page-head">
+    <div class="header-content">
+      <h1 class="page-title">Global Champions</h1>
+      <p class="page-sub">The elite performers of the platform, ranked by their accumulated XP.</p>
+    </div>
+    <div class="header-actions">
+      <a routerLink="/dashboard/gamification" class="action-btn back-btn">← Back to Achievements</a>
+    </div>
+  </header>
+
+  <div class="state state--loading" *ngIf="loading">
+    <div class="spinner"></div>
+    <p>Calculating rankings across the network…</p>
+  </div>
+
+  <ng-container *ngIf="!loading">
+    <!-- PODIUM FOR TOP 3 -->
+    <div class="podium-section" *ngIf="top3.length > 0">
+      <div class="podium-container">
+        <div 
+          *ngFor="let p of sortedTop3()" 
+          class="podium-place" 
+          [ngClass]="'rank-' + p.rank"
+        >
+          <div class="user-avatar" [style.border-color]="p.rank === 1 ? '#f59e0b' : p.rank === 2 ? '#94a3b8' : '#cd7f32'">
+            <img 
+              [src]="'https://api.dicebear.com/7.x/initials/svg?seed=' + p.userId + '&backgroundColor=transparent&fontSize=35&bold=true'" 
+              [alt]="'User ' + p.userId"
+            >
+            <div class="crown" *ngIf="p.rank === 1">👑</div>
+          </div>
+          
+          <div class="place-details">
+            <h3 class="user-id">USER ID: #{{ p.userId }}</h3>
+            <div class="xp-badge">{{ p.xp }} XP</div>
+          </div>
+
+          <div class="podium-pedestal">
+            <span class="rank-num">{{ p.rank }}</span>
+            <div class="medal-glow"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- FULL LIST FOR OTHERS -->
+    <div class="ranking-table-section">
+      <h2 class="section-title">Global Ranking</h2>
+      
+      <div class="ranking-list" *ngIf="leaderboard.length > 0">
+        <div class="rank-item header-item">
+          <div class="rank-col">Rank</div>
+          <div class="user-col">Freelancer</div>
+          <div class="xp-col">Total XP</div>
+          <div class="level-col">Level</div>
+          <div class="badges-col">Badges</div>
+        </div>
+
+        <div 
+          *ngFor="let item of (top3.length > 0 ? others : leaderboard)" 
+          class="rank-item"
+        >
+          <div class="rank-col">
+            <span class="rank-circle">{{ item.rank }}</span>
+          </div>
+          
+          <div class="user-col">
+            <div class="user-info">
+              <img 
+                [src]="'https://api.dicebear.com/7.x/initials/svg?seed=' + item.userId + '&backgroundColor=transparent&fontSize=35&bold=true'" 
+                class="list-avatar"
+              >
+              <span class="freelancer-id">Freelancer #{{ item.userId }}</span>
+            </div>
+          </div>
+
+          <div class="xp-col">
+            <span class="xp-val"><strong>{{ item.xp }}</strong> XP</span>
+          </div>
+
+          <div class="level-col">
+            <span class="level-chip">Lvl {{ item.level }}</span>
+          </div>
+
+          <div class="badges-col">
+            <span class="badge-mini streak" *ngIf="item.fastResponderStreak > 0">⚡ {{ item.fastResponderStreak }}</span>
+            <span class="badge-mini top" *ngIf="isTop(item)">👑</span>
+            <span class="no-badge" *ngIf="item.fastResponderStreak === 0 && !isTop(item)">-</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="empty-leaderboard" *ngIf="leaderboard.length === 0">
+        <p>The ranking is currently empty. Be the first to earn XP!</p>
+      </div>
+    </div>
+  </ng-container>
+</div>

@@ -39,6 +39,8 @@ TopFreelancerScheduler {
         }
 
         UserLevel topUser = allUsers.stream()
+                // 🆕 Condition cruciale : Seulement les freelances ayant de l'XP > 0
+                .filter(u -> "FREELANCER".equalsIgnoreCase(u.getUserRole()) && u.getXp() > 0)
                 .max((a, b) -> Integer.compare(a.getXp(), b.getXp()))
                 .orElse(null);
 

@@ -21,4 +21,9 @@ public class UserAchievementController {
     public List<UserAchievement> getUserAchievements(@PathVariable Long userId) {
         return service.getUserAchievements(userId);
     }
+
+    @GetMapping("/{userId}/progress")
+    public List<tn.esprit.gamification.Dto.AchievementProgressDTO> getProgress(@PathVariable Long userId) {
+        return service.getUserProgress(userId);
+    }
 }

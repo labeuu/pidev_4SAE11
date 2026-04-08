@@ -27,4 +27,10 @@ public class SkillClientFallback implements SkillClient {
                 userId);
         return Collections.emptyList();
     }
+
+    @Override
+    public Skills createSkill(Skills skill) {
+        log.warn("SkillClient fallback: Portfolio unavailable for createSkill. Registration aborted.");
+        return null; // On informe le demandeur que l'enregistrement a échoué
+    }
 }

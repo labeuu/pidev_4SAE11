@@ -1,16 +1,25 @@
 package tn.esprit.gamification.Dto;
 
 import lombok.*;
+import lombok.experimental.FieldDefaults;
 import tn.esprit.gamification.Entities.Enums.conditionType;
 
-@Data
-@NoArgsConstructor
+@Getter
+@Setter
 @AllArgsConstructor
+@NoArgsConstructor
+@Builder
+@FieldDefaults(level = AccessLevel.PRIVATE)
 public class AchievementDTO {
+    Long id;
+    String title;
+    String description;
+    int xpReward;
+    conditionType conditionType;
+    
+    // 🆕 Nouveaux champs pour le support dynamique
+    int conditionThreshold;
+    String iconEmoji;
 
-    private Long id;
-    private String title;
-    private String description;
-    private int xpReward;
-    private conditionType conditionType;
+    tn.esprit.gamification.Entities.Enums.TargetRole targetRole;
 }

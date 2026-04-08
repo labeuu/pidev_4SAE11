@@ -31,6 +31,9 @@ public class ProjectRequest {
     @NotBlank
     private String category;
 
-    @NotBlank
+    @NotEmpty
     private List<Long> skillIds;
+
+    // 🆕 Permet d'envoyer des objets complexes (Nom + Domaines) à créer dans Portfolio
+    private List<NewSkillRequest> newSkills;
 }
