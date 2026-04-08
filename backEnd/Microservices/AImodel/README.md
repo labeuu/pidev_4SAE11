@@ -1,6 +1,6 @@
 # AImodel service (Node.js)
 
-Ollama-backed LLM API (`8092` by default). Registers with Eureka as **`AIMODEL`**. Gateway: **`/aimodel/**`**.
+Ollama-backed LLM API (`8095` by default). Registers with Eureka as **`AIMODEL`**. Gateway: **`/aimodel/**`**.
 
 Requires **Node 18+** and optionally **Ollama** at `http://localhost:11434`.
 

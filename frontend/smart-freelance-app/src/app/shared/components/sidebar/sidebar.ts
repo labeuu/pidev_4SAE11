@@ -1,5 +1,5 @@
-import { Component, Input, signal, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { Component, Input } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -85,11 +85,9 @@ export class Sidebar {
           { label: 'Offers',    route: '/admin/offers',    icon: 'offers'    },
           { label: 'Contracts', route: '/admin/contracts', icon: 'contracts' },
           { label: 'Vendors',   route: '/admin/vendors',   icon: 'vendors'   },
- main
           { label: 'Subcontracts', route: '/admin/subcontracts', icon: 'subcontracts' },
 
           { label: 'Support tickets', route: '/admin/tickets', icon: 'support' },
- main
           { label: 'Planning',  route: '/admin/planning',  icon: 'planning'  },
           { label: 'Calendar',  route: '/admin/calendar',  icon: 'planning'  },
           { label: 'GitHub',    route: '/admin/github',    icon: 'github'    },

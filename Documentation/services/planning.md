@@ -2,8 +2,12 @@
 
 - **Code**: [backEnd/Microservices/planning](../../backEnd/Microservices/planning)
 - **Spring name**: `planning`
-- **Port**: `8081`
+- **Port**: `8081` (from [Config Server planning.properties](../../backEnd/ConfigServer/src/main/resources/config/planning.properties))
 - **Gateway**: `http://localhost:8078/planning/**` (direct to `localhost:8081`)
+
+## Configuration
+
+Bootstrap matches **Offer**: only `spring.application.name` and `spring.config.import=configserver:http://localhost:8888` (+ optional `application-local.properties`) in `application.properties`. Start **Eureka (8420)** and **Config Server (8888)** before this service.
 
 ## Responsibilities
 

@@ -10,7 +10,7 @@ function parseIntEnv(name, defaultValue) {
 const eurekaAppName = (process.env.EUREKA_APP_NAME || 'AIMODEL').trim().toUpperCase();
 
 const config = {
-  port: parseIntEnv('PORT', 8092),
+  port: parseIntEnv('PORT', 8095),
   ollamaBaseUrl: (process.env.OLLAMA_BASE_URL || 'http://localhost:11434').replace(/\/$/, ''),
   ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:8b',
   // Default 4h for slow local models; override with OLLAMA_TIMEOUT_MS if needed.

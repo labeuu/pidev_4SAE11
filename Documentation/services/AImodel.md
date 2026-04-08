@@ -2,7 +2,7 @@
 
 - **Code**: [backEnd/Microservices/AImodel](../../backEnd/Microservices/AImodel)
 - **Eureka app name**: `AIMODEL` (default; overridable via `EUREKA_APP_NAME`)
-- **Port**: **8092** (default; overridable via `PORT`)
+- **Port**: **8095** (default; overridable via `PORT`)
 - **Gateway**: `http://localhost:8078/aimodel/**` → `lb://AIMODEL`
 
 ## Responsibilities
@@ -18,7 +18,7 @@ Main files:
 
 Environment variables (see [config/index.js](../../backEnd/Microservices/AImodel/src/config/index.js)):
 
-- `PORT` (default 8092)
+- `PORT` (default 8095)
 - `OLLAMA_BASE_URL` (default `http://localhost:11434`)
 - `OLLAMA_MODEL`, `OLLAMA_TIMEOUT_MS`, etc.
 - `EUREKA_ENABLED`, `EUREKA_SERVER_URL`, instance hostname/IP

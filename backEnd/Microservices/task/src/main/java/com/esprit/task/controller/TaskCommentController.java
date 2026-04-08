@@ -45,6 +45,7 @@ public class TaskCommentController {
             @ApiResponse(responseCode = "200", description = "Success"),
             @ApiResponse(responseCode = "404", description = "Comment not found", content = @Content)
     })
+    // Returns by id.
     public ResponseEntity<TaskComment> getById(@Parameter(description = "Comment ID", required = true) @PathVariable Long id) {
         return ResponseEntity.ok(taskCommentService.findById(id));
     }
@@ -52,6 +53,7 @@ public class TaskCommentController {
     @GetMapping("/task/{taskId}")
     @Operation(summary = "List by task", description = "Returns all comments for the given task.")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Returns by task id.
     public ResponseEntity<List<TaskComment>> getByTaskId(@Parameter(description = "Task ID", required = true) @PathVariable Long taskId) {
         return ResponseEntity.ok(taskCommentService.findByTaskId(taskId));
     }
@@ -62,6 +64,7 @@ public class TaskCommentController {
             @ApiResponse(responseCode = "201", description = "Created", content = @Content(schema = @Schema(implementation = TaskComment.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
     })
+    // Creates this operation.
     public ResponseEntity<TaskComment> create(@RequestBody TaskCommentRequest request) {
         TaskComment comment = TaskComment.builder()
                 .taskId(request.getTaskId())
@@ -94,6 +97,7 @@ public class TaskCommentController {
             @ApiResponse(responseCode = "204", description = "No content"),
             @ApiResponse(responseCode = "404", description = "Comment not found", content = @Content)
     })
+    // Deletes this operation.
     public ResponseEntity<Void> delete(@Parameter(description = "Comment ID", required = true) @PathVariable Long id) {
         taskCommentService.deleteById(id);
         return ResponseEntity.noContent().build();

@@ -26,6 +26,7 @@ public class TaskStatsController {
     @GetMapping("/project/{projectId}")
     @Operation(summary = "Stats by project", description = "Returns task counts and completion percentage for a project.")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Returns by project.
     public ResponseEntity<TaskStatsDto> getByProject(@Parameter(description = "Project ID", required = true) @PathVariable Long projectId) {
         return ResponseEntity.ok(taskService.getStatsByProject(projectId));
     }
@@ -43,6 +44,7 @@ public class TaskStatsController {
     @GetMapping("/dashboard")
     @Operation(summary = "Dashboard stats", description = "Returns global task counts.")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Returns dashboard.
     public ResponseEntity<TaskStatsDto> getDashboard() {
         return ResponseEntity.ok(taskService.getDashboardStats());
     }
@@ -74,6 +76,7 @@ public class TaskStatsController {
     @GetMapping("/extended/dashboard")
     @Operation(summary = "Extended dashboard stats", description = "Global extended metrics; activity range counts are zero.")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Returns extended dashboard.
     public ResponseEntity<TaskStatsExtendedDto> getExtendedDashboard() {
         return ResponseEntity.ok(taskService.getExtendedStatsDashboard());
     }

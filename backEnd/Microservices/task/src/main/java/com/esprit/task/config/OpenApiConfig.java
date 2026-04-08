@@ -17,6 +17,7 @@ public class OpenApiConfig {
     private String serverPort;
 
     @Bean
+    // Performs task open api.
     public OpenAPI taskOpenAPI() {
         return new OpenAPI()
                 .info(new Info()

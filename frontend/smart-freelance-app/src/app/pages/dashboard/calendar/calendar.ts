@@ -28,13 +28,14 @@ export class Calendar implements OnInit {
   currentMonth: Date;
   events: CalendarEventDto[] = [];
   loading = false;
+  errorMessage = '';
   selectedDay: Date | null = null;
   readonly weekdayLabels = WEEKDAY_LABELS;
 
   constructor(
-    private planning: PlanningService,
-    private auth: AuthService,
-    private cdr: ChangeDetectorRef
+    private readonly planning: PlanningService,
+    private readonly auth: AuthService,
+    private readonly cdr: ChangeDetectorRef
   ) {
     const now = new Date();
     this.currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -122,6 +123,7 @@ export class Calendar implements OnInit {
 
   loadEvents(): void {
     this.loading = true;
+    this.errorMessage = '';
     const start = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);
     const end = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 2, 0);
     const timeMin = start.toISOString();
@@ -136,6 +138,7 @@ export class Calendar implements OnInit {
       },
       error: () => {
         this.events = [];
+        this.errorMessage = 'Could not load calendar events right now. Please try again.';
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -180,15 +183,19 @@ export class Calendar implements OnInit {
     });
   }
 
+  get hasEventsInCurrentRange(): boolean {
+    return this.events.length > 0;
+  }
+
   formatDate(s: string | null): string {
     if (!s) return '—';
     const d = new Date(s);
-    return isNaN(d.getTime()) ? s : d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    return Number.isNaN(d.getTime()) ? s : d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
   }
 
   formatTime(s: string | null): string {
     if (!s) return '';
     const d = new Date(s);
-    return isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   }
 }

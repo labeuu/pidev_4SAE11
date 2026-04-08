@@ -84,7 +84,7 @@ SERVICES=(
   "Project:8084"
   "review:8085"
   "Portfolio:8086"
-  "Notification:8087"
+  "Notification:8098"
   "task:8091"
 )
 

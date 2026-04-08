@@ -18,7 +18,11 @@ Each subdirectory is an independent service (own database and/or integrations un
 | `gamification/` | `/gamification` | [Documentation/services/gamification.md](../../Documentation/services/gamification.md) |
 | `Vendor/` | `/vendor` | [Documentation/services/vendor.md](../../Documentation/services/vendor.md) |
 | `ticket-service/` | `/ticket` | [Documentation/services/ticket-service.md](../../Documentation/services/ticket-service.md) |
+| `Subcontracting/` | `/subcontracting` | [Documentation/services/subcontracting.md](../../Documentation/services/subcontracting.md) |
 | `AImodel/` (Node) | `/aimodel` | [Documentation/services/AImodel.md](../../Documentation/services/AImodel.md) |
+| `FreelanciaJob/` | _(none)_ | [Documentation/services/freelanciajob.md](../../Documentation/services/freelanciajob.md) |
+| `Chat/` | _(none)_ | [Documentation/services/chat.md](../../Documentation/services/chat.md) |
+| `Meeting/` | _(none)_ | [Documentation/services/meeting.md](../../Documentation/services/meeting.md) |
 
 ## Reference tables
 
@@ -34,4 +38,4 @@ mvn spring-boot:run
 
 **AImodel** uses Node: `npm install && npm start` in `AImodel/`.
 
-**Offer** and **Vendor** require **Config Server**; **OFFER**, **PORTFOLIO**, and **AIMODEL** use **Eureka** for gateway `lb://` routes — start Eureka first.
+**Offer**, **Vendor**, **Task**, **Planning**, and **Subcontracting** require **Config Server** (same bootstrap pattern as Offer). **OFFER** and **AIMODEL** use **Eureka** for gateway `lb://` routes — start Eureka first.

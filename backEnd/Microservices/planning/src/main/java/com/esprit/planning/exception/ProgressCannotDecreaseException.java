@@ -15,10 +15,12 @@ public class ProgressCannotDecreaseException extends RuntimeException {
         this.provided = provided;
     }
 
+    // Returns min allowed.
     public int getMinAllowed() {
         return minAllowed;
     }
 
+    // Returns provided.
     public int getProvided() {
         return provided;
     }

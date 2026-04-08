@@ -16,10 +16,15 @@
         <option value="$PROJECT_DIR$/backEnd/Microservices/Vendor/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Configserver/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Contract/pom.xml" />
-main
         <option value="$PROJECT_DIR$/backEnd/Microservices/Subcontracting/pom.xml" />
- main
         <option value="$PROJECT_DIR$/backEnd/Microservices/ticket-service/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Portfolio/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Notification/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Meeting/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/gamification/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/FreelanciaJob/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/Chat/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/task/pom.xml" />
       </list>
     </option>
   </component>

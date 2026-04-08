@@ -55,6 +55,7 @@ public class ProgressUpdateController {
 
     /** Returns the welcome message from configuration. Used for health or discovery. */
     @GetMapping("/welcome")
+    // Performs welcome.
     public String welcome() {
         return welcomeMessage;
     }
@@ -272,6 +273,7 @@ public class ProgressUpdateController {
         return ResponseEntity.ok(progressUpdateService.getFreelancerProjectsSummary(freelancerId));
     }
 
+    // Performs parse ids.
     private static List<Long> parseIds(String param) {
         if (param == null || param.isBlank()) return List.of();
         return java.util.Arrays.stream(param.split(","))
@@ -386,6 +388,7 @@ public class ProgressUpdateController {
             @ApiResponse(responseCode = "201", description = "Created", content = @Content(schema = @Schema(implementation = ProgressUpdate.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request body", content = @Content)
     })
+    // Creates this operation.
     public ResponseEntity<ProgressUpdate> create(@RequestBody ProgressUpdateRequest request) {
         ProgressUpdate entity = ProgressUpdate.builder()
                 .projectId(request.getProjectId())
@@ -469,6 +472,7 @@ public class ProgressUpdateController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Validation result", content = @Content(schema = @Schema(implementation = ProgressUpdateValidationResponse.class)))
     })
+    // Validates this operation.
     public ResponseEntity<ProgressUpdateValidationResponse> validate(@RequestBody ProgressUpdateRequest request) {
         ProgressUpdateValidationResponse response = progressUpdateService.validate(request);
         return ResponseEntity.ok(response);

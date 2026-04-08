@@ -31,6 +31,7 @@ public class TaskWeeklyReportService {
 
     private final TaskService taskService;
 
+    // Builds weekly pdf.
     public byte[] buildWeeklyPdf(Optional<Long> projectId, Optional<Long> freelancerId, LocalDate weekStartOrNull) {
         LocalDate monday = normalizeWeekStartMonday(weekStartOrNull);
         LocalDate sunday = monday.plusDays(6);
@@ -77,6 +78,7 @@ public class TaskWeeklyReportService {
         }
     }
 
+    // Performs normalize week start monday.
     public static LocalDate normalizeWeekStartMonday(LocalDate weekStartOrNull) {
         LocalDate ref = weekStartOrNull != null ? weekStartOrNull : LocalDate.now();
         return ref.with(java.time.temporal.TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
@@ -164,6 +166,7 @@ public class TaskWeeklyReportService {
         return out.toByteArray();
     }
 
+    // Adds row.
     private static void addRow(PdfPTable table, String left, String right) {
         PdfPCell c1 = new PdfPCell(new Phrase(left, FontFactory.getFont(FontFactory.HELVETICA, 10)));
         PdfPCell c2 = new PdfPCell(new Phrase(right, FontFactory.getFont(FontFactory.HELVETICA, 10)));

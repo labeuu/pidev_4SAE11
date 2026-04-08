@@ -8,6 +8,7 @@
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <module name="Offer" />
+        <module name="Portfolio" />
         <module name="apiGateway" />
         <module name="Subcontracting" />
         <module name="ConfigServer" />
@@ -21,20 +22,31 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
-        </processorPath>
-        <module name="gamification" />
-      </profile>
-      <profile name="Annotation profile for Project" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/unknown/lombok-unknown.jar" />
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.36/lombok-1.18.36.jar" />
         </processorPath>
         <module name="Project" />
       </profile>
-      <profile name="Annotation profile for ticket" enabled="true">
+      <profile name="Annotation profile for meeting" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
+        </processorPath>
+        <module name="meeting" />
+      </profile>
+      <profile name="Annotation profile for chat" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+        </processorPath>
+        <module name="gamification" />
+        <module name="FreelanciaJob" />
+        <module name="chat" />
+      </profile>
+      <profile name="Annotation profile for task" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -42,20 +54,17 @@
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
         </processorPath>
         <module name="ticket" />
+        <module name="notification" />
+        <module name="task" />
       </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="gamification" target="17" />
-      <module name="notification" target="17" />
-      <module name="Portfolio" target="17" />
-      <module name="task" target="17" />
-    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
       <module name="ConfigServer" options="-parameters" />
       <module name="Contract" options="-parameters" />
       <module name="Eureka" options="-parameters" />
+      <module name="FreelanciaJob" options="-parameters" />
       <module name="KeyCloak" options="-parameters" />
       <module name="Offer" options="-parameters" />
       <module name="Portfolio" options="-parameters" />
@@ -63,7 +72,9 @@
       <module name="Subcontracting" options="-parameters" />
       <module name="Vendor" options="-parameters" />
       <module name="apiGateway" options="-parameters" />
+      <module name="chat" options="-parameters" />
       <module name="gamification" options="-parameters" />
+      <module name="meeting" options="-parameters" />
       <module name="notification" options="-parameters" />
       <module name="planning" options="-parameters" />
       <module name="review" options="-parameters" />

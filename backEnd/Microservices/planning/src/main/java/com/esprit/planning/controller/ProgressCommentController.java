@@ -86,6 +86,7 @@ public class ProgressCommentController {
             @ApiResponse(responseCode = "201", description = "Created", content = @Content(schema = @Schema(implementation = ProgressComment.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request or progress update not found", content = @Content)
     })
+    // Creates this operation.
     public ResponseEntity<ProgressComment> create(@RequestBody ProgressCommentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(progressCommentService.create(

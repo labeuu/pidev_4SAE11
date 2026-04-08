@@ -38,7 +38,8 @@ A microservices-based platform connecting freelancers and clients for project co
 ┌─────────────┐     ┌──────────────┐     ┌────────────────────────────────────────────────────────────┐
 │   Angular   │──── │ API Gateway  │──── │ User │ Project │ Offer │ Contract │ Portfolio │ Review  │
 │  Frontend   │     │   (8078)     │     │ Planning │ Notification │ Task │ Gamification │ Vendor │
-│  (4200)     │     └──────────────┘     │ Ticket │ AImodel (Node) │ Keycloak auth MS              │
+│  (4200)     │     └──────────────┘     │ Ticket │ Subcontracting │ AImodel (Node)                │
+│             │                          │ FreelanciaJob │ Chat │ Meeting │ Keycloak auth MS            │
 └─────────────┘            │             └────────────────────────────────────────────────────────────┘
                            │
                     ┌──────┴──────┐
@@ -88,22 +89,26 @@ A microservices-based platform connecting freelancers and clients for project co
 | Project | 8084 | `projectdb` |
 | Review | 8085 | `reviewdb` |
 | Portfolio | 8086 | `portfolio_db` |
-| Notification | 8087 | Firebase |
+| Notification | 8098 | Firebase |
 | Gamification | 8088 | `gamificationdb` |
 | Task | 8091 | `taskdb` |
-| AImodel (Node) | 8092 | — (Ollama) |
+| FreelanciaJob | 8092 | `freelancia_job_db` |
 | Vendor | 8093 | `gestion_vendor_db` |
 | Ticket | 8094 | `ticketdb` |
+| AImodel (Node) | 8095 | — (Ollama) |
+| Chat | 8096 | `chatdb` |
+| Meeting | 8097 | `meetingdb` |
+| Subcontracting | 8099 | `gestion_subcontracting_db` |
 
 ### Startup Order
 
 1. MySQL  
 2. **Eureka** → `backEnd/Eureka`  
-3. **Config Server** → `backEnd/ConfigServer` *(required for **Offer** and **Vendor**; optional for others)*  
+3. **Config Server** → `backEnd/ConfigServer` *(required for **Offer**, **Vendor**, **Subcontracting**, **Task**, and **Planning**; optional for others)*  
 4. **API Gateway** → `backEnd/apiGateway`  
 5. **Keycloak** (standalone) — [see Keycloak setup](backEnd/KeyCloak/README.md)  
 6. **Keycloak Auth** → `backEnd/KeyCloak`  
-7. **Microservices** — User, Project, Offer, Contract, Portfolio, Review, Planning, Notification, Task, Gamification, Vendor, Ticket, **AImodel** (Node + Ollama if using AI)  
+7. **Microservices** — User, Project, Offer, Contract, Portfolio, Review, Planning, Notification, Task, Gamification, Vendor, Ticket, Subcontracting, FreelanciaJob, Chat, Meeting, **AImodel** (Node + Ollama if using AI)  
 
 ### Run the Backend
 
@@ -154,6 +159,10 @@ Full route and port reference: [Documentation/api-gateway.md](Documentation/api-
 │       ├── gamification/    # Achievements, levels, XP
 │       ├── Vendor/          # Vendor / agrément workflows
 │       ├── ticket-service/   # Support tickets
+│       ├── Subcontracting/  # Subcontracting workflow management
+│       ├── FreelanciaJob/   # Job posting and matching flows
+│       ├── Chat/            # Real-time/direct messaging
+│       ├── Meeting/         # Meeting scheduling and calendar integration
 │       ├── AImodel/         # Node + Ollama LLM API
 │       ├── Portfolio/       # Portfolio, skills, AI verification
 │       ├── Project/         # Project management

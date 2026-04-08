@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Subject, BehaviorSubject, Observable } from 'rxjs';
-import { Client, IMessage } from '@stomp/stompjs';
+import { Client, IFrame, IMessage } from '@stomp/stompjs';
 import SockJS from 'sockjs-client';
 import { ChatMessage, TypingEvent, UserStatus, ConversationSummary, PagedMessages } from '../models/chat.models';
 import { environment } from '../../../environments/environment';
@@ -16,7 +16,7 @@ export class ChatService {
   seen$ = new Subject<ChatMessage>();
   status$ = new Subject<UserStatus>();
 
-  constructor(private http: HttpClient) {}
+  constructor(private readonly http: HttpClient) {}
 
   connect(token: string, userId: number): void {
     if (this.client?.active) return;
@@ -46,7 +46,7 @@ export class ChatService {
       onDisconnect: () => {
         this.isConnected$.next(false);
       },
-      onStompError: (frame) => {
+      onStompError: (frame: IFrame) => {
         console.error('[ChatService] STOMP error', frame);
       },
     });

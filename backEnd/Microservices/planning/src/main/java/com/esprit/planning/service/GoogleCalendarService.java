@@ -47,6 +47,7 @@ public class GoogleCalendarService {
      * Creates a calendar event. Runs asynchronously and logs errors without failing the caller.
      */
     @Async
+    // Creates event async.
     public void createEventAsync(String calendarId, String title, LocalDateTime startDateTime, LocalDateTime endDateTime, String description) {
         if (!isAvailable()) return;
         try {
@@ -87,6 +88,7 @@ public class GoogleCalendarService {
      * Deletes a calendar event by ID. Logs errors without throwing.
      */
     @Async
+    // Deletes event async.
     public void deleteEventAsync(String calendarId, String eventId) {
         if (!isAvailable() || eventId == null || eventId.isBlank()) return;
         try {
@@ -96,6 +98,7 @@ public class GoogleCalendarService {
         }
     }
 
+    // Deletes event.
     public boolean deleteEvent(String calendarId, String eventId) {
         if (!isAvailable() || eventId == null || eventId.isBlank()) return false;
         String calId = calendarId != null && !calendarId.isBlank() ? calendarId : defaultCalendarId;

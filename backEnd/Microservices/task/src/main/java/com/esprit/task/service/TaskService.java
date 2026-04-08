@@ -55,33 +55,39 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Finds by id.
     public Task findById(Long id) {
         return taskRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Task", id));
     }
 
     @Transactional(readOnly = true)
+    // Finds by project id.
     public List<Task> findByProjectId(Long projectId) {
         return taskRepository.findByProjectIdOrderByOrderIndexAsc(projectId);
     }
 
     @Transactional(readOnly = true)
+    // Finds by contract id.
     public List<Task> findByContractId(Long contractId) {
         return taskRepository.findByContractIdOrderByProjectIdAscOrderIndexAsc(contractId);
     }
 
     @Transactional(readOnly = true)
+    // Finds by assignee id.
     public List<Task> findByAssigneeId(Long assigneeId) {
         return taskRepository.findByAssigneeIdOrderByProjectIdAscOrderIndexAsc(assigneeId);
     }
 
     /** Root tasks only (all rows in `task` are roots; subtasks are in `subtask`). */
     @Transactional(readOnly = true)
+    // Finds root tasks by project.
     public List<Task> findRootTasksByProject(Long projectId) {
         return taskRepository.findByProjectIdOrderByOrderIndexAsc(projectId);
     }
 
     @Transactional(readOnly = true)
+    // Finds due soon.
     public List<Task> findDueSoon(Optional<Long> projectId, Optional<Long> assigneeId, int withinDays) {
         int days = Math.min(Math.max(withinDays, 1), 365);
         LocalDate today = LocalDate.now();
@@ -110,6 +116,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Returns board by project.
     public TaskBoardDto getBoardByProject(Long projectId) {
         List<Task> roots = taskRepository.findByProjectIdOrderByOrderIndexAsc(projectId);
         Map<TaskStatus, List<Task>> columns = Arrays.stream(TaskStatus.values())
@@ -127,6 +134,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Returns overdue tasks.
     public List<Task> getOverdueTasks(Optional<Long> projectId, Optional<Long> assigneeId) {
         LocalDate today = LocalDate.now();
         List<Task> roots;
@@ -154,6 +162,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Returns stats by project.
     public TaskStatsDto getStatsByProject(Long projectId) {
         long taskTotal = taskRepository.countByProjectId(projectId);
         long subTotal = subtaskRepository.countByProjectId(projectId);
@@ -177,6 +186,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Returns stats by freelancer.
     public TaskStatsDto getStatsByFreelancer(Long freelancerId, Optional<LocalDate> from, Optional<LocalDate> to) {
         var spec = TaskSpecification.filtered(
                 Optional.empty(), Optional.empty(), Optional.of(freelancerId),
@@ -202,6 +212,7 @@ public class TaskService {
                 .build();
     }
 
+    // Performs matches date range.
     private static boolean matchesDateRange(LocalDate due, Optional<LocalDate> from, Optional<LocalDate> to) {
         if (from.isEmpty() && to.isEmpty()) {
             return true;
@@ -215,10 +226,12 @@ public class TaskService {
         return to.isEmpty() || !due.isAfter(to.get());
     }
 
+    // Checks whether overdue open.
     private static boolean isOverdueOpen(LocalDate due, TaskStatus status) {
         return isOverdueOpen(due, status, LocalDate.now());
     }
 
+    // Checks whether overdue open.
     private static boolean isOverdueOpen(LocalDate due, TaskStatus status, LocalDate asOf) {
         if (due == null || status == TaskStatus.DONE || status == TaskStatus.CANCELLED) {
             return false;
@@ -227,6 +240,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Returns dashboard stats.
     public TaskStatsDto getDashboardStats() {
         List<Task> allTasks = taskRepository.findAll();
         long subCount = subtaskRepository.count();
@@ -247,6 +261,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Returns extended stats by project.
     public TaskStatsExtendedDto getExtendedStatsByProject(Long projectId) {
         return buildExtendedStatsForProject(projectId, LocalDate.now(), Optional.empty(), Optional.empty());
     }
@@ -269,6 +284,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Returns extended stats dashboard.
     public TaskStatsExtendedDto getExtendedStatsDashboard() {
         return buildExtendedStatsGlobal(LocalDate.now(), Optional.empty(), Optional.empty());
     }
@@ -409,6 +425,7 @@ public class TaskService {
         return new long[] {created, completed};
     }
 
+    // Performs activity range counts global.
     private long[] activityRangeCountsGlobal(Optional<LocalDate> activityFrom, Optional<LocalDate> activityTo) {
         if (activityFrom.isEmpty() || activityTo.isEmpty()) {
             return new long[] {0, 0};
@@ -422,6 +439,7 @@ public class TaskService {
         return new long[] {created, completed};
     }
 
+    // Performs merged status counts.
     private static Map<TaskStatus, Long> mergedStatusCounts(List<Object[]> taskRows, List<Object[]> subRows) {
         Map<TaskStatus, Long> map = new EnumMap<>(TaskStatus.class);
         for (TaskStatus s : TaskStatus.values()) {
@@ -432,6 +450,7 @@ public class TaskService {
         return map;
     }
 
+    // Performs accumulate status rows.
     private static void accumulateStatusRows(Map<TaskStatus, Long> map, List<Object[]> rows) {
         for (Object[] row : rows) {
             TaskStatus st = (TaskStatus) row[0];
@@ -440,6 +459,7 @@ public class TaskService {
         }
     }
 
+    // Performs merged priority counts.
     private static Map<TaskPriority, Long> mergedPriorityCounts(List<Object[]> taskRows, List<Object[]> subRows) {
         Map<TaskPriority, Long> map = new EnumMap<>(TaskPriority.class);
         for (TaskPriority p : TaskPriority.values()) {
@@ -450,6 +470,7 @@ public class TaskService {
         return map;
     }
 
+    // Performs accumulate priority rows.
     private static void accumulatePriorityRows(Map<TaskPriority, Long> map, List<Object[]> rows) {
         for (Object[] row : rows) {
             TaskPriority p = (TaskPriority) row[0];
@@ -565,6 +586,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Returns calendar events.
     public List<TaskCalendarEventDto> getCalendarEvents(LocalDateTime timeMin, LocalDateTime timeMax, Optional<Long> userId) {
         LocalDate start = timeMin.toLocalDate();
         LocalDate end = timeMax.toLocalDate();
@@ -636,6 +658,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Creates this operation.
     public Task create(Task task) {
         if (task.getStatus() == null) task.setStatus(TaskStatus.TODO);
         if (task.getPriority() == null) task.setPriority(TaskPriority.MEDIUM);
@@ -647,6 +670,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Updates this operation.
     public Task update(Long id, Task task) {
         Task existing = findById(id);
         TaskStatus oldStatus = existing.getStatus();
@@ -667,6 +691,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Partially updates status.
     public Task patchStatus(Long id, TaskStatus status) {
         Task task = findById(id);
         task.setStatus(status);
@@ -676,6 +701,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Partially updates assignee.
     public Task patchAssignee(Long id, Long assigneeId) {
         Task task = findById(id);
         task.setAssigneeId(assigneeId);
@@ -683,6 +709,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Partially updates due date.
     public Task patchDueDate(Long id, LocalDate dueDate) {
         Task task = findById(id);
         task.setDueDate(dueDate);
@@ -690,6 +717,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Performs bulk patch status.
     public List<Task> bulkPatchStatus(List<Long> taskIds, TaskStatus newStatus) {
         List<Task> result = new ArrayList<>();
         for (Long id : taskIds) {
@@ -706,6 +734,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Performs reorder.
     public void reorder(List<Long> taskIds) {
         if (taskIds == null) {
             throw new IllegalArgumentException("taskIds is required");
@@ -720,6 +749,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Deletes by id.
     public void deleteById(Long id) {
         Task task = findById(id);
         taskCommentRepository.findByTaskIdOrderByCreatedAtAsc(id).forEach(taskCommentRepository::delete);
@@ -727,6 +757,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Performs escalate overdue priorities.
     public int escalateOverduePriorities() {
         LocalDate today = LocalDate.now();
         int escalated = 0;
@@ -759,6 +790,7 @@ public class TaskService {
      * @return number of assignees notified
      */
     @Transactional(readOnly = true)
+    // Sends daily overdue reminders.
     public int sendDailyOverdueReminders() {
         LocalDate today = LocalDate.now();
         List<Task> overdueRoots = taskRepository.findOverdueTasks(today).stream()
@@ -792,6 +824,7 @@ public class TaskService {
     }
 
     @Transactional
+    // Performs purge old cancelled tasks.
     public int purgeOldCancelledTasks(LocalDateTime cutoff) {
         List<Task> candidates = taskRepository.findByStatusAndUpdatedAtBefore(TaskStatus.CANCELLED, cutoff);
         int removed = 0;
@@ -808,6 +841,7 @@ public class TaskService {
     private static final int MAX_SUBTASK_PROGRESS_TASK_IDS = 100;
 
     @Transactional(readOnly = true)
+    // Returns subtask progress for assignee tasks.
     public List<SubtaskProgressDto> getSubtaskProgressForAssigneeTasks(Long assigneeId, List<Long> taskIds) {
         if (assigneeId == null || taskIds == null || taskIds.isEmpty()) {
             return List.of();
@@ -826,6 +860,7 @@ public class TaskService {
     }
 
     @Transactional(readOnly = true)
+    // Returns project activity for assignee.
     public List<ProjectActivityDto> getProjectActivityForAssignee(Long assigneeId) {
         if (assigneeId == null) {
             return List.of();
@@ -871,6 +906,7 @@ public class TaskService {
         return out;
     }
 
+    // Performs task view from subtask.
     private Task taskViewFromSubtask(Subtask s) {
         Task t = new Task();
         t.setSubtask(true);

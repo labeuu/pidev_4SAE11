@@ -55,8 +55,9 @@ spring:
           filters:
             - StripPrefix=1
 
+        # Portfolio: direct URL to avoid intermittent Eureka resolution misses
         - id: portfolio
-          uri: lb://PORTFOLIO
+          uri: http://localhost:8086
           predicates:
             - Path=/portfolio/**
           filters:
@@ -115,9 +116,9 @@ spring:
           filters:
             - StripPrefix=1
 
-        # Notification (Firestore): direct URL (port 8087)
+        # Notification (Firestore): direct URL (port 8098)
         - id: notification
-          uri: http://localhost:8087
+          uri: http://localhost:8098
           predicates:
             - Path=/notification/**
           filters:
@@ -131,9 +132,9 @@ spring:
           filters:
             - StripPrefix=1
 
-        # Subcontracting Management (port 8094)
+        # Subcontracting Management (port 8099)
         - id: subcontracting
-          uri: http://localhost:8094
+          uri: http://localhost:8099
           predicates:
             - Path=/subcontracting/**
           filters:
@@ -159,7 +160,7 @@ spring:
           filters:
             - StripPrefix=1
 
-        # Vendor Management — port must match Config Server VENDOR.properties (8093); 8092 is AImodel.
+        # Vendor Management — port must match Config Server VENDOR.properties (8093); 8095 is AImodel.
         - id: vendor
           uri: http://localhost:8093
           predicates:
@@ -170,7 +171,7 @@ spring:
             response-timeout: 14400000
             connect-timeout: 30000
 
-        # AImodel (Node): discovered via Eureka, port 8092
+        # AImodel (Node): discovered via Eureka, port 8095
         - id: aimodel
           uri: lb://AIMODEL
           predicates:

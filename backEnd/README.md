@@ -16,7 +16,7 @@ Java **Spring Boot** microservices, **Spring Cloud** infrastructure (Eureka, Con
 ## Quick start
 
 1. MySQL (match ports in each service’s config — often `3306` or `3307`).
-2. Start **Eureka**, then **Config Server** (needed for **Offer** and **Vendor**), then **API Gateway**.
+2. Start **Eureka**, then **Config Server** (needed for **Offer**, **Vendor**, **Task**, and **Planning**), then **API Gateway**.
 3. Start **Keycloak** (standalone) and the **KeyCloak** Spring app — see [KeyCloak/README.md](KeyCloak/README.md).
 4. Start the microservices you need; use Eureka dashboard to verify registered instances.
 

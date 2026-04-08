@@ -142,6 +142,7 @@ public class TaskNotificationService {
         notifyUser(userId, title, body.toString().trim(), TYPE_TASK_OVERDUE_DAILY_REMINDER, data);
     }
 
+    // Performs notify user.
     private void notifyUser(String userId, String title, String body, String type, Map<String, String> data) {
         if (userId == null || title == null) {
             return;

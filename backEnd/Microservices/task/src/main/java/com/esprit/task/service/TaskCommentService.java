@@ -18,27 +18,32 @@ public class TaskCommentService {
     private final TaskCommentRepository taskCommentRepository;
 
     @Transactional(readOnly = true)
+    // Finds all.
     public Page<TaskComment> findAll(Pageable pageable) {
         return taskCommentRepository.findAll(pageable);
     }
 
     @Transactional(readOnly = true)
+    // Finds by id.
     public TaskComment findById(Long id) {
         return taskCommentRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("TaskComment", id));
     }
 
     @Transactional(readOnly = true)
+    // Finds by task id.
     public List<TaskComment> findByTaskId(Long taskId) {
         return taskCommentRepository.findByTaskIdOrderByCreatedAtAsc(taskId);
     }
 
     @Transactional
+    // Creates this operation.
     public TaskComment create(TaskComment comment) {
         return taskCommentRepository.save(comment);
     }
 
     @Transactional
+    // Updates this operation.
     public TaskComment update(Long id, TaskComment comment) {
         TaskComment existing = findById(id);
         existing.setMessage(comment.getMessage());
@@ -46,6 +51,7 @@ public class TaskCommentService {
     }
 
     @Transactional
+    // Deletes by id.
     public void deleteById(Long id) {
         TaskComment comment = findById(id);
         taskCommentRepository.delete(comment);

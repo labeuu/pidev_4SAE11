@@ -11,11 +11,15 @@ Spring Boot services live under [backEnd/Microservices](../../backEnd/Microservi
 | Portfolio | [portfolio.md](portfolio.md) | 8086 | `/portfolio` |
 | Review | [review.md](review.md) | 8085 | `/review` |
 | Planning | [planning.md](planning.md) | 8081 | `/planning` |
-| Notification | [notification.md](notification.md) | 8087 | `/notification` |
+| Notification | [notification.md](notification.md) | 8098 | `/notification` |
 | Task | [task.md](task.md) | 8091 | `/task` |
 | Gamification | [gamification.md](gamification.md) | 8088 | `/gamification` |
 | Vendor | [vendor.md](vendor.md) | 8093 | `/vendor` |
 | Ticket | [ticket-service.md](ticket-service.md) | 8094 | `/ticket` |
-| AImodel (Node) | [AImodel.md](AImodel.md) | 8092 | `/aimodel` |
+| Subcontracting | [subcontracting.md](subcontracting.md) | 8099 | `/subcontracting` |
+| AImodel (Node) | [AImodel.md](AImodel.md) | 8095 | `/aimodel` |
+| FreelanciaJob | [freelanciajob.md](freelanciajob.md) | 8092 | _No gateway route configured_ |
+| Chat | [chat.md](chat.md) | 8096 | _No gateway route configured_ |
+| Meeting | [meeting.md](meeting.md) | 8097 | _No gateway route configured_ |
 
 Consolidated ports and databases: [../services-and-ports.md](../services-and-ports.md).

@@ -60,6 +60,7 @@ public class ProgressUpdateStatsController {
     @GetMapping("/dashboard")
     @Operation(summary = "Dashboard stats", description = "Returns global dashboard statistics over all progress updates.")
     @ApiResponse(responseCode = "200", description = "Success", content = @Content(schema = @Schema(implementation = DashboardStatsDto.class)))
+    // Returns dashboard stats.
     public ResponseEntity<DashboardStatsDto> getDashboardStats() {
         return ResponseEntity.ok(progressUpdateService.getDashboardStatistics());
     }
