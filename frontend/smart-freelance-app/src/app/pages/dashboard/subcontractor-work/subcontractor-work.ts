@@ -16,45 +16,80 @@ export class SubcontractorWork implements OnInit {
   selected: Subcontract | null = null;
   score: SubcontractorScore | null = null;
   loading = true;
+  loadingScore = true;
+  errorMessage = '';
+  actionLoading = false;
+  submittingDeliverables = new Set<number>();
 
   get currentUserId(): number { return this.auth.getUserId() ?? 0; }
 
-  submitUrl = '';
-  submitNote = '';
+  submitUrlByDeliverable: Record<number, string> = {};
+  submitNoteByDeliverable: Record<number, string> = {};
 
   constructor(private svc: SubcontractService, private auth: AuthService) {}
 
   ngOnInit() {
     this.load();
-    this.svc.getScore(this.currentUserId).subscribe({ next: s => this.score = s, error: () => {} });
+    this.loadingScore = true;
+    this.svc.getScore(this.currentUserId).subscribe({
+      next: s => this.score = s,
+      error: () => {},
+      complete: () => this.loadingScore = false
+    });
   }
 
   load() {
     this.loading = true;
+    this.errorMessage = '';
     this.svc.getBySubcontractor(this.currentUserId).subscribe({
       next: data => { this.subcontracts = data; this.loading = false; },
-      error: () => this.loading = false
+      error: () => {
+        this.errorMessage = "Impossible de charger vos sous-traitances.";
+        this.loading = false;
+      }
     });
   }
 
   select(s: Subcontract) {
     this.selected = s;
-    this.submitUrl = '';
-    this.submitNote = '';
   }
   closeDetail() { this.selected = null; }
 
-  accept(id: number) { this.svc.accept(id).subscribe(() => this.reload()); }
+  accept(id: number) {
+    if (this.actionLoading) return;
+    this.actionLoading = true;
+    this.svc.accept(id).subscribe({
+      next: () => this.reload(),
+      error: () => {},
+      complete: () => this.actionLoading = false
+    });
+  }
   reject(id: number) {
     const reason = prompt('Raison du refus :');
-    if (reason !== null) this.svc.reject(id, reason).subscribe(() => this.reload());
+    if (reason === null || this.actionLoading) return;
+    this.actionLoading = true;
+    this.svc.reject(id, reason).subscribe({
+      next: () => this.reload(),
+      error: () => {},
+      complete: () => this.actionLoading = false
+    });
   }
 
   submitDeliverable(deliverableId: number) {
-    if (!this.selected) return;
+    if (!this.selected || this.submittingDeliverables.has(deliverableId)) return;
+    this.submittingDeliverables.add(deliverableId);
     this.svc.submitDeliverable(this.selected.id, deliverableId, {
-      submissionUrl: this.submitUrl, submissionNote: this.submitNote
-    }).subscribe(() => { this.submitUrl = ''; this.submitNote = ''; this.reload(); });
+      submissionUrl: this.submitUrlByDeliverable[deliverableId],
+      submissionNote: this.submitNoteByDeliverable[deliverableId]
+    }).subscribe({
+      next: () => {
+        this.submitUrlByDeliverable[deliverableId] = '';
+        this.submitNoteByDeliverable[deliverableId] = '';
+        this.reload();
+      },
+      error: () => {},
+      complete: () => this.submittingDeliverables.delete(deliverableId)
+    });
   }
 
   private reload() {

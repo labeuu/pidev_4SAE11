@@ -17,6 +17,9 @@ export class SubcontractManagement implements OnInit {
   filterStatus = '';
   filterCategory = '';
   loading = true;
+  loadingDashboard = true;
+  errorMessage = '';
+  dashboardError = '';
   selectedSubcontract: Subcontract | null = null;
 
   statuses = ['', 'DRAFT', 'PROPOSED', 'ACCEPTED', 'REJECTED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED', 'CLOSED'];
@@ -26,14 +29,28 @@ export class SubcontractManagement implements OnInit {
 
   ngOnInit() {
     this.load();
-    this.svc.getDashboard().subscribe(d => this.dashboard = d);
+    this.loadDashboard();
   }
 
   load() {
     this.loading = true;
+    this.errorMessage = '';
     this.svc.getAll().subscribe({
       next: data => { this.subcontracts = data; this.applyFilter(); this.loading = false; },
-      error: () => this.loading = false
+      error: () => {
+        this.errorMessage = "Impossible de charger la liste des sous-traitances.";
+        this.loading = false;
+      }
+    });
+  }
+
+  loadDashboard() {
+    this.loadingDashboard = true;
+    this.dashboardError = '';
+    this.svc.getDashboard().subscribe({
+      next: d => this.dashboard = d,
+      error: () => this.dashboardError = "Impossible de charger les indicateurs.",
+      complete: () => this.loadingDashboard = false
     });
   }
 

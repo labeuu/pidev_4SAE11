@@ -2,7 +2,9 @@
   <h2>Travaux en sous-traitance</h2>
 
   <!-- Score card -->
-  @if (score) {
+  @if (loadingScore) {
+    <div class="score-card score-card-loading">Chargement de votre score...</div>
+  } @else if (score) {
     <div class="score-card" [style.border-color]="scoreColor()">
       <div class="score-value" [style.color]="scoreColor()">{{ score.score }}/100</div>
       <div class="score-label">{{ score.label }}</div>
@@ -16,6 +18,11 @@
 
   @if (loading) {
     <p class="loading">Chargement...</p>
+  } @else if (errorMessage) {
+    <div class="error-banner">
+      <span>{{ errorMessage }}</span>
+      <button class="btn-primary btn-xs" (click)="load()">Réessayer</button>
+    </div>
   } @else if (subcontracts.length === 0) {
     <div class="empty">Aucune proposition de sous-traitance reçue.</div>
   } @else {
@@ -52,8 +59,8 @@
       <!-- Accept/Reject for PROPOSED -->
       @if (selected.status === 'PROPOSED') {
         <div class="actions">
-          <button class="btn-success" (click)="accept(selected.id)">Accepter</button>
-          <button class="btn-danger" (click)="reject(selected.id)">Refuser</button>
+          <button class="btn-success" [disabled]="actionLoading" (click)="accept(selected.id)">Accepter</button>
+          <button class="btn-danger" [disabled]="actionLoading" (click)="reject(selected.id)">Refuser</button>
         </div>
       }
 
@@ -73,9 +80,11 @@
           <!-- Submit form for PENDING / IN_PROGRESS / REJECTED -->
           @if (d.status === 'PENDING' || d.status === 'IN_PROGRESS' || d.status === 'REJECTED') {
             <div class="submit-form">
-              <input [(ngModel)]="submitUrl" placeholder="URL du livrable (lien, fichier...)" />
-              <input [(ngModel)]="submitNote" placeholder="Note de soumission" />
-              <button class="btn-primary btn-xs" (click)="submitDeliverable(d.id)">Soumettre</button>
+              <input [(ngModel)]="submitUrlByDeliverable[d.id]" placeholder="URL du livrable (lien, fichier...)" />
+              <input [(ngModel)]="submitNoteByDeliverable[d.id]" placeholder="Note de soumission" />
+              <button class="btn-primary btn-xs" [disabled]="submittingDeliverables.has(d.id)" (click)="submitDeliverable(d.id)">
+                {{ submittingDeliverables.has(d.id) ? 'Envoi...' : 'Soumettre' }}
+              </button>
             </div>
           }
         </div>

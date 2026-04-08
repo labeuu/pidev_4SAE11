@@ -2,7 +2,14 @@
   <h2>Gestion Sous-Traitance</h2>
 
   <!-- Dashboard KPIs -->
-  @if (dashboard) {
+  @if (loadingDashboard) {
+    <p class="loading">Chargement des indicateurs...</p>
+  } @else if (dashboardError) {
+    <div class="error-banner">
+      <span>{{ dashboardError }}</span>
+      <button class="btn-retry" (click)="loadDashboard()">Réessayer</button>
+    </div>
+  } @else if (dashboard) {
     <div class="kpi-row">
       <div class="kpi-card"><span class="kpi-value">{{ dashboard.totalSubcontracts }}</span><span class="kpi-label">Total</span></div>
       <div class="kpi-card kpi-success"><span class="kpi-value">{{ dashboard.approvedDeliverables }}</span><span class="kpi-label">Livrables approuvés</span></div>
@@ -32,6 +39,11 @@
   <!-- Table -->
   @if (loading) {
     <p class="loading">Chargement...</p>
+  } @else if (errorMessage) {
+    <div class="error-banner">
+      <span>{{ errorMessage }}</span>
+      <button class="btn-retry" (click)="load()">Réessayer</button>
+    </div>
   } @else {
     <table class="sc-table">
       <thead>
@@ -57,6 +69,11 @@
               <small>{{ s.approvedDeliverables }}/{{ s.totalDeliverables }}</small>
             </td>
             <td>{{ s.deadline || '-' }}</td>
+          </tr>
+        }
+        @if (filtered.length === 0) {
+          <tr>
+            <td colspan="9" class="table-empty">Aucun résultat pour les filtres sélectionnés.</td>
           </tr>
         }
       </tbody>

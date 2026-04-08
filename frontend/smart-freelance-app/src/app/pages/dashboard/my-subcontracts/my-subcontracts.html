@@ -16,6 +16,11 @@
   @if (activeTab === 'list') {
     @if (loading) {
       <p class="loading">Chargement...</p>
+    } @else if (errorMessage) {
+      <div class="error-banner">
+        <span>{{ errorMessage }}</span>
+        <button class="btn-secondary" (click)="load()">Réessayer</button>
+      </div>
     } @else if (subcontracts.length === 0) {
       <div class="empty">
         <div class="empty-icon">📋</div>
@@ -49,6 +54,11 @@
   @if (activeTab === 'history') {
     @if (loadingHistory) {
       <p class="loading">Chargement de l'historique...</p>
+    } @else if (historyError) {
+      <div class="error-banner">
+        <span>{{ historyError }}</span>
+        <button class="btn-secondary" (click)="loadHistory()">Réessayer</button>
+      </div>
     } @else if (!history || history.totalEvents === 0) {
       <div class="empty">
         <div class="empty-icon">📜</div>
@@ -136,12 +146,14 @@
 
             <div class="field">
               <label class="field-label">Projet *</label>
-              <select [(ngModel)]="form.projectId">
+              <select [(ngModel)]="form.projectId" [disabled]="loadingProjects">
                 <option [value]="0" disabled>-- Choisir un projet --</option>
                 @for (p of myProjects; track p.id) {
                   <option [value]="p.id">{{ p.title || ('Projet #' + p.id) }}</option>
                 }
               </select>
+              @if (loadingProjects) { <small class="field-hint">Chargement des projets...</small> }
+              @if (formError) { <small class="field-error">{{ formError }}</small> }
             </div>
 
             <div class="field-row">
@@ -210,7 +222,9 @@
 
         <div class="form-actions">
           <button class="btn-secondary" (click)="closeForm()">Annuler</button>
-          <button class="btn-primary" (click)="createSubcontract()" [disabled]="!form.title || !form.subcontractorId || !form.projectId">Créer la sous-traitance</button>
+          <button class="btn-primary" (click)="createSubcontract()" [disabled]="loadingAction || !form.title || !form.subcontractorId || !form.projectId || loadingProjects">
+            {{ loadingAction ? 'Création...' : 'Créer la sous-traitance' }}
+          </button>
         </div>
       </div>
     </div>
@@ -230,14 +244,14 @@
 
       <div class="actions">
         @if (selected.status === 'DRAFT') {
-          <button class="btn-primary" (click)="propose(selected.id)">Proposer</button>
-          <button class="btn-danger" (click)="deleteSubcontract(selected.id)">Supprimer</button>
+          <button class="btn-primary" [disabled]="loadingAction" (click)="propose(selected.id)">Proposer</button>
+          <button class="btn-danger" [disabled]="loadingAction" (click)="deleteSubcontract(selected.id)">Supprimer</button>
         }
-        @if (selected.status === 'ACCEPTED') { <button class="btn-primary" (click)="startWork(selected.id)">Démarrer</button> }
-        @if (selected.status === 'IN_PROGRESS') { <button class="btn-success" (click)="complete(selected.id)">Compléter</button> }
-        @if (selected.status === 'COMPLETED') { <button class="btn-primary" (click)="close(selected.id)">Clôturer</button> }
+        @if (selected.status === 'ACCEPTED') { <button class="btn-primary" [disabled]="loadingAction" (click)="startWork(selected.id)">Démarrer</button> }
+        @if (selected.status === 'IN_PROGRESS') { <button class="btn-success" [disabled]="loadingAction" (click)="complete(selected.id)">Compléter</button> }
+        @if (selected.status === 'COMPLETED') { <button class="btn-primary" [disabled]="loadingAction" (click)="close(selected.id)">Clôturer</button> }
         @if (selected.status !== 'CANCELLED' && selected.status !== 'CLOSED' && selected.status !== 'COMPLETED') {
-          <button class="btn-danger" (click)="cancel(selected.id)">Annuler</button>
+          <button class="btn-danger" [disabled]="loadingAction" (click)="cancel(selected.id)">Annuler</button>
         }
       </div>
 

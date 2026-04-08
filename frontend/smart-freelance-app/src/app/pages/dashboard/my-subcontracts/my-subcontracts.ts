@@ -17,12 +17,17 @@ export class MySubcontracts implements OnInit {
   subcontracts: Subcontract[] = [];
   selected: Subcontract | null = null;
   loading = true;
+  errorMessage = '';
   showForm = false;
   showDeliverableForm = false;
+  loadingProjects = false;
+  formError = '';
+  loadingAction = false;
 
   activeTab: 'list' | 'history' = 'list';
   history: FreelancerHistory | null = null;
   loadingHistory = false;
+  historyError = '';
   historyFilter = '';
   filteredTimeline: AuditTimelineEntry[] = [];
 
@@ -57,15 +62,21 @@ export class MySubcontracts implements OnInit {
         this.filteredFreelancers = [...this.freelancers];
         this.loadingFreelancers = false;
       },
-      error: () => { this.loadingFreelancers = false; }
+      error: () => {
+        this.loadingFreelancers = false;
+      }
     });
   }
 
   load() {
     this.loading = true;
+    this.errorMessage = '';
     this.svc.getByFreelancer(this.currentUserId).subscribe({
       next: data => { this.subcontracts = data; this.loading = false; },
-      error: () => this.loading = false
+      error: () => {
+        this.errorMessage = "Impossible de charger vos sous-traitances.";
+        this.loading = false;
+      }
     });
   }
 
@@ -75,12 +86,55 @@ export class MySubcontracts implements OnInit {
     this.selectedFreelancer = null;
     this.filteredFreelancers = [...this.freelancers];
     this.showForm = true;
-    this.projectSvc.getByClientId(this.currentUserId).subscribe({
-      next: p => this.myProjects = p,
-      error: () => this.myProjects = []
-    });
+    this.loadMyProjects();
   }
   closeForm() { this.showForm = false; }
+
+  private loadMyProjects() {
+    // Primary source: projects where current user is client.
+    // Fallback: freelancer-recommended projects when user acts as freelancer.
+    this.loadingProjects = true;
+    this.formError = '';
+    this.projectSvc.getByClientId(this.currentUserId).subscribe({
+      next: projects => {
+        if (projects?.length) {
+          this.myProjects = projects;
+          this.loadingProjects = false;
+          return;
+        }
+        this.projectSvc.getByFreelancerId(this.currentUserId).subscribe({
+          next: fallbackProjects => {
+            this.myProjects = fallbackProjects ?? [];
+            if (!this.myProjects.length) {
+              this.formError = "Aucun projet disponible pour la sous-traitance.";
+            }
+            this.loadingProjects = false;
+          },
+          error: () => {
+            this.myProjects = [];
+            this.formError = "Impossible de charger les projets.";
+            this.loadingProjects = false;
+          }
+        });
+      },
+      error: () => {
+        this.projectSvc.getByFreelancerId(this.currentUserId).subscribe({
+          next: fallbackProjects => {
+            this.myProjects = fallbackProjects ?? [];
+            if (!this.myProjects.length) {
+              this.formError = "Aucun projet disponible pour la sous-traitance.";
+            }
+            this.loadingProjects = false;
+          },
+          error: () => {
+            this.myProjects = [];
+            this.formError = "Impossible de charger les projets.";
+            this.loadingProjects = false;
+          }
+        });
+      }
+    });
+  }
 
   onFreelancerSearch() {
     const q = this.freelancerSearch.toLowerCase().trim();
@@ -106,23 +160,82 @@ export class MySubcontracts implements OnInit {
   }
 
   createSubcontract() {
-    if (!this.form.subcontractorId || !this.form.projectId || !this.form.title) return;
-    this.svc.create(this.currentUserId, this.form).subscribe(() => { this.showForm = false; this.load(); });
+    if (!this.form.subcontractorId || !this.form.projectId || !this.form.title || this.loadingAction) return;
+    this.loadingAction = true;
+    this.formError = '';
+    this.svc.create(this.currentUserId, this.form).subscribe({
+      next: () => {
+        this.showForm = false;
+        this.loadingAction = false;
+        this.load();
+      },
+      error: () => {
+        this.formError = "La création a échoué. Vérifiez les champs et réessayez.";
+        this.loadingAction = false;
+      }
+    });
   }
 
   select(s: Subcontract) { this.selected = s; }
   closeDetail() { this.selected = null; }
 
-  propose(id: number) { this.svc.propose(id).subscribe(() => this.reload()); }
-  startWork(id: number) { this.svc.startWork(id).subscribe(() => this.reload()); }
-  complete(id: number) { this.svc.complete(id).subscribe(() => this.reload()); }
-  close(id: number) { this.svc.close(id).subscribe(() => this.reload()); }
+  propose(id: number) {
+    if (this.loadingAction) return;
+    this.loadingAction = true;
+    this.svc.propose(id).subscribe({
+      next: () => this.reload(),
+      error: () => {},
+      complete: () => this.loadingAction = false
+    });
+  }
+  startWork(id: number) {
+    if (this.loadingAction) return;
+    this.loadingAction = true;
+    this.svc.startWork(id).subscribe({
+      next: () => this.reload(),
+      error: () => {},
+      complete: () => this.loadingAction = false
+    });
+  }
+  complete(id: number) {
+    if (this.loadingAction) return;
+    this.loadingAction = true;
+    this.svc.complete(id).subscribe({
+      next: () => this.reload(),
+      error: () => {},
+      complete: () => this.loadingAction = false
+    });
+  }
+  close(id: number) {
+    if (this.loadingAction) return;
+    this.loadingAction = true;
+    this.svc.close(id).subscribe({
+      next: () => this.reload(),
+      error: () => {},
+      complete: () => this.loadingAction = false
+    });
+  }
   cancel(id: number) {
     const reason = prompt('Raison de l\'annulation :');
-    if (reason !== null) this.svc.cancel(id, reason).subscribe(() => this.reload());
+    if (reason === null || this.loadingAction) return;
+    this.loadingAction = true;
+    this.svc.cancel(id, reason).subscribe({
+      next: () => this.reload(),
+      error: () => {},
+      complete: () => this.loadingAction = false
+    });
   }
   deleteSubcontract(id: number) {
-    if (confirm('Supprimer cette sous-traitance ?')) this.svc.delete(id).subscribe(() => { this.selected = null; this.load(); });
+    if (!confirm('Supprimer cette sous-traitance ?') || this.loadingAction) return;
+    this.loadingAction = true;
+    this.svc.delete(id).subscribe({
+      next: () => {
+        this.selected = null;
+        this.load();
+      },
+      error: () => {},
+      complete: () => this.loadingAction = false
+    });
   }
 
   openDeliverableForm() { this.delForm = { title: '' }; this.showDeliverableForm = true; }
@@ -184,13 +297,17 @@ export class MySubcontracts implements OnInit {
 
   loadHistory() {
     this.loadingHistory = true;
+    this.historyError = '';
     this.svc.getFreelancerHistory(this.currentUserId).subscribe({
       next: h => {
         this.history = h;
         this.filteredTimeline = h.timeline;
         this.loadingHistory = false;
       },
-      error: () => this.loadingHistory = false
+      error: () => {
+        this.loadingHistory = false;
+        this.historyError = "Impossible de charger l'historique.";
+      }
     });
   }
 
@@ -248,4 +365,5 @@ export class MySubcontracts implements OnInit {
       this.svc.getById(this.selected.id).subscribe(s => this.selected = s);
     }
   }
+
 }
