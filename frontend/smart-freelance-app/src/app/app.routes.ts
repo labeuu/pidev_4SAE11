@@ -182,6 +182,7 @@ export const routes: Routes = [
       { path: 'my-portfolio', loadComponent: () => import('./pages/dashboard/portfolio-overview/portfolio-overview').then(m => m.PortfolioOverview) },
       { path: 'messages', redirectTo: '', pathMatch: 'full' },
       { path: 'gamification', loadComponent: () => import('./pages/dashboard/gamification/gamification').then(m => m.GamificationPage), title: 'Growth & achievements' },
+      { path: 'leaderboard', loadComponent: () => import('./pages/dashboard/leaderboard/leaderboard').then(m => m.LeaderboardPage), title: 'Global Leaderboard' },
       { path: 'notifications', loadComponent: () => import('./pages/dashboard/notifications/notifications').then(m => m.Notifications) },
       { path: 'profile', loadComponent: () => import('./pages/dashboard/profile/profile').then(m => m.Profile) },
       { path: 'settings', redirectTo: 'profile', pathMatch: 'full' },

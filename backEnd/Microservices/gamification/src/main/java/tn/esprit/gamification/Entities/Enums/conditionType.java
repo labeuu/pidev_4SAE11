@@ -5,5 +5,8 @@ public enum conditionType {
     PROJECT_CREATED,
     FIRST_PROJECT,
     FAST_RESPONDER,
-    TOP_FREELANCER
+    TOP_FREELANCER,
+    REVIEW_GIVEN,
+    STREAK_DAYS,
+    XP_REACHED
 }

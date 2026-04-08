@@ -3,7 +3,7 @@ import { ActivatedRoute, Router } from '@angular/router';
 import { ProjectService, Project } from '../../../core/services/project.service';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
 import { CommonModule } from '@angular/common';
-import { PortfolioService, Skill, Domain } from '../../../core/services/portfolio.service';
+import { PortfolioService, Skill, Domain, DOMAIN_LABELS } from '../../../core/services/portfolio.service';
 
 @Component({
   selector: 'app-update-project',
@@ -25,6 +25,9 @@ export class UpdateProject {
   newSkillDomain = '';
   skillFormErrors: Record<string, string> = {};
   errorMessage: string | null = null;
+
+  availableDomains: Domain[] = [];
+  DOMAIN_LABELS = DOMAIN_LABELS;
 
   updateProjectForm!: FormGroup;
 
@@ -53,6 +56,18 @@ export class UpdateProject {
     });
     this.loadSkills();
     this.getProjectById();
+    this.loadDomains();
+  }
+
+  loadDomains() {
+    this.portfolioService.getDomains().subscribe({
+      next: (domains) => {
+        this.availableDomains = domains;
+      },
+      error: (err) => {
+        console.error('Error loading domains', err);
+      }
+    });
   }
 
   loadSkills() {

@@ -1,6 +1,6 @@
 package tn.esprit.project.Services;
 
-import tn.esprit.project.Dto.response.JointProjectsResponse;
+import tn.esprit.project.Dto.request.ProjectRequest;
 import tn.esprit.project.Dto.response.ProjectResponse;
 import tn.esprit.project.Entities.Project;
 
@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface IProjectService {
-    Project addProject(Project project);
+    Project addProject(ProjectRequest request);
     Project updateProject(Project project);
 
     void deleteProject(Long id);
@@ -21,11 +21,11 @@ public interface IProjectService {
 
     List<Project> getProjectsByClientId(Long clientId);
 
-    /** Projets du client où le freelancer a candidaté (lien historique pour décision agrément). */
-    JointProjectsResponse getJointProjects(Long clientId, Long freelancerId);
-
     List<ProjectResponse> getRecommendedProjects(Long freelancerId);
 
     Map<String, Object> getProjectStatistics();
     byte[] exportProjectsToPdf();
+
+    long countCompletedProjectsByFreelancer(Long freelancerId);
+    long countCreatedProjectsByClient(Long clientId);
 }

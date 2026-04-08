@@ -29,8 +29,8 @@ public class ProjectController {
     }
 
     @PostMapping("/add")
-    public Project addProject(@RequestBody Project project) {
-        return projectService.addProject(project);
+    public Project addProject(@jakarta.validation.Valid @RequestBody tn.esprit.project.Dto.request.ProjectRequest request) {
+        return projectService.addProject(request);
     }
 
     @PutMapping("/update")
@@ -88,5 +88,15 @@ public class ProjectController {
                 .header("Content-Disposition", "attachment; filename=projects.pdf")
                 .contentType(org.springframework.http.MediaType.APPLICATION_PDF)
                 .body(pdf);
+    }
+
+    @GetMapping("/count/completed")
+    public long countCompletedProjects(@RequestParam Long userId) {
+        return projectService.countCompletedProjectsByFreelancer(userId);
+    }
+
+    @GetMapping("/count/created")
+    public long countCreatedProjects(@RequestParam Long userId) {
+        return projectService.countCreatedProjectsByClient(userId);
     }
 }

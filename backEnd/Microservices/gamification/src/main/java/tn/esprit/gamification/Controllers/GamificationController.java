@@ -51,4 +51,11 @@ public class GamificationController {
         fastResponderScheduler.checkFastResponders();
         return "✅ Fast Responders vérifiés";
     }
+
+    // 🆕 Réévaluer d'un coup tout le catalogue pour un utilisateur
+    @PostMapping("/recompute")
+    public String recompute(@RequestParam Long userId) {
+        service.recomputeAllAchievements(userId);
+        return "✅ Catalogue réévalué pour l'utilisateur " + userId;
+    }
 }

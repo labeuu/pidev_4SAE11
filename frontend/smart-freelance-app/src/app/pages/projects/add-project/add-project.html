@@ -191,11 +191,17 @@
         <label>
           Domain <span class="req">*</span>
         </label>
-        <input
+        <select
           [(ngModel)]="newSkillDomain"
           [class.input-invalid]="skillFormErrors['domain']"
           (ngModelChange)="skillFormErrors['domain'] = ''"
-        />
+          class="form-select"
+        >
+          <option value="">Select Domain</option>
+          <option *ngFor="let domain of availableDomains" [value]="domain">
+            {{ DOMAIN_LABELS[domain] }}
+          </option>
+        </select>
         <span class="field-err-msg" *ngIf="skillFormErrors['domain']">
           {{ skillFormErrors['domain'] }}
         </span>

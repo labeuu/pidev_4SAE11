@@ -11,6 +11,7 @@ public interface AchievementService {
     List<Achievement> getAll();
     Achievement getById(Long id);
     void delete(Long id);
+    Achievement update(Long id, Achievement achievement);
 
     List<Achievement> getByType(conditionType type);
 }

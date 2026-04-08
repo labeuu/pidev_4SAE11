@@ -20,4 +20,5 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     @Query("SELECT DISTINCT p FROM Project p JOIN p.applications a WHERE p.clientId = :clientId AND a.freelanceId = :freelancerId")
     List<Project> findJointProjects(@Param("clientId") Long clientId, @Param("freelancerId") Long freelancerId);
     List<Project> findByStatus(ProjectStatus status);
+    long countByClientId(Long clientId);
 }

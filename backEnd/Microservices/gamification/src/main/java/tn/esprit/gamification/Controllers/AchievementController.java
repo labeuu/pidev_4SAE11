@@ -37,4 +37,10 @@ public class AchievementController {
     public void delete(@PathVariable Long id) {
         service.delete(id);
     }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @PutMapping("/{id}")
+    public Achievement update(@PathVariable Long id, @RequestBody AchievementDTO dto) {
+        return service.update(id, mapper.toEntity(dto));
+    }
 }
