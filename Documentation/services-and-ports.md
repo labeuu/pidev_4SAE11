@@ -21,7 +21,7 @@ MySQL hosts vary in repo configs: many services use `localhost:3306`, some **330
 | Microservices/gamification | gamification | 8088 | `gamification` | MySQL `gamificationdb` |
 | Microservices/task | task | 8091 | `task` | MySQL `taskdb` (Config Server) |
 | Microservices/FreelanciaJob | FreelanciaJob | 8092 | — | MySQL `freelancia_job_db` |
-| Microservices/AImodel | AIMODEL (Eureka) | 8095 (default `PORT`) | `aimodel` | Ollama HTTP API (no app DB) |
+| Microservices/AImodel | AIMODEL (Eureka) | 8095 | `aimodel` | Spring AI → Ollama HTTP API (no app DB) |
 | Microservices/Chat | chat | 8096 | — | MySQL `chatdb` |
 | Microservices/Meeting | meeting | 8097 | — | MySQL `meetingdb` |
 | Microservices/Vendor | VENDOR | 8093 | `vendor` | MySQL `gestion_vendor_db` (Config Server) |
@@ -30,8 +30,8 @@ MySQL hosts vary in repo configs: many services use `localhost:3306`, some **330
 
 **Gateway routing notes**
 
-- **Eureka (`lb://`)**: OFFER, AIMODEL — start **Eureka** and register these instances before relying on gateway resolution.
-- **Direct URLs**: user, portfolio, planning, review, project, gamification, contract, notification, task, vendor, ticket, subcontracting — gateway sends to fixed `localhost` ports.
+- **Eureka (`lb://`)**: OFFER — start **Eureka** and register this instance before relying on gateway resolution for `/offer/**`.
+- **Direct URLs**: user, portfolio, planning, review, project, gamification, contract, notification, task, vendor, ticket, subcontracting, **aimodel** — gateway sends to fixed `localhost` ports.
 - **No gateway route (current)**: FreelanciaJob, Chat, Meeting (service-to-service and/or direct local access only unless routes are added).
 
 **Special task route**

@@ -2,6 +2,7 @@ package com.esprit.task.service;
 
 import com.esprit.task.client.AImodelClient;
 import com.esprit.task.client.ProjectClient;
+import com.esprit.task.client.TaskAiBackend;
 import com.esprit.task.dto.ProjectDto;
 import com.esprit.task.dto.ai.AiContextRequest;
 import com.esprit.task.dto.ai.AiGenerateResponse;
@@ -52,14 +53,19 @@ class TaskAiServiceTest {
 
     @BeforeEach
     void setUp() {
-        taskAiService = new TaskAiService(aiModelClient, projectClient, taskRepository, accessService, objectMapper);
+        taskAiService = new TaskAiService(
+                aiModelClient,
+                projectClient,
+                taskRepository,
+                accessService,
+                objectMapper);
     }
 
     @Test
     void suggestDescription_whenNoAccess_throws403() {
         when(accessService.canFreelancerUseProject(9L, 1L)).thenReturn(false);
 
-        assertThatThrownBy(() -> taskAiService.suggestDescription(1L, 9L, "Title"))
+        assertThatThrownBy(() -> taskAiService.suggestDescription(1L, 9L, "Title", TaskAiBackend.OLLAMA))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
@@ -72,7 +78,8 @@ class TaskAiServiceTest {
         when(aiModelClient.generate(any(AiPromptRequest.class)))
                 .thenReturn(new AiGenerateResponse(true, "  Final body  "));
 
-        assertThat(taskAiService.suggestDescription(1L, 9L, " My task ").getDescription()).isEqualTo("Final body");
+        assertThat(taskAiService.suggestDescription(1L, 9L, " My task ", TaskAiBackend.OLLAMA).getDescription())
+                .isEqualTo("Final body");
 
         ArgumentCaptor<AiPromptRequest> cap = ArgumentCaptor.forClass(AiPromptRequest.class);
         verify(aiModelClient).generate(cap.capture());
@@ -84,7 +91,7 @@ class TaskAiServiceTest {
         when(accessService.canFreelancerUseProject(9L, 1L)).thenReturn(true);
         when(projectClient.getProjectById(1L)).thenReturn(null);
 
-        assertThatThrownBy(() -> taskAiService.suggestDescription(1L, 9L, "T"))
+        assertThatThrownBy(() -> taskAiService.suggestDescription(1L, 9L, "T", TaskAiBackend.OLLAMA))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.NOT_FOUND);
@@ -95,7 +102,7 @@ class TaskAiServiceTest {
         when(accessService.canFreelancerUseProject(9L, 1L)).thenReturn(true);
         when(projectClient.getProjectById(1L)).thenThrow(new RuntimeException("network"));
 
-        assertThatThrownBy(() -> taskAiService.suggestDescription(1L, 9L, "T"))
+        assertThatThrownBy(() -> taskAiService.suggestDescription(1L, 9L, "T", TaskAiBackend.OLLAMA))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_GATEWAY);
@@ -107,7 +114,7 @@ class TaskAiServiceTest {
         when(projectClient.getProjectById(1L)).thenReturn(new ProjectDto(1L, 2L, "P", null, null));
         when(aiModelClient.generate(any())).thenReturn(new AiGenerateResponse(true, "  "));
 
-        assertThatThrownBy(() -> taskAiService.suggestDescription(1L, 9L, "T"))
+        assertThatThrownBy(() -> taskAiService.suggestDescription(1L, 9L, "T", TaskAiBackend.OLLAMA))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_GATEWAY);
@@ -121,7 +128,7 @@ class TaskAiServiceTest {
         String json = "{\"tasks\":[{\"title\":\"A\",\"description\":\"d\",\"priority\":\"low\",\"dueDate\":\"2026-04-10\"}]}";
         when(aiModelClient.generateTasks(any(AiContextRequest.class))).thenReturn(new AiGenerateResponse(true, json));
 
-        List<AiProposedTaskDto> out = taskAiService.proposeProjectTasks(1L, 9L);
+        List<AiProposedTaskDto> out = taskAiService.proposeProjectTasks(1L, 9L, TaskAiBackend.OLLAMA);
 
         assertThat(out).hasSize(1);
         assertThat(out.get(0).getTitle()).isEqualTo("A");
@@ -137,7 +144,7 @@ class TaskAiServiceTest {
         t.setAssigneeId(1L);
         when(taskRepository.findById(5L)).thenReturn(Optional.of(t));
 
-        assertThatThrownBy(() -> taskAiService.proposeSubtasks(5L, 9L))
+        assertThatThrownBy(() -> taskAiService.proposeSubtasks(5L, 9L, TaskAiBackend.OLLAMA))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
@@ -152,7 +159,7 @@ class TaskAiServiceTest {
         when(taskRepository.findById(5L)).thenReturn(Optional.of(t));
         when(accessService.canFreelancerUseProject(9L, 1L)).thenReturn(false);
 
-        assertThatThrownBy(() -> taskAiService.proposeSubtasks(5L, 9L))
+        assertThatThrownBy(() -> taskAiService.proposeSubtasks(5L, 9L, TaskAiBackend.OLLAMA))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.FORBIDDEN);
@@ -170,18 +177,19 @@ class TaskAiServiceTest {
         String json = "{\"subtasks\":[{\"title\":\"S1\",\"description\":\"\",\"priority\":\"urgent\"}]}";
         when(aiModelClient.generateSubtasks(any(AiContextRequest.class))).thenReturn(new AiGenerateResponse(true, json));
 
-        List<AiProposedTaskDto> out = taskAiService.proposeSubtasks(5L, 9L);
+        List<AiProposedTaskDto> out = taskAiService.proposeSubtasks(5L, 9L, TaskAiBackend.OLLAMA);
 
         assertThat(out).hasSize(1);
         assertThat(out.get(0).getTitle()).isEqualTo("S1");
         assertThat(out.get(0).getSuggestedPriority()).isEqualTo(TaskPriority.URGENT);
     }
 
+
     @Test
     void proposeSubtasks_whenTaskMissing_throwsEntityNotFound() {
         when(taskRepository.findById(5L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> taskAiService.proposeSubtasks(5L, 9L))
+        assertThatThrownBy(() -> taskAiService.proposeSubtasks(5L, 9L, TaskAiBackend.OLLAMA))
                 .isInstanceOf(EntityNotFoundException.class);
     }
 
@@ -193,7 +201,7 @@ class TaskAiServiceTest {
         String json = "{\"tasks\":[{\"title\":\"\",\"priority\":\"high\"},{\"title\":\"Ok\",\"priority\":\"high\",\"due_date\":\"2026-05-01T00:00:00\"}]}";
         when(aiModelClient.generateTasks(any())).thenReturn(new AiGenerateResponse(true, json));
 
-        List<AiProposedTaskDto> out = taskAiService.proposeProjectTasks(1L, 9L);
+        List<AiProposedTaskDto> out = taskAiService.proposeProjectTasks(1L, 9L, TaskAiBackend.OLLAMA);
 
         assertThat(out).hasSize(1);
         assertThat(out.get(0).getTitle()).isEqualTo("Ok");
@@ -208,7 +216,7 @@ class TaskAiServiceTest {
         when(taskRepository.findByProjectIdOrderByOrderIndexAsc(1L)).thenReturn(List.of());
         when(aiModelClient.generateTasks(any())).thenReturn(new AiGenerateResponse(true, "{\"tasks\":[]}"));
 
-        assertThatThrownBy(() -> taskAiService.proposeProjectTasks(1L, 9L))
+        assertThatThrownBy(() -> taskAiService.proposeProjectTasks(1L, 9L, TaskAiBackend.OLLAMA))
                 .isInstanceOf(ResponseStatusException.class)
                 .extracting(ex -> ((ResponseStatusException) ex).getStatusCode())
                 .isEqualTo(HttpStatus.BAD_GATEWAY);

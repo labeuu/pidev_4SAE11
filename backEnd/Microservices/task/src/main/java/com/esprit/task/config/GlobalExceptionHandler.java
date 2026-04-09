@@ -75,9 +75,7 @@ public class GlobalExceptionHandler {
         return ResponseEntity.status(status).body(Map.of("message", message));
     }
 
-    /**
-     * Surfaces AImodel / Feign error bodies (e.g. {"error":{"message":"..."}}) and common transport hints.
-     */
+    /** Surfaces AImodel / Feign error bodies and common transport hints. */
     static String resolveFeignClientMessage(FeignException ex) {
         String body = safeFeignBody(ex);
         String fromJson = extractMessageFromJsonBody(body);
@@ -87,7 +85,8 @@ public class GlobalExceptionHandler {
         String fm = ex.getMessage();
         if (fm != null) {
             if (fm.contains("Connection refused")) {
-                return "Cannot reach the AI model service. Start the AImodel microservice and check aimodel.service.url.";
+                return "Connection refused to an upstream service. Start the Project microservice (project.service.url, "
+                        + "default port 8084) and AImodel (aimodel.service.url, default 8095).";
             }
             if (fm.toLowerCase().contains("timeout") || fm.contains("timed out")) {
                 return "The AI model service timed out. Ensure Ollama is running and timeouts are high enough.";

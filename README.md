@@ -35,12 +35,12 @@ A microservices-based platform connecting freelancers and clients for project co
 ## Architecture
 
 ```
-┌─────────────┐     ┌──────────────┐     ┌────────────────────────────────────────────────────────────┐
-│   Angular   │──── │ API Gateway  │──── │ User │ Project │ Offer │ Contract │ Portfolio │ Review  │
-│  Frontend   │     │   (8078)     │     │ Planning │ Notification │ Task │ Gamification │ Vendor │
-│  (4200)     │     └──────────────┘     │ Ticket │ Subcontracting │ AImodel (Node)                │
-│             │                          │ FreelanciaJob │ Chat │ Meeting │ Keycloak auth MS            │
-└─────────────┘            │             └────────────────────────────────────────────────────────────┘
+┌─────────────┐     ┌──────────────┐     ┌──────────────────────────────────────────────────────────────────┐
+│   Angular   │──── │ API Gateway  │──── │ User │ Project │ Offer │ Contract │ Portfolio │ Review            │
+│  Frontend   │     │   (8078)     │     │ Planning │ Notification │ Task │ Gamification │ Vendor            │
+│  (4200)     │     └──────────────┘     │ Ticket │ Subcontracting │ AImodel (Spring + Ollama)               │
+│             │                          │ FreelanciaJob │ Chat │ Meeting │ Keycloak auth MS                 │
+└─────────────┘            │             └──────────────────────────────────────────────────────────────────┘
                            │
                     ┌──────┴──────┐
                     │   Config    │
@@ -60,7 +60,7 @@ A microservices-based platform connecting freelancers and clients for project co
 | **Security** | Keycloak (OAuth2/JWT) |
 | **Database** | MySQL 8 (one DB per microservice) |
 | **APIs** | SpringDoc / OpenAPI (Swagger) |
-| **Extras** | Firebase (notifications), AI API (skill verification), GitHub integration |
+| **Extras** | Firebase (notifications), AImodel + Ollama (LLM), skill verification, GitHub integration |
 
 ---
 
@@ -95,7 +95,7 @@ A microservices-based platform connecting freelancers and clients for project co
 | FreelanciaJob | 8092 | `freelancia_job_db` |
 | Vendor | 8093 | `gestion_vendor_db` |
 | Ticket | 8094 | `ticketdb` |
-| AImodel (Node) | 8095 | — (Ollama) |
+| AImodel (Spring AI + Ollama) | 8095 | — (Ollama, no app DB) |
 | Chat | 8096 | `chatdb` |
 | Meeting | 8097 | `meetingdb` |
 | Subcontracting | 8099 | `gestion_subcontracting_db` |
@@ -108,7 +108,7 @@ A microservices-based platform connecting freelancers and clients for project co
 4. **API Gateway** → `backEnd/apiGateway`  
 5. **Keycloak** (standalone) — [see Keycloak setup](backEnd/KeyCloak/README.md)  
 6. **Keycloak Auth** → `backEnd/KeyCloak`  
-7. **Microservices** — User, Project, Offer, Contract, Portfolio, Review, Planning, Notification, Task, Gamification, Vendor, Ticket, Subcontracting, FreelanciaJob, Chat, Meeting, **AImodel** (Node + Ollama if using AI)  
+7. **Microservices** — User, Project, Offer, Contract, Portfolio, Review, Planning, Notification, Task, Gamification, Vendor, Ticket, Subcontracting, FreelanciaJob, Chat, Meeting, **AImodel** (Spring + Ollama if using AI)  
 
 ### Run the Backend
 
@@ -121,6 +121,8 @@ mvn spring-boot:run
 cd backEnd/Microservices/user
 mvn spring-boot:run
 ```
+
+**Tip:** From the repository root, `start-backend.sh` or `.\start-backend.ps1` can boot Eureka, Config, the gateway, and microservices in waves (logs and PIDs under `logs/`). Use `stop-backend.sh` or `.\stop-backend.ps1` to tear down.
 
 ### Run the Frontend
 
@@ -163,7 +165,7 @@ Full route and port reference: [Documentation/api-gateway.md](Documentation/api-
 │       ├── FreelanciaJob/   # Job posting and matching flows
 │       ├── Chat/            # Real-time/direct messaging
 │       ├── Meeting/         # Meeting scheduling and calendar integration
-│       ├── AImodel/         # Node + Ollama LLM API
+│       ├── AImodel/         # Spring Boot + Ollama LLM API
 │       ├── Portfolio/       # Portfolio, skills, AI verification
 │       ├── Project/         # Project management
 │       ├── review/          # Reviews & ratings (sends notifications on response)
@@ -171,7 +173,17 @@ Full route and port reference: [Documentation/api-gateway.md](Documentation/api-
 ├── frontend/
 │   └── smart-freelance-app/ # Angular SPA
 ├── Documentation/           # Architecture, gateway, per-service docs (see README there)
-└── plans/                   # Implementation specs
+├── scripts/                 # DB seed SQL, GitHub token helper (see scripts/README.md)
+├── credentials/             # Local creds layout (gitignored files; see credentials/README.md)
+├── firebase-credentials/  # Firebase key layout (see firebase-credentials/README.md)
+├── logs/                    # Runtime logs / PID files when using start-backend.* scripts
+├── plans/                   # Implementation specs
+├── start-backend.bat        # Windows: launches start-backend.ps1
+├── start-backend.ps1        # Windows: ordered backend + optional Angular
+├── start-backend.sh         # Linux/macOS: same idea
+├── stop-backend.bat         # Windows: launches stop-backend.ps1
+├── stop-backend.ps1         # Windows: stop processes recorded in logs/pids.txt
+└── stop-backend.sh          # Linux/macOS: stop via logs/pids.txt
 ```
 
 ---
@@ -183,7 +195,8 @@ Full route and port reference: [Documentation/api-gateway.md](Documentation/api-
 | **Google Translate** | Offer translations | API key in Offer service |
 | **Firebase** | Push notifications (Firestore) | Credentials in Notification service |
 | **GitHub** | Planning sync, commit history | See [credentials/README.md](credentials/README.md) — token in `githubToken.txt` or `$env:GITHUB_TOKEN` (never committed) |
-| **AI API** | Skill verification | API key in Portfolio service |
+| **AImodel** | LLM generation (Task/Copilot flows) | Ollama URL + model in AImodel service; see [Documentation/services/AImodel.md](Documentation/services/AImodel.md) |
+| **Portfolio AI** | Skill verification (if enabled) | API keys / config in Portfolio service |
 
 All credential files are gitignored. See [credentials/README.md](credentials/README.md) for setup.
 

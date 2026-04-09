@@ -1,4 +1,38 @@
-# Database seed scripts
+# Repository scripts
+
+Helpers and one-off automation kept at repo root under `scripts/`. Nothing here is required at runtime except when you choose to seed databases or configure a local GitHub token.
+
+## setup-github-token.ps1
+
+Writes your GitHub Personal Access Token to **`githubToken.txt`** at the **repository root** (that file is **gitignored** — never commit it). Used by the **Planning** microservice for GitHub sync when you do not use `application-local.properties`.
+
+### Prerequisites
+
+- PowerShell (Windows, or PowerShell Core on other OSes)
+- A GitHub PAT with the scopes expected by Planning (see [credentials/README.md](../credentials/README.md) if documented there)
+
+### Usage
+
+From the repository root:
+
+```powershell
+.\scripts\setup-github-token.ps1
+```
+
+Or pass the token non-interactively:
+
+```powershell
+.\scripts\setup-github-token.ps1 -Token "ghp_your_token"
+```
+
+Then either export the token for the shell session or configure Planning’s `application-local.properties` (gitignored). The script prints the exact alternatives when it succeeds.
+
+### Related docs
+
+- [Credentials setup](../credentials/README.md)
+- [Planning service](../Documentation/services/planning.md)
+
+---
 
 ## seed-databases.sql
 

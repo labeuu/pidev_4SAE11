@@ -2,6 +2,7 @@ package com.esprit.task.service;
 
 import com.esprit.task.client.AImodelClient;
 import com.esprit.task.client.ProjectClient;
+import com.esprit.task.client.TaskAiBackend;
 import com.esprit.task.dto.ProjectDto;
 import com.esprit.task.dto.ai.AiContextRequest;
 import com.esprit.task.dto.ai.AiGenerateResponse;
@@ -14,6 +15,7 @@ import com.esprit.task.exception.EntityNotFoundException;
 import com.esprit.task.repository.TaskRepository;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import feign.FeignException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -30,25 +32,27 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class TaskAiService {
 
+    /** Avoid huge project descriptions blowing past model/context limits when calling the provider. */
+    private static final int MAX_CONTEXT_TEXT_CHARS = 80_000;
+
     private final AImodelClient aiModelClient;
     private final ProjectClient projectClient;
     private final TaskRepository taskRepository;
     private final TaskFreelancerProjectAccessService accessService;
     private final ObjectMapper objectMapper;
 
-    // Performs suggest description.
-    public TaskAiSuggestDescriptionResponse suggestDescription(Long projectId, Long freelancerId, String title) {
+    public TaskAiSuggestDescriptionResponse suggestDescription(
+            Long projectId, Long freelancerId, String title, TaskAiBackend backend) {
         if (!accessService.canFreelancerUseProject(freelancerId, projectId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot use AI for this project");
         }
         ProjectDto project = safeLoadProject(projectId);
         String prompt = buildSuggestDescriptionPrompt(title.trim(), project);
-        String text = callGenerate(prompt);
+        String text = callGenerate(backend, prompt);
         return TaskAiSuggestDescriptionResponse.builder().description(text).build();
     }
 
-    // Performs propose project tasks.
-    public List<AiProposedTaskDto> proposeProjectTasks(Long projectId, Long freelancerId) {
+    public List<AiProposedTaskDto> proposeProjectTasks(Long projectId, Long freelancerId, TaskAiBackend backend) {
         if (!accessService.canFreelancerUseProject(freelancerId, projectId)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot use AI for this project");
         }
@@ -60,13 +64,12 @@ public class TaskAiService {
                 .filter(t -> t != null && !t.isBlank())
                 .collect(Collectors.toList());
         String context = buildProjectTasksContext(project, existingTitles);
-        AiGenerateResponse resp = aiModelClient.generateTasks(new AiContextRequest(context));
+        AiGenerateResponse resp = generateTasks(new AiContextRequest(context));
         String raw = extractAiPayload(resp);
         return parseProposedTasksArray(raw, "tasks");
     }
 
-    // Performs propose subtasks.
-    public List<AiProposedTaskDto> proposeSubtasks(Long taskId, Long freelancerId) {
+    public List<AiProposedTaskDto> proposeSubtasks(Long taskId, Long freelancerId, TaskAiBackend backend) {
         Task task = taskRepository.findById(taskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task not found: " + taskId));
         if (task.getAssigneeId() == null || !task.getAssigneeId().equals(freelancerId)) {
@@ -76,12 +79,11 @@ public class TaskAiService {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot use AI for this project");
         }
         String context = buildSubtaskContext(task);
-        AiGenerateResponse resp = aiModelClient.generateSubtasks(new AiContextRequest(context));
+        AiGenerateResponse resp = generateSubtasks(new AiContextRequest(context));
         String raw = extractAiPayload(resp);
         return parseProposedTasksArray(raw, "subtasks");
     }
 
-    // Performs safe load project.
     private ProjectDto safeLoadProject(Long projectId) {
         try {
             ProjectDto p = projectClient.getProjectById(projectId);
@@ -91,12 +93,16 @@ public class TaskAiService {
             return p;
         } catch (ResponseStatusException e) {
             throw e;
+        } catch (FeignException e) {
+            // Preserve status/body so GlobalExceptionHandler can surface Project-MS or gateway errors.
+            throw e;
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Could not load project details");
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Could not load project details (non-Feign error). Check Task logs and Project microservice.");
         }
     }
 
-    // Builds suggest description prompt.
     private static String buildSuggestDescriptionPrompt(String title, ProjectDto project) {
         StringBuilder sb = new StringBuilder();
         sb.append("You are helping a freelancer write a task description.\n");
@@ -105,21 +111,24 @@ public class TaskAiService {
             sb.append("Project: ").append(project.getTitle()).append("\n");
         }
         if (project.getDescription() != null && !project.getDescription().isBlank()) {
-            sb.append("Project description (context):\n").append(project.getDescription()).append("\n");
+            sb.append("Project description (context):\n")
+                    .append(truncateForAiContext(project.getDescription()))
+                    .append("\n");
         }
         sb.append("\nWrite a concise, actionable task description (2–6 sentences). ");
         sb.append("Return plain text only, no markdown, no title line.");
         return sb.toString();
     }
 
-    // Builds project tasks context.
     private static String buildProjectTasksContext(ProjectDto project, List<String> existingTitles) {
         StringBuilder sb = new StringBuilder();
         if (project.getTitle() != null) {
             sb.append("Project title: ").append(project.getTitle()).append("\n\n");
         }
         if (project.getDescription() != null && !project.getDescription().isBlank()) {
-            sb.append("Project description:\n").append(project.getDescription()).append("\n\n");
+            sb.append("Project description:\n")
+                    .append(truncateForAiContext(project.getDescription()))
+                    .append("\n\n");
         }
         if (!existingTitles.isEmpty()) {
             sb.append("Existing top-level task titles (avoid duplicating these):\n");
@@ -132,24 +141,35 @@ public class TaskAiService {
         return sb.toString();
     }
 
-    // Builds subtask context.
     private static String buildSubtaskContext(Task task) {
         StringBuilder sb = new StringBuilder();
         sb.append("Parent task title: ").append(task.getTitle() != null ? task.getTitle() : "").append("\n");
         if (task.getDescription() != null && !task.getDescription().isBlank()) {
-            sb.append("Parent task description:\n").append(task.getDescription()).append("\n");
+            sb.append("Parent task description:\n")
+                    .append(truncateForAiContext(task.getDescription()))
+                    .append("\n");
         }
         sb.append("Project ID context: ").append(task.getProjectId()).append("\n");
         return sb.toString();
     }
 
-    // Performs call generate.
-    private String callGenerate(String prompt) {
-        AiGenerateResponse resp = aiModelClient.generate(new AiPromptRequest(prompt));
+    private String callGenerate(TaskAiBackend backend, String prompt) {
+        AiGenerateResponse resp = generate(new AiPromptRequest(prompt));
         return extractAiPayload(resp);
     }
 
-    // Performs extract ai payload.
+    private AiGenerateResponse generate(AiPromptRequest req) {
+        return aiModelClient.generate(req);
+    }
+
+    private AiGenerateResponse generateTasks(AiContextRequest ctx) {
+        return aiModelClient.generateTasks(ctx);
+    }
+
+    private AiGenerateResponse generateSubtasks(AiContextRequest ctx) {
+        return aiModelClient.generateSubtasks(ctx);
+    }
+
     private static String extractAiPayload(AiGenerateResponse resp) {
         if (resp == null || !resp.isSuccess() || resp.getData() == null || resp.getData().isBlank()) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI service returned an empty response");
@@ -157,7 +177,6 @@ public class TaskAiService {
         return resp.getData().trim();
     }
 
-    // Performs parse proposed tasks array.
     private List<AiProposedTaskDto> parseProposedTasksArray(String json, String arrayKey) {
         try {
             String normalized = normalizeModelJsonPayload(json);
@@ -192,7 +211,6 @@ public class TaskAiService {
         }
     }
 
-    /** Strips thinking blocks, markdown fences, and isolates the first top-level JSON object. */
     static String normalizeModelJsonPayload(String raw) {
         if (raw == null) {
             return "";
@@ -201,7 +219,6 @@ public class TaskAiService {
         return firstTopLevelJsonObject(s);
     }
 
-    // Performs strip markdown code fence.
     private static String stripMarkdownCodeFence(String s) {
         String t = s.trim();
         if (!t.startsWith("```")) {
@@ -220,7 +237,6 @@ public class TaskAiService {
         return t.trim();
     }
 
-    // Performs first top level json object.
     private static String firstTopLevelJsonObject(String s) {
         int start = s.indexOf('{');
         if (start < 0) {
@@ -257,13 +273,11 @@ public class TaskAiService {
         return s.substring(start);
     }
 
-    // Performs text.
     private static String text(JsonNode node, String field) {
         JsonNode v = node.get(field);
         return v == null || v.isNull() ? null : v.asText();
     }
 
-    // Performs parse suggested due date.
     private static LocalDate parseSuggestedDueDate(JsonNode node) {
         String raw = text(node, "dueDate");
         if (raw == null || raw.isBlank()) {
@@ -287,7 +301,13 @@ public class TaskAiService {
         }
     }
 
-    // Performs map priority.
+    private static String truncateForAiContext(String text) {
+        if (text == null || text.length() <= MAX_CONTEXT_TEXT_CHARS) {
+            return text;
+        }
+        return text.substring(0, MAX_CONTEXT_TEXT_CHARS) + "\n\n[... truncated for AI context length ...]";
+    }
+
     private static TaskPriority mapPriority(String raw) {
         if (raw == null) {
             return TaskPriority.MEDIUM;

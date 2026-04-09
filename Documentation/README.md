@@ -41,7 +41,15 @@ Per-service guides live in [Documentation/services/](services/).
 | Path | Role |
 |------|------|
 | [frontend/](../frontend/) | Angular SPA (`smart-freelance-app`) |
-| [backEnd/](../backEnd/) | Eureka, Config Server, API Gateway, Keycloak service, `Microservices/` |
+| [backEnd/](../backEnd/) | Eureka, Config Server, API Gateway, Keycloak service, `Microservices/`, `scripts/` |
 | [Documentation/](.) | This documentation set |
+| [scripts/](../scripts/) | SQL seed + GitHub token helper ([scripts/README.md](../scripts/README.md)) |
+| [plans/](../plans/) | Implementation specs (e.g. UX implementation notes) |
+| [credentials/](../credentials/) | Local credential layout (no secrets committed) |
+| [firebase-credentials/](../firebase-credentials/) | Firebase key layout (gitignored keys) |
+| [logs/](../logs/) | Optional: log and PID files when using root `start-backend.*` / `stop-backend.*` |
+| Root | [README.md](../README.md), [start-backend.ps1](../start-backend.ps1) / [.sh](../start-backend.sh), [stop-backend.ps1](../stop-backend.ps1) / [.sh](../stop-backend.sh) |
+
+**Doc naming note:** Service detail pages use mixed filename styles (e.g. `ticket-service.md`, `AImodel.md`) to match historical paths; the [services index](services/README.md) is the canonical table of links.
 
 Folder-level **README** files in `frontend/`, `backEnd/`, and each major backend module link back here for full detail.

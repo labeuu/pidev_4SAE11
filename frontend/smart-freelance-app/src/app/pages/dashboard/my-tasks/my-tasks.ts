@@ -122,7 +122,7 @@ export class MyTasks implements OnInit, OnDestroy {
   /** After Accept-all subtasks, re-expand parent and reload subtasks once tasks refresh */
   private pendingRevealSubtasksForTaskId: number | null = null;
 
-  /** Live pipeline: gateway → AImodel → Ollama (polled while AI wizard is open). */
+  /** Live pipeline: polled while AI wizard is open. */
   private aiLivePollSub: Subscription | null = null;
   aiPipelineStatus: AiModelLiveStatus | null = null;
   aiPipelineGatewayError = false;
@@ -319,10 +319,10 @@ export class MyTasks implements OnInit, OnDestroy {
 
   get aiPipelineStatusMessage(): string {
     if (this.aiPipelineGatewayError) {
-      return 'Cannot reach the AI service (gateway / AImodel). Is Eureka up and AIMODEL registered, or try restarting the gateway.';
+      return 'Cannot reach AImodel through the gateway. Start the AImodel service (port 8095), ensure the gateway can reach it, then restart the gateway if you changed its routes.';
     }
     if (!this.aiPipelineStatus) {
-      return 'Checking AI service and Ollama…';
+      return 'Checking Ollama pipeline…';
     }
     if (!this.aiPipelineStatus.ollamaReachable) {
       return `Ollama not reachable from the AI service. Start Ollama or set OLLAMA_BASE_URL on AImodel. Configured model: ${this.aiPipelineStatus.model}`;
@@ -330,7 +330,7 @@ export class MyTasks implements OnInit, OnDestroy {
     if (!this.aiPipelineStatus.modelReady) {
       return `Ollama is running but model "${this.aiPipelineStatus.model}" was not found. Run: ollama pull ${this.aiPipelineStatus.model}`;
     }
-    return `Ready — Ollama OK, model "${this.aiPipelineStatus.model}" available`;
+    return `Ready — Ollama OK, model "${this.aiPipelineStatus.model}"`;
   }
 
   private startAiLiveStatusPoll(): void {

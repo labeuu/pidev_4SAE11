@@ -2,6 +2,8 @@
 
 Spring Boot services live under [backEnd/Microservices](../../backEnd/Microservices). The **API Gateway** maps each service to a URL prefix (see [../api-gateway.md](../api-gateway.md)).
 
+Naming in the first column matches the product/feature name; the **Doc** column is the on-disk filename (some use kebab-case, e.g. `ticket-service.md`).
+
 | Service | Doc | Port | Gateway prefix |
 |---------|-----|------|----------------|
 | User | [user.md](user.md) | 8090 | `/user` |
@@ -15,9 +17,9 @@ Spring Boot services live under [backEnd/Microservices](../../backEnd/Microservi
 | Task | [task.md](task.md) | 8091 | `/task` |
 | Gamification | [gamification.md](gamification.md) | 8088 | `/gamification` |
 | Vendor | [vendor.md](vendor.md) | 8093 | `/vendor` |
-| Ticket | [ticket-service.md](ticket-service.md) | 8094 | `/ticket` |
+| Ticket service | [ticket-service.md](ticket-service.md) | 8094 | `/ticket` |
 | Subcontracting | [subcontracting.md](subcontracting.md) | 8099 | `/subcontracting` |
-| AImodel (Node) | [AImodel.md](AImodel.md) | 8095 | `/aimodel` |
+| AImodel (Spring Boot + Ollama) | [AImodel.md](AImodel.md) | 8095 | `/aimodel` |
 | FreelanciaJob | [freelanciajob.md](freelanciajob.md) | 8092 | _No gateway route configured_ |
 | Chat | [chat.md](chat.md) | 8096 | _No gateway route configured_ |
 | Meeting | [meeting.md](meeting.md) | 8097 | _No gateway route configured_ |

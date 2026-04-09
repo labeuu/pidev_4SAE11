@@ -1,6 +1,7 @@
 package tn.esprit.project.Services;
 
 import tn.esprit.project.Dto.request.ProjectRequest;
+import tn.esprit.project.Dto.response.JointProjectsResponse;
 import tn.esprit.project.Dto.response.ProjectResponse;
 import tn.esprit.project.Entities.Project;
 
@@ -20,6 +21,8 @@ public interface IProjectService {
     ProjectResponse getProjectResponse(Long id);
 
     List<Project> getProjectsByClientId(Long clientId);
+
+    JointProjectsResponse getJointProjects(Long clientId, Long freelancerId);
 
     List<ProjectResponse> getRecommendedProjects(Long freelancerId);
 

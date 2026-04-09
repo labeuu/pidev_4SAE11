@@ -31,7 +31,7 @@ Paths are **prefixed** as shown. The gateway applies **StripPrefix=1**: the firs
 | task-ai | `/task/api/tasks/ai/**` | `http://localhost:8091` | **order: -1** (matched before generic task); 4h response timeout |
 | task | `/task/**` | `http://localhost:8091` | Direct |
 | vendor | `/vendor/**` | `http://localhost:8093` | Direct; long AI-related timeouts in config |
-| aimodel | `/aimodel/**` | `lb://AIMODEL` | Node AI service; Eureka; long timeouts |
+| aimodel | `/aimodel/**` | `http://localhost:8095` | Spring AI + Ollama service; direct URL; long timeouts |
 
 Service discovery locator is **disabled** (`discovery.locator.enabled: false`); every service must have an explicit route.
 

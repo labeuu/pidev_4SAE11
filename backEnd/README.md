@@ -1,6 +1,6 @@
 # Backend
 
-Java **Spring Boot** microservices, **Spring Cloud** infrastructure (Eureka, Config Server, API Gateway), **Keycloak** integration service, and one **Node.js** AI service.
+Java **Spring Boot** microservices, **Spring Cloud** infrastructure (Eureka, Config Server, API Gateway), **Keycloak** integration service, and **AImodel** (Spring AI + Ollama).
 
 ## Layout
 

@@ -25,6 +25,7 @@
         <option value="$PROJECT_DIR$/backEnd/Microservices/FreelanciaJob/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Chat/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/task/pom.xml" />
+        <option value="$PROJECT_DIR$/backEnd/Microservices/AImodel/pom.xml" />
       </list>
     </option>
   </component>

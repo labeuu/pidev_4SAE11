@@ -609,8 +609,8 @@
               <input id="add-title" formControlName="title" />
             </div>
             <div class="field">
-              <div class="field-label-row">
-                <label for="add-description">Description (optional)</label>
+              <label for="add-description">Description (optional)</label>
+              <div class="add-description-toolbar">
                 <button
                   type="button"
                   class="btn-ai-inline"
@@ -789,6 +789,11 @@
                   }
                 </p>
               </div>
+            </div>
+            <div class="ai-engine-row">
+              <p class="ai-engine-row__hint">
+                Uses the Spring AImodel service with your local Ollama instance.
+              </p>
             </div>
             <div
               class="ai-live-status"

@@ -32,6 +32,7 @@ spring:
               - Accept
               - Origin
               - X-Requested-With
+              - X-AI-Backend
             exposedHeaders:
               - Content-Disposition
               - Content-Type
@@ -171,9 +172,10 @@ spring:
             response-timeout: 14400000
             connect-timeout: 30000
 
-        # AImodel (Node): discovered via Eureka, port 8095
+        # AImodel (Spring AI + Ollama): direct URL (port 8095) — same pattern as Task/Project;
+        # avoids 502 when the service is up but not yet visible via lb://AIMODEL in Eureka.
         - id: aimodel
-          uri: lb://AIMODEL
+          uri: http://localhost:8095
           predicates:
             - Path=/aimodel/**
           filters:

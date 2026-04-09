@@ -56,7 +56,9 @@ describe('MyTasks', () => {
     };
 
     const aiStub = {
-      getLiveStatus: () => of({ snapshot: null as never, reachabilityError: false }),
+      getLiveStatus: jasmine.createSpy('getLiveStatus').and.returnValue(
+        of({ snapshot: null as never, reachabilityError: false })
+      ),
     };
 
     await TestBed.configureTestingModule({
