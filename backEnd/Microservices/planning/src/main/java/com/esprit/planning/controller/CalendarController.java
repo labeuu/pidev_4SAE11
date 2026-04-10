@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,7 +25,6 @@ import java.util.stream.Collectors;
  */
 @RestController
 @RequestMapping("/api/calendar")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Tag(name = "Calendar", description = "Calendar events (Google Calendar when enabled, else from progress updates and project deadlines)")
 public class CalendarController {
@@ -34,6 +32,14 @@ public class CalendarController {
     private final GoogleCalendarService googleCalendarService;
     private final ProgressUpdateService progressUpdateService;
     private final CalendarEventService calendarEventService;
+
+    public CalendarController(GoogleCalendarService googleCalendarService,
+                              ProgressUpdateService progressUpdateService,
+                              CalendarEventService calendarEventService) {
+        this.googleCalendarService = googleCalendarService;
+        this.progressUpdateService = progressUpdateService;
+        this.calendarEventService = calendarEventService;
+    }
 
     /** Ensures the project deadline is in the calendar for the given freelancer. Idempotent; notifies when first synced. */
     @PostMapping("/sync-project-deadline")

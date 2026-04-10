@@ -6,6 +6,12 @@
     <h1 class="schedule-title">Schedule a Meeting</h1>
     <p class="schedule-sub">Invite a freelancer to a video, voice, or in-person meeting.</p>
 
+    @if (form.contractId) {
+      <div class="alert-context">
+        📋 This meeting will be linked to <strong>Contract #{{ form.contractId }}</strong>
+      </div>
+    }
+
     @if (error()) {
       <div class="alert-error">{{ error() }}</div>
     }

@@ -8,7 +8,7 @@ import org.springframework.security.web.SecurityFilterChain;
 
 /**
  * Security is enforced at the API Gateway (JWT validation).
- * This microservice permits all requests internally — same pattern as Chat service.
+
  */
 @Configuration
 @EnableWebSecurity

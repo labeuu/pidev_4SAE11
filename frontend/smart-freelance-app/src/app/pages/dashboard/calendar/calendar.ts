@@ -1,6 +1,8 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { forkJoin } from 'rxjs';
 import { PlanningService, CalendarEventDto } from '../../../core/services/planning.service';
+import { MeetingService } from '../../../core/services/meeting.service';
 import { AuthService } from '../../../core/services/auth.service';
 
 export interface CalendarDay {
@@ -34,6 +36,7 @@ export class Calendar implements OnInit {
 
   constructor(
     private readonly planning: PlanningService,
+    private meetingService: MeetingService,
     private readonly auth: AuthService,
     private readonly cdr: ChangeDetectorRef
   ) {
@@ -130,9 +133,23 @@ export class Calendar implements OnInit {
     const timeMax = end.toISOString();
     const userId = this.auth.getUserId();
     const role = this.auth.getUserRole();
-    this.planning.getCalendarEvents({ timeMin, timeMax, userId: userId ?? undefined, role: role ?? undefined }).subscribe({
-      next: (list) => {
-        this.events = list ?? [];
+
+    forkJoin({
+      planning: this.planning.getCalendarEvents({ timeMin, timeMax, userId: userId ?? undefined, role: role ?? undefined }),
+      meetings: this.meetingService.getMyMeetings(),
+    }).subscribe({
+      next: ({ planning, meetings }) => {
+        const planningEvents: CalendarEventDto[] = planning ?? [];
+        const meetingEvents: CalendarEventDto[] = (meetings ?? [])
+          .filter(m => m.status === 'ACCEPTED' || m.status === 'PENDING')
+          .map(m => ({
+            id: 'meeting-' + m.id,
+            summary: (m.status === 'PENDING' ? '⏳ ' : '📹 ') + m.title,
+            start: m.startTime,
+            end: m.endTime,
+            description: m.agenda ?? null,
+          }));
+        this.events = [...planningEvents, ...meetingEvents];
         this.loading = false;
         this.cdr.detectChanges();
       },

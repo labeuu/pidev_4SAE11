@@ -274,6 +274,11 @@
   }
 
   &:focus-visible { @include focus-ring; }
+
+  &--active {
+    background: rgba($primary-500, 0.1);
+    color: $primary-500;
+  }
 }
 
 // Notification dropdown container

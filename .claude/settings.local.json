@@ -3,7 +3,8 @@
     "allow": [
       "Bash(node:*)",
       "Bash(npm install)",
-      "Bash(mvn clean compile -q)"
+      "Bash(mvn clean compile -q)",
+      "Bash(ls:*)"
     ]
   }
 }

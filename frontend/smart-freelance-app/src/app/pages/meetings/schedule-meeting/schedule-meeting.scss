@@ -38,6 +38,16 @@
   margin: 0 0 2rem;
 }
 
+.alert-context {
+  background: var(--primary-light, #fff3e8);
+  color: var(--primary-dark, #92400e);
+  border: 1px solid var(--primary, #E37E33);
+  border-radius: var(--radius-md, 8px);
+  padding: 0.625rem 1rem;
+  font-size: 0.875rem;
+  margin-bottom: 1rem;
+}
+
 .alert-error {
   background: #fee2e2;
   color: #991b1b;

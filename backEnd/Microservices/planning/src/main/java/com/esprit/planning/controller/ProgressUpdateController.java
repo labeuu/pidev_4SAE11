@@ -19,7 +19,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -40,7 +39,6 @@ import java.util.Optional;
  */
 @RestController
 @RequestMapping("/api/progress-updates")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Tag(name = "Progress Updates", description = "Create and manage progress updates for projects")
 public class ProgressUpdateController {
@@ -49,9 +47,15 @@ public class ProgressUpdateController {
 
     private final ProgressUpdateService progressUpdateService;
     private final ProgressCommentService progressCommentService;
+    private final String welcomeMessage;
 
-    @Value("${welcome.message}")
-    private String welcomeMessage;
+    public ProgressUpdateController(ProgressUpdateService progressUpdateService,
+                                    ProgressCommentService progressCommentService,
+                                    @Value("${welcome.message}") String welcomeMessage) {
+        this.progressUpdateService = progressUpdateService;
+        this.progressCommentService = progressCommentService;
+        this.welcomeMessage = welcomeMessage;
+    }
 
     /** Returns the welcome message from configuration. Used for health or discovery. */
     @GetMapping("/welcome")
