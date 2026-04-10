@@ -33,7 +33,7 @@ public class AiController {
 
     @PostMapping("/generate")
     public ResponseEntity<AiGenerateResponse> generate(@Valid @RequestBody AiPromptRequest body) {
-        String data = aiService.generateResponse(body.getPrompt().trim());
+        String data = aiService.generateResponse(body.getPrompt().trim(), body.getMaxOutputTokens());
         return ResponseEntity.ok(new AiGenerateResponse(true, data));
     }
 

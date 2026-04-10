@@ -144,4 +144,43 @@ describe('TaskService', () => {
     expect(req.request.responseType).toBe('blob');
     req.flush(new Blob());
   });
+
+  it('workloadCoach should POST /tasks/ai/workload-coach with body', () => {
+    service.workloadCoach({ freelancerId: 2, horizonDays: 7 }).subscribe();
+    const req = httpMock.expectOne((r) => r.url.includes('/task/api/tasks/ai/workload-coach'));
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ freelancerId: 2, horizonDays: 7 });
+    req.flush({ summaryMarkdown: 'Hi', highlights: ['a'] });
+  });
+
+  it('definitionOfDone should POST /tasks/ai/definition-of-done', () => {
+    service.definitionOfDone({ taskId: 9, freelancerId: 1 }).subscribe();
+    const req = httpMock.expectOne((r) => r.url.includes('/task/api/tasks/ai/definition-of-done'));
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ taskId: 9, freelancerId: 1 });
+    req.flush({ criteria: [], assumptions: [] });
+  });
+
+  it('askMyTasks should POST /tasks/ai/ask-tasks', () => {
+    service.askMyTasks({ freelancerId: 3, question: 'What is overdue?' }).subscribe();
+    const req = httpMock.expectOne((r) => r.url.includes('/task/api/tasks/ai/ask-tasks'));
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({ freelancerId: 3, question: 'What is overdue?' });
+    req.flush({ answerMarkdown: 'None', citedTaskIds: [] });
+  });
+
+  it('clientStatusBrief should POST /tasks/ai/client-status-brief with optional dates', () => {
+    service
+      .clientStatusBrief({ projectId: 4, clientUserId: 8, reportFrom: '2026-04-01', reportTo: '2026-04-07' })
+      .subscribe();
+    const req = httpMock.expectOne((r) => r.url.includes('/task/api/tasks/ai/client-status-brief'));
+    expect(req.request.method).toBe('POST');
+    expect(req.request.body).toEqual({
+      projectId: 4,
+      clientUserId: 8,
+      reportFrom: '2026-04-01',
+      reportTo: '2026-04-07',
+    });
+    req.flush({ briefMarkdown: 'Summary', planningDataWarning: null });
+  });
 });

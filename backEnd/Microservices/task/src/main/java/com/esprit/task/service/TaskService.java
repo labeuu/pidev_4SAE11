@@ -20,6 +20,7 @@ import com.esprit.task.repository.TaskRepository;
 import com.esprit.task.repository.TaskSpecification;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
@@ -43,6 +44,23 @@ public class TaskService {
     private final TaskCommentRepository taskCommentRepository;
     private final ProjectClient projectClient;
     private final TaskNotificationService taskNotificationService;
+    private final TaskStatusProgressBridge taskStatusProgressBridge;
+
+    /**
+     * When {@code > 0}, overdue tasks/subtasks already at HIGH become URGENT after this many calendar days past due.
+     */
+    @Value("${task.escalation.high-to-urgent-overdue-days:0}")
+    private int escalationHighToUrgentOverdueDays;
+
+    /**
+     * When {@code > 0}, open items in IN_REVIEW with {@code updatedAt} older than this many days get one priority bump.
+     */
+    @Value("${task.escalation.stuck-in-review-days:0}")
+    private int escalationStuckInReviewDays;
+
+    /** When true, project clients receive a non-blaming heads-up when a task auto-escalates. */
+    @Value("${task.escalation.notify-client-on-escalation:false}")
+    private boolean escalationNotifyClientOnEscalation;
 
     @Transactional(readOnly = true)
     public Page<Task> findAllFiltered(Optional<Long> projectId, Optional<Long> contractId, Optional<Long> assigneeId,
@@ -686,6 +704,7 @@ public class TaskService {
         Task saved = taskRepository.save(existing);
         if (task.getStatus() != null && !task.getStatus().equals(oldStatus)) {
             taskNotificationService.notifyTaskStatusUpdate(saved);
+            taskStatusProgressBridge.afterRootTaskStatusChanged(saved);
         }
         return saved;
     }
@@ -694,9 +713,13 @@ public class TaskService {
     // Partially updates status.
     public Task patchStatus(Long id, TaskStatus status) {
         Task task = findById(id);
+        TaskStatus oldStatus = task.getStatus();
         task.setStatus(status);
         Task saved = taskRepository.save(task);
         taskNotificationService.notifyTaskStatusUpdate(saved);
+        if (status != null && !status.equals(oldStatus)) {
+            taskStatusProgressBridge.afterRootTaskStatusChanged(saved);
+        }
         return saved;
     }
 
@@ -727,6 +750,7 @@ public class TaskService {
             Task saved = taskRepository.save(t);
             if (newStatus != null && !newStatus.equals(old)) {
                 taskNotificationService.notifyTaskStatusUpdate(saved);
+                taskStatusProgressBridge.afterRootTaskStatusChanged(saved);
             }
             result.add(saved);
         }
@@ -756,31 +780,116 @@ public class TaskService {
         taskRepository.delete(task);
     }
 
+    /**
+     * Scheduled priority escalation: overdue LOW/MEDIUM → HIGH (assignee notified); optional HIGH → URGENT after N days
+     * overdue; optional stuck IN_REVIEW bump; subtasks mirror overdue rules with assignee notification.
+     *
+     * @return number of entities whose priority was raised this run
+     */
     @Transactional
-    // Performs escalate overdue priorities.
     public int escalateOverduePriorities() {
         LocalDate today = LocalDate.now();
         int escalated = 0;
         List<Task> overdueTasks = taskRepository.findOverdueTasks(today);
         for (Task t : overdueTasks) {
+            if (t.getStatus() == TaskStatus.DONE || t.getStatus() == TaskStatus.CANCELLED) {
+                continue;
+            }
             if (t.getPriority() == TaskPriority.LOW || t.getPriority() == TaskPriority.MEDIUM) {
                 t.setPriority(TaskPriority.HIGH);
                 taskRepository.save(t);
                 escalated++;
-                if (t.getAssigneeId() != null) {
-                    taskNotificationService.notifyTaskPriorityEscalated(t);
+                afterRootTaskPriorityEscalation(t, TaskPriority.HIGH);
+            } else if (escalationHighToUrgentOverdueDays > 0
+                    && t.getPriority() == TaskPriority.HIGH
+                    && t.getDueDate() != null) {
+                long daysPastDue = ChronoUnit.DAYS.between(t.getDueDate(), today);
+                if (daysPastDue >= escalationHighToUrgentOverdueDays) {
+                    t.setPriority(TaskPriority.URGENT);
+                    taskRepository.save(t);
+                    escalated++;
+                    afterRootTaskPriorityEscalation(t, TaskPriority.URGENT);
                 }
             }
         }
         List<Subtask> overdueSubs = subtaskRepository.findOverdueSubtasks(today);
         for (Subtask s : overdueSubs) {
+            if (s.getStatus() == TaskStatus.DONE || s.getStatus() == TaskStatus.CANCELLED) {
+                continue;
+            }
             if (s.getPriority() == TaskPriority.LOW || s.getPriority() == TaskPriority.MEDIUM) {
                 s.setPriority(TaskPriority.HIGH);
                 subtaskRepository.save(s);
                 escalated++;
+                if (s.getAssigneeId() != null) {
+                    taskNotificationService.notifySubtaskPriorityEscalated(s, "HIGH");
+                }
+            } else if (escalationHighToUrgentOverdueDays > 0
+                    && s.getPriority() == TaskPriority.HIGH
+                    && s.getDueDate() != null) {
+                long daysPastDue = ChronoUnit.DAYS.between(s.getDueDate(), today);
+                if (daysPastDue >= escalationHighToUrgentOverdueDays) {
+                    s.setPriority(TaskPriority.URGENT);
+                    subtaskRepository.save(s);
+                    escalated++;
+                    if (s.getAssigneeId() != null) {
+                        taskNotificationService.notifySubtaskPriorityEscalated(s, "URGENT");
+                    }
+                }
+            }
+        }
+        if (escalationStuckInReviewDays > 0) {
+            LocalDateTime cutoff = LocalDateTime.now().minusDays(escalationStuckInReviewDays);
+            for (Task t : taskRepository.findByStatusAndUpdatedAtBefore(TaskStatus.IN_REVIEW, cutoff)) {
+                if (t.getStatus() == TaskStatus.DONE || t.getStatus() == TaskStatus.CANCELLED) {
+                    continue;
+                }
+                TaskPriority next = bumpPriorityForPolicy(t.getPriority());
+                if (next != t.getPriority()) {
+                    t.setPriority(next);
+                    taskRepository.save(t);
+                    escalated++;
+                    afterRootTaskPriorityEscalation(t, next);
+                }
+            }
+            for (Subtask s : subtaskRepository.findByStatusAndUpdatedAtBefore(TaskStatus.IN_REVIEW, cutoff)) {
+                if (s.getStatus() == TaskStatus.DONE || s.getStatus() == TaskStatus.CANCELLED) {
+                    continue;
+                }
+                TaskPriority next = bumpPriorityForPolicy(s.getPriority());
+                if (next != s.getPriority()) {
+                    s.setPriority(next);
+                    subtaskRepository.save(s);
+                    escalated++;
+                    if (s.getAssigneeId() != null) {
+                        taskNotificationService.notifySubtaskPriorityEscalated(s, next.name());
+                    }
+                }
             }
         }
         return escalated;
+    }
+
+    private void afterRootTaskPriorityEscalation(Task t, TaskPriority newPriority) {
+        if (t.getAssigneeId() != null) {
+            taskNotificationService.notifyTaskPriorityEscalated(t, newPriority.name());
+        }
+        if (escalationNotifyClientOnEscalation) {
+            taskNotificationService.notifyClientTaskPriorityEscalated(t, newPriority.name());
+        }
+    }
+
+    /** One step toward URGENT; URGENT and unknown stay unchanged. */
+    private static TaskPriority bumpPriorityForPolicy(TaskPriority p) {
+        if (p == null) {
+            return TaskPriority.MEDIUM;
+        }
+        return switch (p) {
+            case LOW -> TaskPriority.MEDIUM;
+            case MEDIUM -> TaskPriority.HIGH;
+            case HIGH -> TaskPriority.URGENT;
+            case URGENT -> p;
+        };
     }
 
     /**

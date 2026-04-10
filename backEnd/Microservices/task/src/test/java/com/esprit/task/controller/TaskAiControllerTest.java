@@ -3,7 +3,11 @@ package com.esprit.task.controller;
 import com.esprit.task.client.TaskAiBackend;
 import com.esprit.task.config.GlobalExceptionHandler;
 import com.esprit.task.dto.ai.AiProposedTaskDto;
+import com.esprit.task.dto.ai.TaskAiAskTasksResponse;
+import com.esprit.task.dto.ai.TaskAiClientBriefResponse;
+import com.esprit.task.dto.ai.TaskAiDefinitionOfDoneResponse;
 import com.esprit.task.dto.ai.TaskAiSuggestDescriptionResponse;
+import com.esprit.task.dto.ai.TaskAiWorkloadCoachResponse;
 import com.esprit.task.entity.TaskPriority;
 import com.esprit.task.service.TaskAiService;
 import org.junit.jupiter.api.Test;
@@ -21,6 +25,7 @@ import java.util.List;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.springframework.http.MediaType.APPLICATION_JSON;
@@ -111,5 +116,55 @@ class TaskAiControllerTest {
                         .content("{\"taskId\":7,\"freelancerId\":3}"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].title").value("Sub"));
+    }
+
+    @Test
+    void workloadCoach_returns200() throws Exception {
+        when(taskAiService.workloadCoach(eq(1L), eq(7), any(TaskAiBackend.class)))
+                .thenReturn(TaskAiWorkloadCoachResponse.builder()
+                        .summaryMarkdown("Stay focused")
+                        .highlights(List.of("A"))
+                        .build());
+
+        mockMvc.perform(post("/api/tasks/ai/workload-coach")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"freelancerId\":1,\"horizonDays\":7}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.summaryMarkdown").value("Stay focused"));
+    }
+
+    @Test
+    void askTasks_returns200() throws Exception {
+        when(taskAiService.askMyTasks(eq(2L), eq("open?"), any(TaskAiBackend.class)))
+                .thenReturn(TaskAiAskTasksResponse.builder().answerMarkdown("Yes").build());
+
+        mockMvc.perform(post("/api/tasks/ai/ask-tasks")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"freelancerId\":2,\"question\":\"open?\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.answerMarkdown").value("Yes"));
+    }
+
+    @Test
+    void clientStatusBrief_returns200() throws Exception {
+        when(taskAiService.clientStatusBrief(eq(9L), eq(99L), isNull(), isNull()))
+                .thenReturn(TaskAiClientBriefResponse.builder().briefMarkdown("Hello client").build());
+
+        mockMvc.perform(post("/api/tasks/ai/client-status-brief")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"projectId\":9,\"clientUserId\":99}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.briefMarkdown").value("Hello client"));
+    }
+
+    @Test
+    void definitionOfDone_returns200() throws Exception {
+        when(taskAiService.definitionOfDone(eq(3L), eq(5L), any(TaskAiBackend.class)))
+                .thenReturn(TaskAiDefinitionOfDoneResponse.builder().criteria(List.of()).assumptions(List.of()).build());
+
+        mockMvc.perform(post("/api/tasks/ai/definition-of-done")
+                        .contentType(APPLICATION_JSON)
+                        .content("{\"taskId\":3,\"freelancerId\":5}"))
+                .andExpect(status().isOk());
     }
 }

@@ -83,6 +83,17 @@
               </p>
             </div>
 
+            <div class="client-brief-callout">
+              <p class="client-brief-callout__text">
+                Generate a stakeholder-ready summary from the task board and (when available) Planning progress updates. Always review before
+                sending — the model may omit or misread details.
+              </p>
+              <button type="button" class="btn-ai client-brief-callout__btn" (click)="openClientBriefModal()">
+                <span class="btn-ai__icon" aria-hidden="true">✨</span>
+                Generate status brief (AI)
+              </button>
+            </div>
+
             <div class="task-stats-kpis">
               <button
                 type="button"
@@ -587,6 +598,60 @@
           </div>
         </app-card>
       </section>
+
+      @if (clientBriefModalOpen) {
+        <div class="modal-overlay" (click)="closeClientBriefModal()">
+          <div class="modal modal--form modal--wide client-brief-modal" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h3>AI status brief</h3>
+              <p class="modal-hint">
+                For your review only. Task data is always included; formal progress narratives appear when the Planning service is reachable.
+              </p>
+            </div>
+            <div class="client-brief-modal__body">
+              <div class="field field--row">
+                <div>
+                  <label for="brief-from">Report from (optional)</label>
+                  <input
+                    id="brief-from"
+                    type="date"
+                    [value]="clientBriefReportFrom ?? ''"
+                    (change)="onClientBriefFromInput($event)"
+                  />
+                </div>
+                <div>
+                  <label for="brief-to">Report to (optional)</label>
+                  <input
+                    id="brief-to"
+                    type="date"
+                    [value]="clientBriefReportTo ?? ''"
+                    (change)="onClientBriefToInput($event)"
+                  />
+                </div>
+              </div>
+              @if (clientBriefPlanningWarning) {
+                <div class="error-banner error-banner--warn" role="status">{{ clientBriefPlanningWarning }}</div>
+              }
+              @if (clientBriefError) {
+                <div class="error-banner" role="alert">{{ clientBriefError }}</div>
+              }
+              @if (clientBriefLoading) {
+                <p aria-busy="true">Generating brief…</p>
+              }
+              @if (!clientBriefLoading && clientBriefMarkdown) {
+                <div class="client-brief-modal__output" style="white-space: pre-wrap">{{ clientBriefMarkdown }}</div>
+              }
+            </div>
+            <div class="modal-actions">
+              <button type="button" class="btn-secondary" (click)="closeClientBriefModal()" [disabled]="clientBriefLoading">Close</button>
+              <button type="button" class="btn-secondary" (click)="copyClientBriefMarkdown()" [disabled]="!clientBriefMarkdown">Copy</button>
+              <button type="button" class="btn-primary" (click)="generateClientBrief()" [disabled]="clientBriefLoading">
+                {{ clientBriefLoading ? 'Please wait…' : 'Generate' }}
+              </button>
+            </div>
+          </div>
+        </div>
+      }
     }
   }
 </div>

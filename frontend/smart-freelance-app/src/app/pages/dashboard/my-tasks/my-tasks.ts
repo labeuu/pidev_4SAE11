@@ -1,5 +1,6 @@
 import { Component, OnInit, OnDestroy, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, Router } from '@angular/router';
 import { ReactiveFormsModule, FormBuilder, FormGroup, Validators } from '@angular/forms';
 import { FormsModule } from '@angular/forms';
 import {
@@ -42,6 +43,9 @@ interface ProjectOption {
   id: number;
   title: string;
 }
+
+/** Primary dashboard areas under My Tasks (segmented control). */
+export type MyTasksDashboardTab = 'statistics' | 'ai' | 'tasks';
 
 @Component({
   selector: 'app-my-tasks',
@@ -86,6 +90,9 @@ export class MyTasks implements OnInit, OnDestroy {
   /** Which stat control is reflected in the list (for highlight + banner). */
   statsFocusKey: string | null = null;
 
+  /** Top section tabs: Statistics / AI / Tasks */
+  dashboardTab: MyTasksDashboardTab = 'tasks';
+
   addModalOpen = false;
   adding = false;
   addForm: FormGroup;
@@ -122,6 +129,29 @@ export class MyTasks implements OnInit, OnDestroy {
   /** After Accept-all subtasks, re-expand parent and reload subtasks once tasks refresh */
   private pendingRevealSubtasksForTaskId: number | null = null;
 
+  /** Workload coach modal (session-only; same AI pipeline gate as the wizard). */
+  coachPanelOpen = false;
+  coachLoading = false;
+  coachSummaryMarkdown = '';
+  coachHighlights: string[] = [];
+  coachError = '';
+  coachHorizonDays = 7;
+  /** After first Refresh completes, drives empty-state vs loading in the coach modal. */
+  coachHasFetched = false;
+
+  /** Ask-my-tasks drawer: message history kept in memory only for the session. */
+  askDrawerOpen = false;
+  askMessages: { role: 'user' | 'assistant'; body: string; citedTaskIds?: number[] }[] = [];
+  askInput = '';
+  askLoading = false;
+  askError = '';
+
+  /** Definition-of-done generator in edit modal (TODO / IN_PROGRESS only). */
+  dodLoading = false;
+  dodCriteria: { text: string; mustHave: boolean }[] = [];
+  dodAssumptions: string[] = [];
+  dodError = '';
+
   /** Live pipeline: polled while AI wizard is open. */
   private aiLivePollSub: Subscription | null = null;
   aiPipelineStatus: AiModelLiveStatus | null = null;
@@ -134,6 +164,8 @@ export class MyTasks implements OnInit, OnDestroy {
     private projectService: ProjectService,
     private projectApplicationService: ProjectApplicationService,
     private aiModelStatusService: AiModelStatusService,
+    private route: ActivatedRoute,
+    private router: Router,
     private fb: FormBuilder,
     private cdr: ChangeDetectorRef
   ) {
@@ -238,6 +270,13 @@ export class MyTasks implements OnInit, OnDestroy {
   }
 
   ngOnInit(): void {
+    const tabParam = this.route.snapshot.queryParamMap.get('tab');
+    if (tabParam === 'statistics' || tabParam === 'ai' || tabParam === 'tasks') {
+      this.dashboardTab = tabParam;
+      if (tabParam === 'ai') {
+        this.startAiLiveStatusPoll();
+      }
+    }
     this.setupTaskLoadStream();
     this.filterForm.valueChanges
       .pipe(
@@ -298,6 +337,65 @@ export class MyTasks implements OnInit, OnDestroy {
     this.destroy$.complete();
   }
 
+  /** Left offset % for the flowing tab indicator (three equal segments). */
+  get dashboardTabIndicatorLeftPct(): number {
+    switch (this.dashboardTab) {
+      case 'statistics':
+        return 0;
+      case 'ai':
+        return 33.3333;
+      case 'tasks':
+        return 66.6666;
+      default:
+        return 0;
+    }
+  }
+
+  setDashboardTab(tab: MyTasksDashboardTab): void {
+    if (this.dashboardTab === tab) return;
+    this.dashboardTab = tab;
+    if (tab === 'ai') {
+      this.startAiLiveStatusPoll();
+    } else if (!this.anyAiLiveSurfaceOpen()) {
+      this.stopAiLiveStatusPoll();
+    }
+    void this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams: { tab },
+      queryParamsHandling: 'merge',
+      replaceUrl: true,
+    });
+    this.cdr.markForCheck();
+  }
+
+  /** Arrow keys on the tab list only (bound in template). */
+  onDashboardTabsKeydown(event: KeyboardEvent): void {
+    if (event.key !== 'ArrowLeft' && event.key !== 'ArrowRight') return;
+    event.preventDefault();
+    const order: MyTasksDashboardTab[] = ['statistics', 'ai', 'tasks'];
+    const i = order.indexOf(this.dashboardTab);
+    if (i < 0) return;
+    const next =
+      event.key === 'ArrowRight'
+        ? order[(i + 1) % order.length]
+        : order[(i - 1 + order.length) % order.length];
+    this.setDashboardTab(next);
+    queueMicrotask(() => {
+      document.querySelector<HTMLButtonElement>(`.my-tasks-tabs__tab[data-tab="${next}"]`)?.focus();
+    });
+  }
+
+  /** True while any UI needs the Ollama live status polling interval. */
+  private anyAiLiveSurfaceOpen(): boolean {
+    if (this.dashboardTab === 'ai') return true;
+    if (this.aiWizardOpen || this.coachPanelOpen || this.askDrawerOpen) return true;
+    if (this.editingTask != null && this.isFreelancer) {
+      const st = (this.editingTask.status ?? 'TODO') as TaskStatus;
+      if (st === 'TODO' || st === 'IN_PROGRESS') return true;
+    }
+    return false;
+  }
+
   get aiPipelineOk(): boolean {
     return !this.aiPipelineGatewayError && !!this.aiPipelineStatus?.modelReady;
   }
@@ -341,7 +439,7 @@ export class MyTasks implements OnInit, OnDestroy {
     this.aiLivePollSub = interval(8000)
       .pipe(takeUntil(this.destroy$))
       .subscribe(() => {
-        if (this.aiWizardOpen) this.pullAiLiveStatus();
+        if (this.anyAiLiveSurfaceOpen()) this.pullAiLiveStatus();
       });
   }
 
@@ -613,6 +711,7 @@ export class MyTasks implements OnInit, OnDestroy {
 
   applyOverdueDrilldown(): void {
     if (!this.isFreelancer) return;
+    this.setDashboardTab('tasks');
     this.listViewMode = 'overdue';
     this.filterOpenTasksOnly = false;
     this.statsFocusKey = 'overdue';
@@ -624,6 +723,7 @@ export class MyTasks implements OnInit, OnDestroy {
 
   applyActiveDrilldown(): void {
     if (!this.isFreelancer) return;
+    this.setDashboardTab('tasks');
     this.listViewMode = 'paginated';
     this.filterOpenTasksOnly = true;
     this.statsFocusKey = 'active';
@@ -636,6 +736,7 @@ export class MyTasks implements OnInit, OnDestroy {
 
   applyStatusDrilldown(status: TaskStatus): void {
     if (!this.isFreelancer) return;
+    this.setDashboardTab('tasks');
     this.listViewMode = 'paginated';
     this.filterOpenTasksOnly = false;
     this.statsFocusKey = `status_${status}`;
@@ -648,6 +749,7 @@ export class MyTasks implements OnInit, OnDestroy {
 
   applyPriorityDrilldown(priority: TaskPriority): void {
     if (!this.isFreelancer) return;
+    this.setDashboardTab('tasks');
     this.listViewMode = 'paginated';
     this.filterOpenTasksOnly = false;
     this.statsFocusKey = `priority_${priority}`;
@@ -661,6 +763,7 @@ export class MyTasks implements OnInit, OnDestroy {
   /** Clears stat-driven list view and sidebar filters (Completion / totals card). */
   resetStatsListView(): void {
     if (!this.isFreelancer) return;
+    this.setDashboardTab('tasks');
     this.listViewMode = 'paginated';
     this.filterOpenTasksOnly = false;
     this.statsFocusKey = null;
@@ -1202,6 +1305,9 @@ export class MyTasks implements OnInit, OnDestroy {
 
   openEdit(t: Task): void {
     this.editingTask = t;
+    this.dodCriteria = [];
+    this.dodAssumptions = [];
+    this.dodError = '';
     this.editForm.patchValue({
       title: t.title ?? '',
       description: t.description ?? '',
@@ -1209,10 +1315,20 @@ export class MyTasks implements OnInit, OnDestroy {
       priority: t.priority ?? 'MEDIUM',
       dueDate: t.dueDate ? t.dueDate.toString().slice(0, 10) : null,
     });
+    const st = (t.status ?? 'TODO') as TaskStatus;
+    if (this.isFreelancer && (st === 'TODO' || st === 'IN_PROGRESS')) {
+      this.startAiLiveStatusPoll();
+    }
   }
 
   closeEdit(): void {
-    if (!this.saving) this.editingTask = null;
+    if (!this.saving) {
+      this.editingTask = null;
+      this.dodCriteria = [];
+      this.dodAssumptions = [];
+      this.dodError = '';
+      if (!this.anyAiLiveSurfaceOpen()) this.stopAiLiveStatusPoll();
+    }
   }
 
   saveEdit(): void {
@@ -1232,6 +1348,7 @@ export class MyTasks implements OnInit, OnDestroy {
       next: () => {
         this.saving = false;
         this.editingTask = null;
+        if (!this.anyAiLiveSurfaceOpen()) this.stopAiLiveStatusPoll();
         this.requestTaskReload();
         this.refreshFreelancerDashboardExtras();
         this.cdr.detectChanges();
@@ -1370,12 +1487,12 @@ export class MyTasks implements OnInit, OnDestroy {
 
   closeAiWizard(): void {
     if (this.acceptingAi) return;
-    this.stopAiLiveStatusPoll();
     this.aiWizardOpen = false;
     this.aiWizardMode = null;
     this.aiSubtaskParent = null;
     this.aiProposalRows = [];
     this.aiWizardError = '';
+    if (!this.anyAiLiveSurfaceOpen()) this.stopAiLiveStatusPoll();
     this.cdr.detectChanges();
   }
 
@@ -1515,6 +1632,218 @@ export class MyTasks implements OnInit, OnDestroy {
   /** User clicks Generate (project tasks) or Generate (subtasks) — not called on modal open. */
   generateAiProposalsClick(): void {
     this.regenerateAiProposals();
+  }
+
+  /**
+   * Terminal tasks: hide destructive/edit affordances (plan: DONE and CANCELLED).
+   * Overdue drill-down may synthesize a subtask row; use {@link canEditOrDeleteListRow} there.
+   */
+  canEditOrDeleteTask(t: Task): boolean {
+    const st = t.status;
+    return st !== 'DONE' && st !== 'CANCELLED';
+  }
+
+  canEditOrDeleteSubtask(st: Subtask): boolean {
+    return st.status !== 'DONE' && st.status !== 'CANCELLED';
+  }
+
+  canEditOrDeleteListRow(t: Task): boolean {
+    if (this.taskRowLooksLikeSubtask(t) && t.parentTaskId != null) {
+      return this.canEditOrDeleteSubtask(this.overdueRowToSubtask(t));
+    }
+    return this.canEditOrDeleteTask(t);
+  }
+
+  get showDodSection(): boolean {
+    const st = String(this.editForm.get('status')?.value ?? '').trim() as TaskStatus;
+    return st === 'TODO' || st === 'IN_PROGRESS';
+  }
+
+  openCoachPanel(): void {
+    const userId = this.auth.getUserId();
+    if (userId == null || !this.isFreelancer) return;
+    this.coachPanelOpen = true;
+    this.coachError = '';
+    this.coachSummaryMarkdown = '';
+    this.coachHighlights = [];
+    this.coachHasFetched = false;
+    this.startAiLiveStatusPoll();
+    this.cdr.detectChanges();
+    this.refreshCoach();
+  }
+
+  closeCoachPanel(): void {
+    this.coachPanelOpen = false;
+    this.coachLoading = false;
+    this.coachHasFetched = false;
+    if (!this.anyAiLiveSurfaceOpen()) this.stopAiLiveStatusPoll();
+    this.cdr.detectChanges();
+  }
+
+  refreshCoach(): void {
+    const userId = this.auth.getUserId();
+    if (userId == null || !this.coachPanelOpen) return;
+    if (this.aiPipelineBad) {
+      this.coachError = this.aiPipelineStatusMessage;
+      this.cdr.detectChanges();
+      return;
+    }
+    this.coachLoading = true;
+    this.coachError = '';
+    const horizon = Number(this.coachHorizonDays);
+    const body = {
+      freelancerId: userId,
+      horizonDays: Number.isFinite(horizon) && horizon > 0 ? horizon : undefined,
+    };
+    this.taskService.workloadCoach(body).subscribe({
+      next: (res) => {
+        this.coachLoading = false;
+        this.coachHasFetched = true;
+        this.coachSummaryMarkdown = (res.summaryMarkdown ?? '').trim();
+        this.coachHighlights = [...(res.highlights ?? []).map((h) => String(h).trim()).filter(Boolean)];
+        this.cdr.detectChanges();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.coachLoading = false;
+        this.coachHasFetched = true;
+        this.coachError = err?.error?.message ?? 'Coach request failed.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  openAskDrawer(): void {
+    const userId = this.auth.getUserId();
+    if (userId == null || !this.isFreelancer) return;
+    this.askDrawerOpen = true;
+    this.askError = '';
+    this.startAiLiveStatusPoll();
+    this.cdr.detectChanges();
+  }
+
+  closeAskDrawer(): void {
+    this.askDrawerOpen = false;
+    this.askLoading = false;
+    if (!this.anyAiLiveSurfaceOpen()) this.stopAiLiveStatusPoll();
+    this.cdr.detectChanges();
+  }
+
+  clearAskHistory(): void {
+    this.askMessages = [];
+    this.askError = '';
+    this.cdr.detectChanges();
+  }
+
+  sendAsk(): void {
+    const userId = this.auth.getUserId();
+    const q = this.askInput.trim();
+    if (userId == null || !q || this.askLoading) return;
+    if (this.aiPipelineBad) {
+      this.askError = this.aiPipelineStatusMessage;
+      this.cdr.detectChanges();
+      return;
+    }
+    this.askInput = '';
+    this.askMessages = [...this.askMessages, { role: 'user', body: q }];
+    this.askLoading = true;
+    this.askError = '';
+    this.cdr.detectChanges();
+    this.taskService.askMyTasks({ freelancerId: userId, question: q }).subscribe({
+      next: (res) => {
+        this.askLoading = false;
+        const cited = (res.citedTaskIds ?? []).map((id) => Number(id)).filter((id) => Number.isFinite(id));
+        this.askMessages = [
+          ...this.askMessages,
+          {
+            role: 'assistant',
+            body: (res.answerMarkdown ?? '').trim() || '(No answer)',
+            citedTaskIds: cited.length ? cited : undefined,
+          },
+        ];
+        this.cdr.detectChanges();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.askLoading = false;
+        this.askError = err?.error?.message ?? 'Question failed.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  taskTitleForCitedId(taskId: number): string {
+    for (const t of this.tasks) {
+      if (t.id === taskId && !t.subtask) return t.title;
+    }
+    for (const list of Object.values(this.subtasksByTaskId)) {
+      const row = list.find((s) => s.id === taskId);
+      if (row) return row.title;
+    }
+    return `Task #${taskId}`;
+  }
+
+  generateDefinitionOfDone(): void {
+    const userId = this.auth.getUserId();
+    const taskId = this.editingTask?.id;
+    if (userId == null || taskId == null || this.dodLoading) return;
+    if (!this.showDodSection) return;
+    if (this.aiPipelineBad) {
+      this.dodError = this.aiPipelineStatusMessage;
+      this.cdr.detectChanges();
+      return;
+    }
+    this.dodLoading = true;
+    this.dodError = '';
+    this.cdr.detectChanges();
+    this.taskService.definitionOfDone({ taskId, freelancerId: userId }).subscribe({
+      next: (res) => {
+        this.dodLoading = false;
+        this.dodCriteria = (res.criteria ?? [])
+          .map((c) => ({ text: String(c.text ?? '').trim(), mustHave: !!c.mustHave }))
+          .filter((c) => c.text.length > 0);
+        this.dodAssumptions = [...(res.assumptions ?? []).map((a) => String(a).trim()).filter(Boolean)];
+        this.cdr.detectChanges();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.dodLoading = false;
+        this.dodError = err?.error?.message ?? 'Could not generate definition of done.';
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  copyDefinitionOfDone(): void {
+    const lines: string[] = [];
+    for (const c of this.dodCriteria) {
+      const tag = c.mustHave ? '[Must]' : '[Should]';
+      lines.push(`- ${tag} ${c.text}`);
+    }
+    if (this.dodAssumptions.length) {
+      lines.push('');
+      lines.push('Assumptions:');
+      for (const a of this.dodAssumptions) lines.push(`- ${a}`);
+    }
+    this.copyTextToClipboard(lines.join('\n'));
+  }
+
+  appendDefinitionOfDoneToDescription(): void {
+    if (this.dodCriteria.length === 0) return;
+    const block = ['', '--- Definition of done (AI draft) ---', ...this.dodCriteria.map((c) => `- ${c.mustHave ? '(must) ' : ''}${c.text}`)];
+    if (this.dodAssumptions.length) {
+      block.push('');
+      block.push('Assumptions:');
+      for (const a of this.dodAssumptions) block.push(`- ${a}`);
+    }
+    const cur = String(this.editForm.get('description')?.value ?? '');
+    if (!window.confirm('Append this checklist to the task description?')) return;
+    this.editForm.patchValue({ description: (cur.trim() ? `${cur.trim()}\n` : '') + block.join('\n') });
+    this.cdr.detectChanges();
+  }
+
+  private copyTextToClipboard(text: string): void {
+    if (!text) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(text).catch(() => {});
+    }
   }
 
   /** yyyy-MM-dd for <input type="date">; supports Spring array-style LocalDate JSON. */

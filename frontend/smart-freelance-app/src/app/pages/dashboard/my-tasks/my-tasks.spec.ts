@@ -1,5 +1,6 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { ReactiveFormsModule, FormsModule } from '@angular/forms';
+import { provideRouter } from '@angular/router';
 import { MyTasks } from './my-tasks';
 import { Subtask, Task, TaskService } from '../../../core/services/task.service';
 import { AuthService } from '../../../core/services/auth.service';
@@ -33,6 +34,9 @@ describe('MyTasks', () => {
       'updateSubtask',
       'patchSubtaskStatus',
       'deleteSubtask',
+      'workloadCoach',
+      'askMyTasks',
+      'definitionOfDone',
     ]);
     taskSpy.getFilteredTasks.and.returnValue(
       of({ content: [], totalElements: 0, totalPages: 0, size: 10, number: 0 })
@@ -41,6 +45,9 @@ describe('MyTasks', () => {
     taskSpy.getProjectActivity.and.returnValue(of([]));
     taskSpy.getOverdueTasks.and.returnValue(of([]));
     taskSpy.getExtendedStatsByFreelancer.and.returnValue(of(null));
+    taskSpy.workloadCoach.and.returnValue(of({ summaryMarkdown: '', highlights: [] }));
+    taskSpy.askMyTasks.and.returnValue(of({ answerMarkdown: '', citedTaskIds: [] }));
+    taskSpy.definitionOfDone.and.returnValue(of({ criteria: [], assumptions: [] }));
 
     const authStub = {
       getUserId: () => 1,
@@ -64,6 +71,7 @@ describe('MyTasks', () => {
     await TestBed.configureTestingModule({
       imports: [MyTasks, ReactiveFormsModule, FormsModule, Card],
       providers: [
+        provideRouter([]),
         { provide: TaskService, useValue: taskSpy },
         { provide: AuthService, useValue: authStub },
         { provide: ProjectService, useValue: projectStub },
@@ -79,6 +87,32 @@ describe('MyTasks', () => {
 
   it('should create', () => {
     expect(component).toBeTruthy();
+  });
+
+  it('defaults dashboard tab to tasks', () => {
+    expect(component.dashboardTab).toBe('tasks');
+  });
+
+  it('setDashboardTab switches active panel', () => {
+    component.setDashboardTab('statistics');
+    expect(component.dashboardTab).toBe('statistics');
+    component.setDashboardTab('ai');
+    expect(component.dashboardTab).toBe('ai');
+    fixture.detectChanges();
+    const statsPanel = fixture.nativeElement.querySelector('#my-tasks-panel-statistics');
+    const aiPanel = fixture.nativeElement.querySelector('#my-tasks-panel-ai');
+    expect(statsPanel.classList.contains('my-tasks-panel--active')).toBe(false);
+    expect(aiPanel.classList.contains('my-tasks-panel--active')).toBe(true);
+  });
+
+  it('clicking Statistics tab activates statistics panel', () => {
+    fixture.detectChanges();
+    const statsTab = fixture.nativeElement.querySelector('#my-tasks-tab-statistics') as HTMLButtonElement;
+    statsTab?.click();
+    fixture.detectChanges();
+    const statsPanel = fixture.nativeElement.querySelector('#my-tasks-panel-statistics');
+    expect(component.dashboardTab).toBe('statistics');
+    expect(statsPanel.classList.contains('my-tasks-panel--active')).toBe(true);
   });
 
   it('should call getFilteredTasks on init', () => {
@@ -205,5 +239,59 @@ describe('MyTasks', () => {
 
   it('dueDateDisplayLine should mention overdue when past due', () => {
     expect(component.dueDateDisplayLine('2020-06-01', 'IN_PROGRESS')).toContain('overdue');
+  });
+
+  it('canEditOrDeleteTask should be false for DONE and CANCELLED', () => {
+    expect(
+      component.canEditOrDeleteTask({
+        id: 1,
+        projectId: 1,
+        contractId: null,
+        title: 't',
+        description: null,
+        status: 'DONE',
+        priority: 'LOW',
+        assigneeId: 1,
+        dueDate: null,
+        orderIndex: 0,
+        createdBy: null,
+        createdAt: '',
+        updatedAt: '',
+      })
+    ).toBe(false);
+    expect(
+      component.canEditOrDeleteTask({
+        id: 1,
+        projectId: 1,
+        contractId: null,
+        title: 't',
+        description: null,
+        status: 'CANCELLED',
+        priority: 'LOW',
+        assigneeId: 1,
+        dueDate: null,
+        orderIndex: 0,
+        createdBy: null,
+        createdAt: '',
+        updatedAt: '',
+      })
+    ).toBe(false);
+    expect(
+      component.canEditOrDeleteTask({
+        id: 1,
+        projectId: 1,
+        contractId: null,
+        title: 't',
+        description: null,
+        status: 'TODO',
+        priority: 'LOW',
+        assigneeId: 1,
+        dueDate: null,
+        orderIndex: 0,
+        createdBy: null,
+        createdAt: '',
+        updatedAt: '',
+      })
+    ).toBe(true);
   });
 });

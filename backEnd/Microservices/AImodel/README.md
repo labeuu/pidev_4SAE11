@@ -2,7 +2,7 @@
 
 Ollama-backed LLM API on port **8095**. Registers in Eureka as **`AIMODEL`**. API Gateway: **`/aimodel/**`**.
 
-Requires **Java 17+**, **Ollama** at `http://localhost:11434` (default), and the configured model pulled (e.g. `ollama pull qwen3:8b`).
+Requires **Java 17+**, **Ollama** at `http://localhost:11434` (default), and the configured model pulled (e.g. `ollama pull gemma3:4b`).
 
 **Documentation:** [Documentation/services/AImodel.md](../../../Documentation/services/AImodel.md)
 

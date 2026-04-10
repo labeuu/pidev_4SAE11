@@ -5,6 +5,7 @@ import java.net.ConnectException;
 import java.net.SocketTimeoutException;
 import java.net.UnknownHostException;
 import org.springframework.ai.chat.client.ChatClient;
+import org.springframework.ai.ollama.api.OllamaChatOptions;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.ResourceAccessException;
@@ -22,10 +23,18 @@ public class LlmGenerationService {
         this.chatClient = chatClient;
     }
 
-    public String generate(String prompt) {
+    /**
+     * @param maxOutputTokens optional {@link OllamaChatOptions#getNumPredict()} cap; speeds up short coach / Q&amp;A paths
+     */
+    public String generate(String prompt, Integer maxOutputTokens) {
         for (int attempt = 0; attempt < MAX_ATTEMPTS; attempt++) {
             try {
-                String content = chatClient.prompt().user(prompt).call().content();
+                var request = chatClient.prompt().user(prompt);
+                if (maxOutputTokens != null && maxOutputTokens > 0) {
+                    int capped = Math.min(maxOutputTokens, 16_384);
+                    request = request.options(OllamaChatOptions.builder().numPredict(capped).build());
+                }
+                String content = request.call().content();
                 if (content == null || content.isBlank()) {
                     throw new AiUpstreamException(HttpStatus.BAD_GATEWAY, "Invalid response from AI provider");
                 }

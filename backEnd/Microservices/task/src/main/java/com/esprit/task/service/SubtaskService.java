@@ -23,6 +23,7 @@ public class SubtaskService {
     private final SubtaskRepository subtaskRepository;
     private final TaskRepository taskRepository;
     private final TaskNotificationService taskNotificationService;
+    private final TaskStatusProgressBridge taskStatusProgressBridge;
 
     @Transactional(readOnly = true)
     // Lists by parent task id.
@@ -93,6 +94,7 @@ public class SubtaskService {
         Subtask saved = subtaskRepository.save(existing);
         if (request.getStatus() != null && !request.getStatus().equals(oldStatus)) {
             taskNotificationService.notifySubtaskStatusUpdate(saved);
+            taskStatusProgressBridge.afterSubtaskStatusChanged(saved);
         }
         return SubtaskResponse.from(saved);
     }
@@ -106,6 +108,7 @@ public class SubtaskService {
         Subtask saved = subtaskRepository.save(s);
         if (status != null && !status.equals(old)) {
             taskNotificationService.notifySubtaskStatusUpdate(saved);
+            taskStatusProgressBridge.afterSubtaskStatusChanged(saved);
         }
         return SubtaskResponse.from(saved);
     }

@@ -46,6 +46,9 @@ public interface SubtaskRepository extends JpaRepository<Subtask, Long> {
 
     List<Subtask> findByAssigneeId(Long assigneeId);
 
+    /** Stuck-in-review escalation: subtasks not updated since {@code before}. */
+    List<Subtask> findByStatusAndUpdatedAtBefore(TaskStatus status, LocalDateTime before);
+
     @Query("SELECT s FROM Subtask s WHERE s.dueDate IS NOT NULL AND s.dueDate >= :from AND s.dueDate <= :to AND s.status NOT IN ('DONE', 'CANCELLED')")
     List<Subtask> findDueSoonSubtasks(@Param("from") LocalDate from, @Param("to") LocalDate to);
 

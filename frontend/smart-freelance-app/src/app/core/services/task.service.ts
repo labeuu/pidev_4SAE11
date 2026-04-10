@@ -195,6 +195,59 @@ export interface TaskAiSubtasksRequest {
   freelancerId: number;
 }
 
+/** POST `/task/api/tasks/ai/workload-coach` — narrative coaching from assignee workload snapshot. */
+export interface TaskAiWorkloadCoachRequest {
+  freelancerId: number;
+  /** Due-soon window in days; backend default if omitted. */
+  horizonDays?: number | null;
+}
+
+export interface TaskAiWorkloadCoachResponse {
+  summaryMarkdown?: string | null;
+  highlights?: string[] | null;
+}
+
+/** POST `/task/api/tasks/ai/definition-of-done` — checklist before review. */
+export interface TaskAiDefinitionOfDoneRequest {
+  taskId: number;
+  freelancerId: number;
+}
+
+export interface TaskAiDefinitionOfDoneCriterionDto {
+  text?: string | null;
+  mustHave: boolean;
+}
+
+export interface TaskAiDefinitionOfDoneResponse {
+  criteria?: TaskAiDefinitionOfDoneCriterionDto[] | null;
+  assumptions?: string[] | null;
+}
+
+/** POST `/task/api/tasks/ai/ask-tasks` — RAG-lite Q&A over open tasks. */
+export interface TaskAiAskTasksRequest {
+  freelancerId: number;
+  question: string;
+}
+
+export interface TaskAiAskTasksResponse {
+  answerMarkdown?: string | null;
+  /** Root task ids the model cited as relevant. */
+  citedTaskIds?: number[] | null;
+}
+
+/** POST `/task/api/tasks/ai/client-status-brief` — client-only; merges tasks + Planning when available. */
+export interface TaskAiClientBriefRequest {
+  projectId: number;
+  clientUserId: number;
+  reportFrom?: string | null;
+  reportTo?: string | null;
+}
+
+export interface TaskAiClientBriefResponse {
+  briefMarkdown?: string | null;
+  planningDataWarning?: string | null;
+}
+
 /** Batch subtask completion for root tasks (Task MS). */
 export interface SubtaskProgressRow {
   parentTaskId: number;
@@ -435,6 +488,42 @@ export class TaskService {
   proposeSubtasks(request: TaskAiSubtasksRequest): Observable<AiProposedTask[]> {
     return this.http
       .post<AiProposedTask[]>(`${TASK_API}/tasks/ai/propose-subtasks`, request)
+      .pipe(catchError((err) => throwError(() => err)));
+  }
+
+  /**
+   * AI workload coach: POST body `{ freelancerId, horizonDays? }`.
+   * Errors propagate (gateway timeout / 502 from Task MS); callers should surface `error.error.message` when present.
+   */
+  workloadCoach(request: TaskAiWorkloadCoachRequest): Observable<TaskAiWorkloadCoachResponse> {
+    return this.http
+      .post<TaskAiWorkloadCoachResponse>(`${TASK_API}/tasks/ai/workload-coach`, request)
+      .pipe(catchError((err) => throwError(() => err)));
+  }
+
+  /**
+   * Structured definition-of-done for one task (assignee must match). May return 502 if model JSON is invalid.
+   */
+  definitionOfDone(request: TaskAiDefinitionOfDoneRequest): Observable<TaskAiDefinitionOfDoneResponse> {
+    return this.http
+      .post<TaskAiDefinitionOfDoneResponse>(`${TASK_API}/tasks/ai/definition-of-done`, request)
+      .pipe(catchError((err) => throwError(() => err)));
+  }
+
+  /** Natural-language question over capped open-task snapshot for the freelancer. */
+  askMyTasks(request: TaskAiAskTasksRequest): Observable<TaskAiAskTasksResponse> {
+    return this.http
+      .post<TaskAiAskTasksResponse>(`${TASK_API}/tasks/ai/ask-tasks`, request)
+      .pipe(catchError((err) => throwError(() => err)));
+  }
+
+  /**
+   * Stakeholder brief for project owner; server checks `clientUserId` against project client.
+   * `planningDataWarning` is set when Planning MS could not be reached (task-only brief).
+   */
+  clientStatusBrief(request: TaskAiClientBriefRequest): Observable<TaskAiClientBriefResponse> {
+    return this.http
+      .post<TaskAiClientBriefResponse>(`${TASK_API}/tasks/ai/client-status-brief`, request)
       .pipe(catchError((err) => throwError(() => err)));
   }
 

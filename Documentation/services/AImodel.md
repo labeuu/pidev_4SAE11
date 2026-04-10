@@ -7,7 +7,7 @@
 
 ## Responsibilities
 
-HTTP API that proxies **LLM** requests to **Ollama** (default model `qwen3:8b` in config). Used by other services (e.g. **Task** AI endpoints) and optionally by Offer UI flows.
+HTTP API that proxies **LLM** requests to **Ollama** (default model `gemma3:4b` in config). Used by other services (e.g. **Task** AI endpoints) and optionally by Offer UI flows.
 
 Main files:
 
@@ -20,7 +20,7 @@ Main files:
 Environment variables:
 
 - `OLLAMA_BASE_URL` (default `http://localhost:11434`)
-- `OLLAMA_MODEL` (e.g. `qwen3:8b`)
+- `OLLAMA_MODEL` (e.g. `gemma3:4b`)
 - optional `SERVER_PORT`
 
 ## Run

@@ -1,5 +1,6 @@
 package com.esprit.aimodel.controller;
 
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -32,7 +33,7 @@ class AiControllerWebMvcTest {
     @Test
     void statusReturnsLiveShape() throws Exception {
         when(providerStatusService.liveStatus())
-                .thenReturn(new AiLiveStatus("aimodel", "UP", true, "qwen3:8b", true));
+                .thenReturn(new AiLiveStatus("aimodel", "UP", true, "gemma3:4b", true));
         mockMvc.perform(get("/api/ai/status"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.service").value("aimodel"))
@@ -42,7 +43,7 @@ class AiControllerWebMvcTest {
 
     @Test
     void generateReturnsSuccessEnvelope() throws Exception {
-        when(aiService.generateResponse(anyString())).thenReturn("hello");
+        when(aiService.generateResponse(anyString(), any())).thenReturn("hello");
         mockMvc.perform(post("/api/ai/generate")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"prompt\":\"x\"}"))
