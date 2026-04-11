@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: app-config
+  namespace: smart-freelance
+data:
+  # Eureka
+  EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: "http://eureka:8420/eureka"
+
+  # Spring profiles — activates application-docker.yml routes in gateway
+  SPRING_PROFILES_ACTIVE: "docker"
+
+  # Keycloak (internal DNS name within cluster)
+  KEYCLOAK_SERVER_URL: "http://keycloak:8080"
+  KEYCLOAK_REALM: "smart-freelance"
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: "http://keycloak:8080/realms/smart-freelance"
+
+  # Config Server
+  SPRING_CONFIG_IMPORT: "optional:configserver:http://config-server:8888"
+
+  # JPA — auto-create/update schema on first deploy
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+
+  # Internal service URLs (used by review, user, etc.)
+  NOTIFICATION_SERVICE_URL: "http://notification:8087"
+  USER_SERVICE_URL: "http://user:8090"
+  KEYCLOAK_AUTH_SERVICE_URL: "http://keycloak-auth:8079"

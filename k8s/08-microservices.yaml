@@ -1,0 +1,760 @@
+###############################################################################
+# All business microservices — each as a Deployment + Service.
+# Replace YOUR_DOCKERHUB_USERNAME with your Docker Hub org.
+# Common env (Eureka URL, Keycloak URL, etc.) comes from app-config ConfigMap.
+# DB credentials come from mysql-secret.
+###############################################################################
+
+# ─── Reusable probe template (used by all Spring Boot services) ─────────────
+# readinessProbe: httpGet /actuator/health, initialDelay 45s, period 10s
+# livenessProbe:  httpGet /actuator/health, initialDelay 90s, period 20s
+# Resource defaults: 150m/256Mi request, 500m/512Mi limit
+
+# ─────────────────────────────── keycloak-auth ──────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: keycloak-auth
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: keycloak-auth}
+  template:
+    metadata:
+      labels: {app: keycloak-auth}
+    spec:
+      containers:
+        - name: keycloak-auth
+          image: YOUR_DOCKERHUB_USERNAME/keycloak-auth:latest
+          ports: [{containerPort: 8079}]
+          envFrom:
+            - configMapRef:  {name: app-config}
+            - secretRef:     {name: keycloak-secret}
+          env:
+            - {name: SERVER_PORT, value: "8079"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8079}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8079}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: keycloak-auth
+  namespace: smart-freelance
+spec:
+  selector: {app: keycloak-auth}
+  ports: [{port: 8079, targetPort: 8079}]
+
+---
+# ─────────────────────────────────── user ───────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: user}
+  template:
+    metadata:
+      labels: {app: user}
+    spec:
+      containers:
+        - name: user
+          image: YOUR_DOCKERHUB_USERNAME/user:latest
+          ports: [{containerPort: 8090}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8090"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/userdb"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8090}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8090}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+          volumeMounts:
+            - name: user-uploads
+              mountPath: /uploads/avatars
+      volumes:
+        - name: user-uploads
+          persistentVolumeClaim:
+            claimName: user-uploads-pvc
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: user-uploads-pvc
+  namespace: smart-freelance
+spec:
+  accessModes: [ReadWriteOnce]
+  resources:
+    requests: {storage: 5Gi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user
+  namespace: smart-freelance
+spec:
+  selector: {app: user}
+  ports: [{port: 8090, targetPort: 8090}]
+
+---
+# ─────────────────────────────── project ────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: project
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: project}
+  template:
+    metadata:
+      labels: {app: project}
+    spec:
+      containers:
+        - name: project
+          image: YOUR_DOCKERHUB_USERNAME/project:latest
+          ports: [{containerPort: 8084}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8084"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/projectdb"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8084}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8084}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: project
+  namespace: smart-freelance
+spec:
+  selector: {app: project}
+  ports: [{port: 8084, targetPort: 8084}]
+
+---
+# ─────────────────────────────── offer ──────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: offer
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: offer}
+  template:
+    metadata:
+      labels: {app: offer}
+    spec:
+      containers:
+        - name: offer
+          image: YOUR_DOCKERHUB_USERNAME/offer:latest
+          ports: [{containerPort: 8082}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8082"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/gestion_offer_db"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8082}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8082}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: offer
+  namespace: smart-freelance
+spec:
+  selector: {app: offer}
+  ports: [{port: 8082, targetPort: 8082}]
+
+---
+# ─────────────────────────────── contract ───────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: contract
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: contract}
+  template:
+    metadata:
+      labels: {app: contract}
+    spec:
+      containers:
+        - name: contract
+          image: YOUR_DOCKERHUB_USERNAME/contract:latest
+          ports: [{containerPort: 8083}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8083"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/gestion_contract_db"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8083}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8083}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: contract
+  namespace: smart-freelance
+spec:
+  selector: {app: contract}
+  ports: [{port: 8083, targetPort: 8083}]
+
+---
+# ─────────────────────────────── portfolio ──────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: portfolio
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: portfolio}
+  template:
+    metadata:
+      labels: {app: portfolio}
+    spec:
+      containers:
+        - name: portfolio
+          image: YOUR_DOCKERHUB_USERNAME/portfolio:latest
+          ports: [{containerPort: 8086}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+            - secretRef:    {name: external-api-secret}
+          env:
+            - {name: SERVER_PORT, value: "8086"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/portfolio_db"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8086}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8086}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: portfolio
+  namespace: smart-freelance
+spec:
+  selector: {app: portfolio}
+  ports: [{port: 8086, targetPort: 8086}]
+
+---
+# ─────────────────────────────── review ─────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: review
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: review}
+  template:
+    metadata:
+      labels: {app: review}
+    spec:
+      containers:
+        - name: review
+          image: YOUR_DOCKERHUB_USERNAME/review:latest
+          ports: [{containerPort: 8085}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+            - secretRef:    {name: mail-secret}
+          env:
+            - {name: SERVER_PORT, value: "8085"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/reviewdb"}
+            - {name: SPRING_MAIL_HOST, value: "sandbox.smtp.mailtrap.io"}
+            - {name: SPRING_MAIL_PORT, value: "2525"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8085}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8085}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: review
+  namespace: smart-freelance
+spec:
+  selector: {app: review}
+  ports: [{port: 8085, targetPort: 8085}]
+
+---
+# ─────────────────────────────── planning ───────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: planning
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: planning}
+  template:
+    metadata:
+      labels: {app: planning}
+    spec:
+      containers:
+        - name: planning
+          image: YOUR_DOCKERHUB_USERNAME/planning:latest
+          ports: [{containerPort: 8081}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+            - secretRef:    {name: external-api-secret}
+          env:
+            - {name: SERVER_PORT, value: "8081"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/planningdb"}
+            - {name: GOOGLE_APPLICATION_CREDENTIALS, value: "/credentials/calendar-service-account.json"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8081}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8081}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+          volumeMounts:
+            - name: calendar-creds
+              mountPath: /credentials
+              readOnly: true
+      volumes:
+        - name: calendar-creds
+          secret:
+            secretName: calendar-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: planning
+  namespace: smart-freelance
+spec:
+  selector: {app: planning}
+  ports: [{port: 8081, targetPort: 8081}]
+
+---
+# ─────────────────────────────── task ───────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: task
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: task}
+  template:
+    metadata:
+      labels: {app: task}
+    spec:
+      containers:
+        - name: task
+          image: YOUR_DOCKERHUB_USERNAME/task:latest
+          ports: [{containerPort: 8091}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8091"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/taskdb"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8091}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8091}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: task
+  namespace: smart-freelance
+spec:
+  selector: {app: task}
+  ports: [{port: 8091, targetPort: 8091}]
+
+---
+# ─────────────────────────────── notification ───────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notification
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: notification}
+  template:
+    metadata:
+      labels: {app: notification}
+    spec:
+      containers:
+        - name: notification
+          image: YOUR_DOCKERHUB_USERNAME/notification:latest
+          ports: [{containerPort: 8087}]
+          envFrom:
+            - configMapRef: {name: app-config}
+          env:
+            - {name: SERVER_PORT, value: "8087"}
+            - {name: GOOGLE_APPLICATION_CREDENTIALS, value: "/firebase/firebase-credentials.json"}
+          resources:
+            requests: {cpu: 100m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8087}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8087}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+          volumeMounts:
+            - name: firebase-creds
+              mountPath: /firebase
+              readOnly: true
+      volumes:
+        - name: firebase-creds
+          secret:
+            secretName: firebase-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notification
+  namespace: smart-freelance
+spec:
+  selector: {app: notification}
+  ports: [{port: 8087, targetPort: 8087}]
+
+---
+# ─────────────────────────────── gamification ───────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gamification
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: gamification}
+  template:
+    metadata:
+      labels: {app: gamification}
+    spec:
+      containers:
+        - name: gamification
+          image: YOUR_DOCKERHUB_USERNAME/gamification:latest
+          ports: [{containerPort: 8088}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8088"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/gamificationdb"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8088}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8088}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: gamification
+  namespace: smart-freelance
+spec:
+  selector: {app: gamification}
+  ports: [{port: 8088, targetPort: 8088}]
+
+---
+# ─────────────────────────────── chat ───────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: chat
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: chat}
+  template:
+    metadata:
+      labels: {app: chat}
+    spec:
+      containers:
+        - name: chat
+          image: YOUR_DOCKERHUB_USERNAME/chat:latest
+          ports: [{containerPort: 8093}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8093"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/chatdb"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8093}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8093}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: chat
+  namespace: smart-freelance
+spec:
+  selector: {app: chat}
+  ports: [{port: 8093, targetPort: 8093}]
+
+---
+# ─────────────────────────────── meeting ────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: meeting
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: meeting}
+  template:
+    metadata:
+      labels: {app: meeting}
+    spec:
+      containers:
+        - name: meeting
+          image: YOUR_DOCKERHUB_USERNAME/meeting:latest
+          ports: [{containerPort: 8094}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8094"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/meetingdb"}
+            - {name: GOOGLE_APPLICATION_CREDENTIALS, value: "/credentials/meeting-service-account.json"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8094}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8094}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+          volumeMounts:
+            - name: calendar-creds
+              mountPath: /credentials
+              readOnly: true
+      volumes:
+        - name: calendar-creds
+          secret:
+            secretName: calendar-secret
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: meeting
+  namespace: smart-freelance
+spec:
+  selector: {app: meeting}
+  ports: [{port: 8094, targetPort: 8094}]
+
+---
+# ─────────────────────────────── freelancia-job ─────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: freelancia-job
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: freelancia-job}
+  template:
+    metadata:
+      labels: {app: freelancia-job}
+    spec:
+      containers:
+        - name: freelancia-job
+          image: YOUR_DOCKERHUB_USERNAME/freelancia-job:latest
+          ports: [{containerPort: 8095}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8095"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/freelancia_job_db"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8095}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8095}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: freelancia-job
+  namespace: smart-freelance
+spec:
+  selector: {app: freelancia-job}
+  ports: [{port: 8095, targetPort: 8095}]
+
+---
+# ─────────────────────────────── vendor ─────────────────────────────────────
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: vendor
+  namespace: smart-freelance
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: vendor}
+  template:
+    metadata:
+      labels: {app: vendor}
+    spec:
+      containers:
+        - name: vendor
+          image: YOUR_DOCKERHUB_USERNAME/vendor:latest
+          ports: [{containerPort: 8092}]
+          envFrom:
+            - configMapRef: {name: app-config}
+            - secretRef:    {name: mysql-secret}
+          env:
+            - {name: SERVER_PORT, value: "8092"}
+          resources:
+            requests: {cpu: 150m, memory: 256Mi}
+            limits:   {cpu: 500m, memory: 512Mi}
+          readinessProbe:
+            httpGet: {path: /actuator/health, port: 8092}
+            initialDelaySeconds: 45
+            periodSeconds: 10
+            failureThreshold: 6
+          livenessProbe:
+            httpGet: {path: /actuator/health, port: 8092}
+            initialDelaySeconds: 90
+            periodSeconds: 20
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: vendor
+  namespace: smart-freelance
+spec:
+  selector: {app: vendor}
+  ports: [{port: 8092, targetPort: 8092}]

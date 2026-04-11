@@ -4,7 +4,9 @@
       "Bash(node:*)",
       "Bash(npm install)",
       "Bash(mvn clean compile -q)",
-      "Bash(ls:*)"
+      "Bash(ls:*)",
+      "Bash(while read:*)",
+      "Bash(do sed:*)"
     ]
   }
 }
