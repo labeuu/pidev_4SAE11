@@ -14,6 +14,8 @@ export interface TicketReply {
   sender: ReplySender;
   authorUserId: number;
   createdAt: string;
+  readByUser?: boolean;
+  readByAdmin?: boolean;
 }
 
 export interface CreateReplyRequest {

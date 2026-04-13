@@ -12,6 +12,10 @@ public record TicketResponse(
         TicketStatus status,
         TicketPriority priority,
         LocalDateTime createdAt,
-        LocalDateTime lastActivityAt
+        LocalDateTime lastActivityAt,
+        LocalDateTime firstResponseAt,
+        LocalDateTime resolvedAt,
+        Long responseTimeMinutes,
+        int reopenCount,
+        boolean canReopen
 ) {}
-

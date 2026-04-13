@@ -44,6 +44,7 @@
         </div>
       </div>
       <div class="admin-ticket-hero__actions">
+        <a routerLink="/admin/tickets/stats" class="admin-ticket-btn-secondary admin-ticket-btn-link">Statistics</a>
         <button type="button" class="admin-ticket-btn-secondary" (click)="loadTickets()" [disabled]="loading">Refresh</button>
       </div>
     </header>
@@ -67,7 +68,6 @@
       <table class="admin-ticket-table">
         <thead>
           <tr>
-            <th scope="col">ID</th>
             <th scope="col">Subject</th>
             <th scope="col">Requester</th>
             <th scope="col">Status</th>
@@ -78,8 +78,12 @@
         </thead>
         <tbody>
           <tr *ngFor="let t of filteredTickets">
-            <td class="admin-ticket-table__id">#{{ t.id }}</td>
-            <td class="admin-ticket-table__subject">{{ t.subject }}</td>
+            <td class="admin-ticket-table__subject">
+              <span class="admin-ticket-subject-text">{{ t.subject }}</span>
+              <span *ngIf="unreadCount(t.id) > 0" class="admin-ticket-unread-badge" [attr.aria-label]="unreadCount(t.id) + ' unread user messages'">
+                {{ unreadCount(t.id) }}
+              </span>
+            </td>
             <td class="admin-ticket-table__requester" [title]="userLabel(t.userId)">{{ userLabel(t.userId) }}</td>
             <td><span [ngClass]="badgeStatusClasses(t.status)">{{ t.status }}</span></td>
             <td><span [ngClass]="badgePriorityClasses(t.priority)">{{ t.priority }}</span></td>

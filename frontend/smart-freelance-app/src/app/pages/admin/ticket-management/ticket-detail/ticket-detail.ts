@@ -10,6 +10,7 @@ import { UserService } from '../../../../core/services/user.service';
 import { ToastService } from '../../../../core/services/toast.service';
 import { toastSuccessWithOptionalFilterNote } from '../../../../core/utils/content-sanitized-notice.util';
 import { messageFromHttpError } from '../../../../core/utils/http-error.util';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-admin-ticket-detail',
@@ -28,7 +29,10 @@ export class AdminTicketDetail implements OnInit {
   replyForm: FormGroup;
   sending = false;
   closing = false;
+  reopening = false;
   deleting = false;
+  deleteDialogOpen = false;
+  closeDialogOpen = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -75,16 +79,21 @@ export class AdminTicketDetail implements OnInit {
   }
 
   private resolveOwnerLabel(userId: number): void {
-    this.ownerLabel = `User #${userId}`;
+    this.ownerLabel = 'Loading requester…';
     this.userService.getById(userId).subscribe({
       next: (u) => {
         if (u) {
           const name = `${u.firstName} ${u.lastName}`.trim();
           this.ownerLabel = name ? `${name} (${u.email})` : u.email;
+        } else {
+          this.ownerLabel = 'Unknown requester';
         }
         this.cdr.detectChanges();
       },
-      error: () => this.cdr.detectChanges(),
+      error: () => {
+        this.ownerLabel = 'Requester (profile unavailable)';
+        this.cdr.detectChanges();
+      },
     });
   }
 
@@ -92,9 +101,16 @@ export class AdminTicketDetail implements OnInit {
     this.replyService.getByTicketId(ticketId).subscribe({
       next: (r) => {
         this.replies = r;
-        this.loading = false;
-        this.updateReplyFormDisabledState();
-        this.cdr.detectChanges();
+        this.ticketService
+          .markRead(ticketId)
+          .pipe(
+            finalize(() => {
+              this.loading = false;
+              this.updateReplyFormDisabledState();
+              this.cdr.detectChanges();
+            })
+          )
+          .subscribe({ error: () => {} });
       },
       error: (err: unknown) => {
         this.errorMessage = messageFromHttpError(err, 'Failed to load replies.');
@@ -142,13 +158,49 @@ export class AdminTicketDetail implements OnInit {
     }
   }
 
-  closeTicket(): void {
-    if (!this.ticket?.id || this.ticket.status === 'CLOSED') return;
-    if (!confirm('Close this ticket? The customer will not be able to add new replies.')) return;
+  openCloseDialog(): void {
+    if (!this.ticket?.id || this.ticket.status === 'CLOSED' || this.closing) return;
+    this.deleteDialogOpen = false;
+    this.closeDialogOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeCloseDialog(): void {
+    if (this.closing) return;
+    this.closeDialogOpen = false;
+    this.cdr.detectChanges();
+  }
+
+  reopenTicket(): void {
+    if (!this.ticket?.id || this.ticket.status !== 'CLOSED' || this.reopening) return;
+    const can = this.ticket.canReopen ?? (this.ticket.reopenCount ?? 0) < 1;
+    if (!can) return;
+    this.reopening = true;
+    this.ticketService.reopen(this.ticket.id).subscribe({
+      next: (t) => {
+        this.reopening = false;
+        this.ticket = t;
+        this.updateReplyFormDisabledState();
+        this.toast.success('Ticket reopened.');
+        if (this.ticket.id) this.loadReplies(this.ticket.id);
+        this.cdr.detectChanges();
+      },
+      error: (err: unknown) => {
+        this.reopening = false;
+        this.errorMessage = messageFromHttpError(err, 'Failed to reopen ticket.');
+        this.toast.error(this.errorMessage);
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  confirmCloseTicket(): void {
+    if (!this.ticket?.id || this.ticket.status === 'CLOSED' || this.closing) return;
     this.closing = true;
     this.ticketService.close(this.ticket.id).subscribe({
       next: (t) => {
         this.closing = false;
+        this.closeDialogOpen = false;
         this.ticket = t;
         this.updateReplyFormDisabledState();
         this.toast.success('Ticket closed.');
@@ -162,13 +214,26 @@ export class AdminTicketDetail implements OnInit {
     });
   }
 
-  deleteTicket(): void {
-    if (!this.ticket?.id) return;
-    if (!confirm('Delete this ticket and all replies permanently? This cannot be undone.')) return;
+  openDeleteDialog(): void {
+    if (!this.ticket?.id || this.deleting) return;
+    this.closeDialogOpen = false;
+    this.deleteDialogOpen = true;
+    this.cdr.detectChanges();
+  }
+
+  closeDeleteDialog(): void {
+    if (this.deleting) return;
+    this.deleteDialogOpen = false;
+    this.cdr.detectChanges();
+  }
+
+  confirmDeleteTicket(): void {
+    if (!this.ticket?.id || this.deleting) return;
     this.deleting = true;
     this.ticketService.delete(this.ticket.id).subscribe({
       next: () => {
         this.deleting = false;
+        this.deleteDialogOpen = false;
         this.toast.success('Ticket deleted.');
         this.router.navigate(['/admin/tickets']);
       },

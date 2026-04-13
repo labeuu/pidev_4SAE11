@@ -278,6 +278,12 @@ export const routes: Routes = [
         path: 'tickets',
         children: [
           { path: '', pathMatch: 'full', loadComponent: () => import('./pages/admin/ticket-management/ticket-list/ticket-list').then(m => m.AdminTicketList) },
+          {
+            path: 'stats',
+            loadComponent: () =>
+              import('./pages/admin/ticket-management/ticket-stats/ticket-stats').then(m => m.TicketStatsDashboard),
+            title: 'Ticket statistics',
+          },
           { path: ':id', loadComponent: () => import('./pages/admin/ticket-management/ticket-detail/ticket-detail').then(m => m.AdminTicketDetail) },
         ]
       },

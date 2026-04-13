@@ -19,6 +19,9 @@
         <option value="$PROJECT_DIR$/Microservices/task/pom.xml" />
         <option value="$PROJECT_DIR$/Microservices/ticket-service/pom.xml" />
         <option value="$PROJECT_DIR$/Microservices/gamification/pom.xml" />
+        <option value="$PROJECT_DIR$/Microservices/FreelanciaJob/pom.xml" />
+        <option value="$PROJECT_DIR$/Microservices/Meeting/pom.xml" />
+        <option value="$PROJECT_DIR$/ConfigServer/pom.xml" />
       </list>
     </option>
   </component>

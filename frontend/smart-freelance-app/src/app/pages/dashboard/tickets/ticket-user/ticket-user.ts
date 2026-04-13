@@ -19,6 +19,8 @@ type StatusFilter = 'ALL' | 'OPEN' | 'CLOSED';
 })
 export class TicketUser implements OnInit {
   tickets: Ticket[] = [];
+  /** ticketId -> unread admin reply count */
+  unreadByTicket: Record<number, number> = {};
   statusFilter: StatusFilter = 'ALL';
   loading = true;
   syncingProfile = false;
@@ -72,17 +74,32 @@ export class TicketUser implements OnInit {
     this.ticketService.getByUserId(userId).subscribe({
       next: (tickets) => {
         this.tickets = tickets;
-        this.loading = false;
-        this.cdr.detectChanges();
+        this.ticketService.getUnreadCounts().subscribe({
+          next: (rows) => {
+            this.unreadByTicket = Object.fromEntries(rows.map((r) => [r.ticketId, r.unreadCount]));
+          },
+          error: () => {
+            this.unreadByTicket = {};
+          },
+          complete: () => {
+            this.loading = false;
+            this.cdr.detectChanges();
+          },
+        });
       },
       error: (err: unknown) => {
         this.errorMessage = messageFromHttpError(err, 'Failed to load tickets.');
         this.toast.error(this.errorMessage);
         this.tickets = [];
+        this.unreadByTicket = {};
         this.loading = false;
         this.cdr.detectChanges();
       },
     });
+  }
+
+  unreadCount(ticketId: number): number {
+    return this.unreadByTicket[ticketId] ?? 0;
   }
 
   openTicket(t: Ticket): void {
