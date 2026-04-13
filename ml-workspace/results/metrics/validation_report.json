@@ -1,0 +1,227 @@
+{
+  "document_title": "Smart Freelance & Project Matching — Rapport de validation (Module MLA)",
+  "document_subtitle": "Sections numérotées alignées sur la grille d'évaluation (Semaine 10). Les métriques chiffrées sont injectées automatiquement depuis les exports du pipeline.",
+  "section_1_introduction": {
+    "heading": "Introduction",
+    "contexte": "La plateforme vise l'appariement intelligent freelances–projets. Les données agrégées (projets, clients, tâches, avis) permettent d'anticiper la réussite des missions, la satisfaction client et des segments opérationnels pour le pilotage.",
+    "problematique": "Comment exploiter ces signaux de façon reproductible pour (1) prédire le succès d'un projet, (2) estimer un score de satisfaction, et (3) regrouper les clients à comportements proches, tout en documentant le cycle CRISP-DM attendu pour la validation du module ?"
+  },
+  "section_2_business_table": {
+    "heading": "Compréhension métier (objectifs BO / DSO / jeux de données)",
+    "intro": "Le tableau suivant relie les objectifs métier (BO), les objectifs data science (DSO) et les jeux de données mobilisés.",
+    "columns": ["Objectifs métier (BO)", "Objectifs data science (DSO)", "Jeux de données"],
+    "rows": [
+      {
+        "bo": "Fiabiliser la livraison des projets et anticiper les échecs.",
+        "dso": "Apprentissage supervisé binaire sur succès / échec ; suivi F1, ROC-AUC, PR-AUC et matrices de confusion.",
+        "datasets": "`data/raw/projects.csv` (agrégé dans `modeling_dataset.csv`), variables dérivées tâches / avis."
+      },
+      {
+        "bo": "Améliorer la satisfaction client perçue.",
+        "dso": "Régression sur `client_satisfaction_score` ; métriques MAE, RMSE, R² et diagnostics de résidus.",
+        "datasets": "`modeling_dataset.csv` (fusion client–projet–avis), `data/raw/reviews.csv` pour agrégats de notation."
+      },
+      {
+        "bo": "Segmenter les clients pour cibler les actions commerciales et opérationnelles.",
+        "dso": "Partitionnement (KMeans, CAH, DBSCAN) après mise à l'échelle ; indices silhouette, Calinski–Harabasz, Davies–Bouldin.",
+        "datasets": "`data/raw/clients.csv` enrichi par agrégation depuis `projects.csv`."
+      },
+      {
+        "bo": "Choisir des modèles simples à expliquer et robustes pour un déploiement incrémental.",
+        "dso": "Benchmark multi-algorithmes, validation croisée (classification) et comparaison systématique des métriques.",
+        "datasets": "Mêmes jeux ; exports dans `results/metrics/*.csv` et `results/plots/*.png`."
+      }
+    ]
+  },
+  "section_3_data": {
+    "heading": "Compréhension et préparation des données",
+    "variables_intro": "Pour chaque tâche, la variable cible et les variables explicatives sont dérivées du schéma du jeu `modeling_dataset` (voir tableau généré à partir de `data_schema.json`) et des règles d'exclusion ci-dessous.",
+    "tasks": [
+      {
+        "name": "Classification — succès de projet",
+        "target": "success_flag",
+        "exclude_from_features": ["project_id", "title", "status", "client_satisfaction_score", "success_flag"],
+        "preprocessing_points": [
+          "Imputation : médiane (numérique), mode (catégoriel) via `SimpleImputer`, pour limiter l'impact des valeurs extrêmes.",
+          "Encodage catégoriel : `OneHotEncoder(handle_unknown='ignore')` pour éviter l'ordonnancement artificiel.",
+          "Standardisation numérique : `StandardScaler` pour stabiliser la régression logistique et les modèles à distances.",
+          "Découpage train/test stratifié (22 % test, graine 42) avant tout ajustement des transformateurs (anti-fuite)."
+        ]
+      },
+      {
+        "name": "Régression — satisfaction client",
+        "target": "client_satisfaction_score",
+        "exclude_from_features": ["project_id", "title", "status", "success_flag", "client_satisfaction_score"],
+        "preprocessing_points": [
+          "Même imputation et encodage que la classification sur les colonnes partagées.",
+          "Chaîne numérique : `MinMaxScaler` puis `StandardScaler` pour les modèles linéaires sensibles à l'échelle.",
+          "Winsorisation / clipping IQR sur `deadline_overrun_days`, `avg_task_delay_days`, `budget_usd` (cf. notebooks) pour réduire la variance des queues."
+        ]
+      },
+      {
+        "name": "Clustering — profils clients",
+        "target": "(non supervisé — pas de cible unique ; indicateurs de qualité de partition)",
+        "exclude_from_features": ["client_id"],
+        "preprocessing_points": [
+          "Agrégation par `client_id` (moyennes, taux de succès, volumes) puis fusion avec le référentiel clients.",
+          "Imputation médiane sur les trous post-fusion, puis `StandardScaler` sur les blocs numériques.",
+          "Projection PCA 2D uniquement pour la visualisation ; l'apprentissage des clusters utilise l'espace complet transformé."
+        ]
+      }
+    ],
+    "visual_proof_images": [
+      {
+        "src": "../results/plots/preprocessing_missing_values.png",
+        "caption": "Figure — Valeurs manquantes par colonne (diagnostic avant imputation)."
+      },
+      {
+        "src": "../results/plots/preprocessing_scaling_effect.png",
+        "caption": "Figure — Effet de la standardisation sur une variable numérique représentative (distribution avant / après)."
+      }
+    ],
+    "preprocessing_reference": "Détail textuel : voir `docs/preprocessing_guide.md` et les notebooks dans `notebooks/`."
+  },
+  "section_4_modeling": {
+    "heading": "Modélisation",
+    "intro": "Les familles de modèles ont été choisies pour couvrir interprétabilité, non-linéarités et robustesse empirique, tout en restant raisonnables en coût de calcul sur un jeu de taille modeste.",
+    "models": [
+      {
+        "id": "logistic_regression",
+        "label": "Régression logistique",
+        "rationale": "Modèle linéaire simple, baseline interprétable (coefficients liés aux odds), efficace lorsque les frontières sont approximativement linéaires après prétraitement.",
+        "theoretical_notes": "Minimisation convexe de la log-vraisemblance ; garanties de convergence avec pénalisation L2 implicite selon implémentation ; frontières linéaires dans l'espace des features transformées.",
+        "complexity_notes": "Entraînement typiquement O(n × p) par itération (IRM / Newton approximé) avec p nombre de colonnes post one-hot ; inférence O(p)."
+      },
+      {
+        "id": "random_forest",
+        "label": "Forêts aléatoires (classifieur / régresseur)",
+        "rationale": "Ensemble d'arbres réduisant la variance, capture d'interactions et non-linéarités sans feature engineering lourd ; relativement robuste au bruit.",
+        "theoretical_notes": "Bagging + sélection aléatoire de sous-espaces de variables ; erreur de généralisation liée à la corrélation entre arbres (bornes type bias–variance empiriques).",
+        "complexity_notes": "Entraînement approximativement O(T × n log n × m) avec T arbres, n échantillons, m profondeur moyenne ; parallélisable sur T."
+      },
+      {
+        "id": "gradient_boosting",
+        "label": "Gradient Boosting (classifieur / régresseur)",
+        "rationale": "Boosting séquentiel optimisant des résidus ; souvent meilleur compromis biais–variance que les forêts sur données tabulaires structurées.",
+        "theoretical_notes": "Descente de gradient fonctionnelle ; risque de sur-apprentissage si trop d'arbres / profondeur sans régularisation — contrôlé ici par hyperparamètres sklearn par défaut raisonnables.",
+        "complexity_notes": "Séquentiel par construction ; coût dominé par le nombre d'arbres et la profondeur, typiquement supérieur au bagging pour un même T mais souvent meilleur en score."
+      },
+      {
+        "id": "linear_regression",
+        "label": "Régression linéaire",
+        "rationale": "Baseline forte sur données tabulaires bien scalées ; coefficients interprétables pour expliquer l'effet marginal des features.",
+        "theoretical_notes": "Solution des moindres carrés (convexe) ; MSE comme fonction de perte canonique.",
+        "complexity_notes": "Moindres carrés exacts O(n p²)–O(p³) selon solveur ; inférence O(p)."
+      },
+      {
+        "id": "kmeans",
+        "label": "KMeans",
+        "rationale": "Partitionnement géométrique rapide, interprétable par centroïdes ; complété par courbes coude / silhouette pour le choix de k.",
+        "theoretical_notes": "Minimisation locale de l'inertie intra-cluster ; pas de garantie d'optimum global.",
+        "complexity_notes": "Itérations typiquement O(n k d i) avec i itérations, k clusters, d dimensions."
+      },
+      {
+        "id": "agglomerative",
+        "label": "Clustering hiérarchique agglomératif",
+        "rationale": "Fournit une structure dendritique (non affichée ici) et des clusters sans fixer k de la même manière que KMeans pour certains hyperparamètres.",
+        "theoretical_notes": "Fusion linkage (Ward par défaut selon sklearn) minimisant variance intra-groupe à chaque fusion.",
+        "complexity_notes": "Souvent au moins O(n² log n) selon linkage — acceptable pour n clients modéré."
+      },
+      {
+        "id": "dbscan",
+        "label": "DBSCAN",
+        "rationale": "Détection de formes non convexes et de points de bruit ; utile si les segments ne sont pas sphériques.",
+        "theoretical_notes": "Densité connectée (ε-voisinages) ; sensible au choix de ε et min_samples.",
+        "complexity_notes": "Avec index spatial peut approcher O(n log n) ; pire cas O(n²) sur implémentation naïve."
+      }
+    ]
+  },
+  "section_5_evaluation": {
+    "heading": "Évaluation des performances",
+    "metric_choices": [
+      {
+        "metric": "Classification — exactitude (accuracy)",
+        "justification": "Lisible pour équilibrage modéré des classes ; complétée par F1 et courbes ROC/PR pour éviter l'illusion de performance sur classe majoritaire."
+      },
+      {
+        "metric": "Classification — F1-score",
+        "justification": "Moyenne harmonique précision/rappel ; adaptée lorsque les classes sont déséquilibrées ou que faux positifs/négatifs ont un coût asymétrique."
+      },
+      {
+        "metric": "Classification — ROC-AUC et PR-AUC",
+        "justification": "Évalue le classement des scores de probabilité indépendamment d'un seuil fixe ; PR-AUC sensible aux performances sur la classe minoritaire."
+      },
+      {
+        "metric": "Classification — validation croisée F1 (moyenne ± écart-type)",
+        "justification": "Mesure la stabilité du modèle sur plusieurs découpes stratifiées."
+      },
+      {
+        "metric": "Régression — MAE, RMSE, R²",
+        "justification": "MAE interprétable dans l'unité de la cible ; RMSE pénalise les grosses erreurs ; R² résume la variance expliquée."
+      },
+      {
+        "metric": "Clustering — silhouette, Calinski–Harabasz, Davies–Bouldin",
+        "justification": "Silhouette : cohésion vs séparation ; CH : ratio inter/intra inertie ; DB : dispersion moyenne normalisée (plus bas = mieux)."
+      }
+    ],
+    "interpretation_template": "Synthèse obligatoire (mise à jour automatique) : le meilleur classifieur retenu sur le jeu de test est **{{CLS_BEST_ALGO}}** (F1 = {{CLS_BEST_F1}}, ROC-AUC = {{CLS_BEST_ROC}} ; F1 CV moyen = {{CLS_BEST_CV_F1}} ± {{CLS_BEST_CV_STD}}). Pour la satisfaction, **{{REG_BEST_ALGO}}** domine avec R² = {{REG_BEST_R2}}, RMSE = {{REG_BEST_RMSE}} et MAE = {{REG_BEST_MAE}}. En partitionnement, **{{CLU_BEST_ALGO}}** obtient la silhouette la plus élevée ({{CLU_BEST_SIL}}) avec {{CLU_BEST_K}} clusters détectés et une proportion de bruit DBSCAN de {{CLU_NOISE}} (cf. tableau clustering). Les graphiques en annexes (matrices de confusion, courbes ROC/PR, résidus, projections) matérialisent ces écarts visuellement. L'interprétation qualitative doit compléter ces chiffres dans le mémoire oral (biais résiduel, erreurs systématiques par segment, limites des données synthétiques)."
+  },
+  "section_6_benchmarking": {
+    "heading": "Benchmarking des modèles (obligatoire)",
+    "comparative_summary": "Les annexes en fin de page reprennent les mêmes métriques avec les graphiques. Ici, le rapport PDF intègre aussi des tableaux comparatifs détaillés (toutes colonnes exportées, classement explicite, ligne surlignée pour le modèle retenu) et une vue « podium » transversale par tâche. Le tableau récapitulatif ci-dessous synthétise encore les meilleures configurations par problème.",
+    "deployment_choices": [
+      {
+        "task": "Classification succès projet",
+        "chosen_model_placeholder": "{{CLS_BEST_ALGO}}",
+        "justification": "Meilleur compromis F1 / ROC-AUC sur le test et stabilité raisonnable en validation croisée ; gradient boosting ou forêts souvent favorables aux non-linéarités tabulaires tout en restant déployables via sklearn."
+      },
+      {
+        "task": "Régression satisfaction",
+        "chosen_model_placeholder": "{{REG_BEST_ALGO}}",
+        "justification": "Sélection guidée par R² minimalisant RMSE/MAE ; un modèle linéaire peut suffire si les relations sont quasi linéaires après scaling, sinon boosting."
+      },
+      {
+        "task": "Clustering clients",
+        "chosen_model_placeholder": "{{CLU_BEST_ALGO}}",
+        "justification": "Choix guidé par le score de silhouette et la cohérence des segments sur les projections PCA ; DBSCAN peut être préféré si la détection de bruit est métier."
+      }
+    ],
+    "strengths_weaknesses": [
+      {
+        "approach": "Régression logistique",
+        "forces": "Rapide, interprétable, peu de risque de sur-paramétrage.",
+        "faiblesses": "Frontières linéaires ; sensibilité aux corrélations fortes entre features encodées."
+      },
+      {
+        "approach": "Forêt aléatoire",
+        "forces": "Peu de tuning pour un bon niveau de performance ; gère les interactions.",
+        "faiblesses": "Moins interprétable que le linéaire ; volume mémoire des modèles plus important."
+      },
+      {
+        "approach": "Gradient boosting",
+        "forces": "Très bonne performance tabulaire ; capture des non-linéarités fines.",
+        "faiblesses": "Temps d'entraînement plus long ; risque de sur-apprentissage sans régularisation / early stopping."
+      },
+      {
+        "approach": "Régression linéaire",
+        "forces": "Extrêmement rapide et explicable.",
+        "faiblesses": "Hypothèses de linéarité et d'homoscédasticité souvent approximatives."
+      },
+      {
+        "approach": "KMeans",
+        "forces": "Simple, scalable ; centroïdes actionnables.",
+        "faiblesses": "Formes sphériques implicites ; k à fixer."
+      },
+      {
+        "approach": "CAH / agglomératif",
+        "forces": "Hiérarchie utile pour analyses exploratoires.",
+        "faiblesses": "Coût computationnel plus élevé sur grands n."
+      },
+      {
+        "approach": "DBSCAN",
+        "forces": "Clusters arbitraires ; explicite le bruit.",
+        "faiblesses": "Paramètres ε et min_samples parfois difficiles à caler ; instabilité si densités hétérogènes."
+      }
+    ]
+  }
+}

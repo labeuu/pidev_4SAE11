@@ -1,0 +1,26 @@
+[
+  {
+    "algorithm":"kmeans",
+    "num_clusters":4,
+    "noise_ratio":0.0,
+    "silhouette":0.0901372922,
+    "calinski_harabasz":21.1606967757,
+    "davies_bouldin":2.4273203356
+  },
+  {
+    "algorithm":"agglomerative",
+    "num_clusters":4,
+    "noise_ratio":0.0,
+    "silhouette":0.0719923348,
+    "calinski_harabasz":16.8816036803,
+    "davies_bouldin":2.7174191119
+  },
+  {
+    "algorithm":"dbscan",
+    "num_clusters":0,
+    "noise_ratio":1.0,
+    "silhouette":null,
+    "calinski_harabasz":null,
+    "davies_bouldin":null
+  }
+]
