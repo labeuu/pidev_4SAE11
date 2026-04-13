@@ -31,6 +31,7 @@ class TicketServiceTest {
     @Mock CurrentUserService currentUserService;
     @Mock ContentModerationService contentModerationService;
     @Mock ReplyService replyService;
+    @Mock TicketNotificationService ticketNotificationService;
 
     @InjectMocks TicketService ticketService;
 

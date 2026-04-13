@@ -22,6 +22,8 @@
         <option value="$PROJECT_DIR$/Microservices/FreelanciaJob/pom.xml" />
         <option value="$PROJECT_DIR$/Microservices/Meeting/pom.xml" />
         <option value="$PROJECT_DIR$/ConfigServer/pom.xml" />
+        <option value="$PROJECT_DIR$/Microservices/Chat/pom.xml" />
+        <option value="$PROJECT_DIR$/Microservices/AImodel/pom.xml" />
       </list>
     </option>
   </component>

@@ -50,6 +50,9 @@ public class Ticket {
     /** Set when ticket becomes CLOSED (manual or auto). */
     private LocalDateTime resolvedAt;
 
+    /** Set when the ticket is reopened (used for list ordering: reopened first). */
+    private LocalDateTime lastReopenedAt;
+
     /** Minutes between createdAt and firstResponseAt. */
     private Long responseTimeMinutes;
 

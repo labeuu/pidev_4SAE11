@@ -41,6 +41,7 @@ public class TicketService {
     private final CurrentUserService currentUserService;
     private final ContentModerationService contentModerationService;
     private final ReplyService replyService;
+    private final TicketNotificationService ticketNotificationService;
 
     @Value("${app.ticket.auto-close-after-hours:48}")
     private long autoCloseAfterHours;
@@ -80,13 +81,15 @@ public class TicketService {
                 .build();
         ticketReplyRepository.save(welcome);
 
+        ticketNotificationService.notifyTicketCreated(t);
+
         return toResponse(t);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
-    public List<TicketResponse> getAll() {
-        return ticketRepository.findAll().stream().map(this::toResponse).toList();
+    public List<TicketResponse> getAll(TicketPriority priority) {
+        return ticketRepository.findAllForAdmin(priority).stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -97,12 +100,12 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public List<TicketResponse> getByUserId(Long userId) {
+    public List<TicketResponse> getByUserId(Long userId, TicketPriority priority) {
         Long currentUserId = currentUserService.requireCurrentUserId();
         if (!currentUserService.isAdmin() && !currentUserId.equals(userId)) {
             throw new ResponseStatusException(FORBIDDEN, "Not allowed");
         }
-        return ticketRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().map(this::toResponse).toList();
+        return ticketRepository.findByUserIdForList(userId, priority).stream().map(this::toResponse).toList();
     }
 
     @Transactional
@@ -142,7 +145,9 @@ public class TicketService {
         t.setStatus(TicketStatus.CLOSED);
         t.setResolvedAt(LocalDateTime.now());
         t.setLastActivityAt(LocalDateTime.now());
-        return toResponse(ticketRepository.save(t));
+        t = ticketRepository.save(t);
+        ticketNotificationService.notifyTicketClosed(t);
+        return toResponse(t);
     }
 
     @Transactional
@@ -160,8 +165,12 @@ public class TicketService {
         }
         t.setStatus(TicketStatus.OPEN);
         t.setReopenCount(t.getReopenCount() + 1);
-        t.setLastActivityAt(LocalDateTime.now());
-        return toResponse(ticketRepository.save(t));
+        LocalDateTime now = LocalDateTime.now();
+        t.setLastReopenedAt(now);
+        t.setLastActivityAt(now);
+        t = ticketRepository.save(t);
+        ticketNotificationService.notifyTicketReopened(t);
+        return toResponse(t);
     }
 
     @Transactional

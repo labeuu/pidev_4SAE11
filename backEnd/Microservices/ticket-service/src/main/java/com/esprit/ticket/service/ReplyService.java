@@ -36,6 +36,7 @@ public class ReplyService {
     private final TicketReplyRepository replyRepository;
     private final CurrentUserService currentUserService;
     private final ContentModerationService contentModerationService;
+    private final TicketNotificationService ticketNotificationService;
 
     @Transactional
     public ReplyResponse addReply(CreateReplyRequest req) {
@@ -87,6 +88,12 @@ public class ReplyService {
 
         t.setLastActivityAt(now);
         ticketRepository.save(t);
+
+        if (sender == ReplySender.ADMIN && authorUserId != TicketConstants.SYSTEM_AUTHOR_USER_ID) {
+            ticketNotificationService.notifyUserAboutAdminReply(t, r.getId());
+        } else if (sender == ReplySender.USER) {
+            ticketNotificationService.notifyInboxAboutUserReply(t, r.getId());
+        }
 
         return toResponse(r);
     }

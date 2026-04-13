@@ -5,7 +5,8 @@ import com.esprit.notification.dto.NotificationResponse;
 import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
@@ -17,14 +18,39 @@ import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 public class NotificationService {
 
     private static final String COLLECTION = "notifications";
 
     private final Firestore firestore;
+    private final InMemoryNotificationStore memoryStore;
+    private final boolean useFirestore;
+
+    public NotificationService(
+        ObjectProvider<Firestore> firestoreProvider,
+        InMemoryNotificationStore memoryStore,
+        @Value("${notification.firebase.enabled:false}") boolean firebaseEnabled
+    ) {
+        this.memoryStore = memoryStore;
+        Firestore fs = firestoreProvider.getIfAvailable();
+        if (firebaseEnabled) {
+            if (fs == null) {
+                throw new IllegalStateException(
+                    "notification.firebase.enabled=true but Firestore bean is missing. "
+                        + "Set GOOGLE_APPLICATION_CREDENTIALS or notification.firebase.credentials-path.");
+            }
+            this.firestore = fs;
+            this.useFirestore = true;
+        } else {
+            this.firestore = null;
+            this.useFirestore = false;
+        }
+    }
 
     public NotificationResponse create(NotificationRequest request) {
+        if (!useFirestore) {
+            return memoryStore.create(request);
+        }
         Map<String, Object> data = new HashMap<>();
         data.put("userId", request.getUserId());
         data.put("title", request.getTitle());
@@ -47,6 +73,9 @@ public class NotificationService {
     }
 
     public List<NotificationResponse> findByUserId(String userId) {
+        if (!useFirestore) {
+            return memoryStore.findByUserId(userId);
+        }
         try {
             return firestore.collection(COLLECTION)
                 .whereEqualTo("userId", userId)
@@ -64,6 +93,9 @@ public class NotificationService {
     }
 
     public NotificationResponse markRead(String id) {
+        if (!useFirestore) {
+            return memoryStore.markRead(id);
+        }
         try {
             DocumentReference ref = firestore.collection(COLLECTION).document(id);
             ref.update("read", true).get();
@@ -76,6 +108,10 @@ public class NotificationService {
     }
 
     public void delete(String id) {
+        if (!useFirestore) {
+            memoryStore.delete(id);
+            return;
+        }
         try {
             firestore.collection(COLLECTION).document(id).delete().get();
         } catch (InterruptedException | ExecutionException e) {

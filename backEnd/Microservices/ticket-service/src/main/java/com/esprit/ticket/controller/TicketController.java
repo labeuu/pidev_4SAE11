@@ -5,6 +5,7 @@ import com.esprit.ticket.dto.ticket.MonthlyTicketCount;
 import com.esprit.ticket.dto.ticket.TicketResponse;
 import com.esprit.ticket.dto.ticket.TicketStatsResponse;
 import com.esprit.ticket.dto.ticket.TicketUnreadCountEntry;
+import com.esprit.ticket.domain.TicketPriority;
 import com.esprit.ticket.dto.ticket.UpdateTicketRequest;
 import com.esprit.ticket.service.TicketPdfExportService;
 import com.esprit.ticket.service.TicketService;
@@ -61,13 +62,15 @@ public class TicketController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public List<TicketResponse> getAll() {
-        return ticketService.getAll();
+    public List<TicketResponse> getAll(@RequestParam(required = false) TicketPriority priority) {
+        return ticketService.getAll(priority);
     }
 
     @GetMapping("/user/{userId}")
-    public List<TicketResponse> getByUserId(@PathVariable Long userId) {
-        return ticketService.getByUserId(userId);
+    public List<TicketResponse> getByUserId(
+            @PathVariable Long userId,
+            @RequestParam(required = false) TicketPriority priority) {
+        return ticketService.getByUserId(userId, priority);
     }
 
     @PutMapping("/{id}/read")
