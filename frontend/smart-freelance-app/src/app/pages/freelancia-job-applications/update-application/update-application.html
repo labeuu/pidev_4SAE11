@@ -1,47 +1,98 @@
-<div class="container py-4" style="max-width:700px">
-  <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-bottom py-3">
-      <h4 class="fw-bold mb-0"><i class="bi bi-pencil-fill me-2 text-warning"></i>Edit Application</h4>
-    </div>
-    <div class="card-body p-4">
-      <div *ngIf="isLoading" class="text-center py-4"><div class="spinner-border text-primary"></div></div>
-      <div *ngIf="loadError" class="alert alert-danger">{{ loadError }}</div>
+<div class="form-page">
 
-      <ng-container *ngIf="!isLoading && !loadError">
-        <div *ngIf="submitSuccess" class="alert alert-success">Updated! Redirecting...</div>
-        <div *ngIf="submitError" class="alert alert-danger">{{ submitError }}</div>
-
-        <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Proposal Message *</label>
-            <textarea class="form-control" rows="6" formControlName="proposalMessage"></textarea>
-            <div *ngIf="f('proposalMessage')?.invalid && f('proposalMessage')?.touched" class="text-danger small mt-1">
-              Min 20 characters required.
-            </div>
-          </div>
-
-          <div class="row mb-3">
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Expected Rate</label>
-              <input type="number" class="form-control" formControlName="expectedRate" placeholder="500">
-            </div>
-            <div class="col-md-6">
-              <label class="form-label fw-semibold">Available From</label>
-              <input type="date" class="form-control" formControlName="availabilityStart">
-            </div>
-          </div>
-
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
-              <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
-              {{ isSubmitting ? 'Saving...' : 'Save Changes' }}
-            </button>
-            <button type="button" class="btn btn-outline-secondary" routerLink="/dashboard/my-job-applications">
-              Cancel
-            </button>
-          </div>
-        </form>
-      </ng-container>
-    </div>
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading application...</p>
   </div>
+
+  <!-- Load error -->
+  <div *ngIf="loadError && !isLoading" class="error-state">{{ loadError }}</div>
+
+  <ng-container *ngIf="!isLoading && !loadError">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Edit Application</h2>
+        <p class="page-subtitle">Update your proposal before the client reviews it.</p>
+      </div>
+    </div>
+
+    <!-- Feedback banners -->
+    <div *ngIf="submitSuccess" class="success-banner">
+      Application updated! Redirecting…
+    </div>
+    <div *ngIf="submitError" class="error-banner">{{ submitError }}</div>
+
+    <!-- Form card -->
+    <div class="form-card">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+
+        <!-- Proposal Message -->
+        <div class="field">
+          <label class="field-label" for="proposalMessage">
+            Proposal Message <span class="required">*</span>
+          </label>
+          <textarea
+            id="proposalMessage"
+            class="field-textarea"
+            rows="7"
+            formControlName="proposalMessage"
+            placeholder="Describe why you're a great fit, your approach, relevant experience…"
+            [class.field-textarea--error]="f('proposalMessage')?.invalid && f('proposalMessage')?.touched"
+          ></textarea>
+          <span class="field-hint">{{ (f('proposalMessage')?.value || '').length }} / 20 min</span>
+          <span class="field-error" *ngIf="f('proposalMessage')?.invalid && f('proposalMessage')?.touched">
+            Minimum 20 characters required.
+          </span>
+        </div>
+
+        <!-- Rate + Availability row -->
+        <div class="fields-row">
+          <div class="field">
+            <label class="field-label" for="expectedRate">Expected Rate</label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">💰</span>
+              <input
+                id="expectedRate"
+                type="number"
+                class="field-input field-input--prefixed"
+                formControlName="expectedRate"
+                placeholder="e.g. 500"
+                min="0"
+              />
+            </div>
+            <span class="field-hint">Per hour or fixed — as agreed with client</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="availabilityStart">Available From</label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">📅</span>
+              <input
+                id="availabilityStart"
+                type="date"
+                class="field-input field-input--prefixed"
+                formControlName="availabilityStart"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn-ghost" routerLink="/dashboard/my-job-applications">
+            Cancel
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="isSubmitting">
+            <span *ngIf="isSubmitting" class="btn-spinner"></span>
+            {{ isSubmitting ? 'Saving…' : 'Save Changes' }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+  </ng-container>
 </div>

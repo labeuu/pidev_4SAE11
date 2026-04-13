@@ -1,83 +1,91 @@
-<div class="container-fluid py-4">
-  <div class="d-flex justify-content-between align-items-center mb-4">
-    <div>
-      <h2 class="fw-bold mb-1"><i class="bi bi-file-earmark-text-fill me-2 text-success"></i>My Job Applications</h2>
-      <p class="text-muted mb-0">{{ applications.length }} application(s)</p>
+<div class="applications-page">
+
+  <!-- Page Header -->
+  <div class="page-header">
+    <div class="page-header__left">
+      <h2 class="page-title">My Job Applications</h2>
+      <p class="page-subtitle">{{ applications.length }} application(s)</p>
     </div>
-    <a class="btn btn-outline-primary" routerLink="/dashboard/browse-jobs">
-      <i class="bi bi-search me-1"></i>Browse Jobs
-    </a>
+    <div class="page-header__actions">
+      <a class="btn-secondary" routerLink="/dashboard/browse-freelancia-jobs">Browse Jobs</a>
+    </div>
   </div>
 
-  <div *ngIf="isLoading" class="text-center py-5">
-    <div class="spinner-border text-primary"></div>
-  </div>
-  <div *ngIf="errorMessage" class="alert alert-danger">{{ errorMessage }}</div>
-
-  <div *ngIf="!isLoading && applications.length === 0" class="text-center py-5">
-    <i class="bi bi-inbox fs-1 text-muted d-block mb-3"></i>
-    <h5 class="text-muted">No applications yet</h5>
-    <p class="text-muted">Browse open jobs and apply to get started.</p>
-    <a class="btn btn-primary" routerLink="/dashboard/browse-jobs">Browse Jobs</a>
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading applications...</p>
   </div>
 
-  <div class="row g-3" *ngIf="!isLoading && applications.length > 0">
-    <div class="col-md-6" *ngFor="let app of applications">
-      <div class="card border-0 shadow-sm h-100">
-        <div class="card-body">
-          <div class="d-flex justify-content-between align-items-start mb-2">
-            <h6 class="fw-semibold mb-0">{{ app.jobTitle || 'Job #' + app.jobId }}</h6>
-            <span [class]="statusBadgeClass(app.status || '')">{{ app.status }}</span>
-          </div>
-          <p class="small text-muted mb-2"
-             style="display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden">
-            {{ app.proposalMessage }}
-          </p>
-          <div class="small text-muted mb-3">
-            <span *ngIf="app.expectedRate" class="me-3">
-              <i class="bi bi-currency-exchange me-1"></i>{{ app.expectedRate | number }}
-            </span>
-            <span *ngIf="app.availabilityStart">
-              <i class="bi bi-calendar me-1"></i>From {{ app.availabilityStart | date:'mediumDate' }}
-            </span>
-          </div>
-          <div class="d-flex gap-2">
-            <button class="btn btn-sm btn-outline-primary" (click)="viewApplication(app.id!)">
-              <i class="bi bi-eye me-1"></i>View
-            </button>
-            <a class="btn btn-sm btn-outline-secondary"
-               [routerLink]="['/dashboard/my-job-applications', app.id, 'edit']">
-              <i class="bi bi-pencil me-1"></i>Edit
-            </a>
-            <button class="btn btn-sm btn-outline-danger" (click)="confirmDelete(app.id!)">
-              <i class="bi bi-x-circle me-1"></i>Withdraw
-            </button>
-          </div>
-        </div>
-        <div class="card-footer bg-transparent border-0 small text-muted">
-          <i class="bi bi-clock me-1"></i>Applied {{ app.createdAt | date:'mediumDate' }}
-        </div>
+  <!-- Error -->
+  <div *ngIf="errorMessage && !isLoading" class="error-state">{{ errorMessage }}</div>
+
+  <!-- Empty state -->
+  <div *ngIf="!isLoading && applications.length === 0 && !errorMessage" class="empty-state">
+    <div class="empty-state__icon">📩</div>
+    <h5 class="empty-state__title">No applications yet</h5>
+    <p class="empty-state__subtitle">Browse open jobs and apply to get started.</p>
+    <a class="btn-primary" routerLink="/dashboard/browse-freelancia-jobs">Browse Jobs</a>
+  </div>
+
+  <!-- Applications Grid -->
+  <div class="applications-grid" *ngIf="!isLoading && applications.length > 0">
+    <div class="app-card" *ngFor="let app of applications">
+
+      <!-- Card Top: status badge -->
+      <div class="app-card__top">
+        <span class="badge" [ngClass]="{
+          'badge--pending':     app.status === 'PENDING',
+          'badge--shortlisted': app.status === 'SHORTLISTED',
+          'badge--accepted':    app.status === 'ACCEPTED',
+          'badge--rejected':    app.status === 'REJECTED',
+          'badge--withdrawn':   app.status === 'WITHDRAWN'
+        }">{{ app.status }}</span>
+        <span *ngIf="app.createdAt" class="app-card__date">
+          Applied {{ app.createdAt | date:'mediumDate' }}
+        </span>
       </div>
+
+      <!-- Job title -->
+      <h3 class="app-card__title">{{ app.jobTitle || ('Job #' + app.jobId) }}</h3>
+
+      <!-- Meta row -->
+      <div class="app-card__meta">
+        <span *ngIf="app.expectedRate" class="meta-tag meta-tag--budget">
+          💰 {{ app.expectedRate | number }} / hr
+        </span>
+        <span *ngIf="app.availabilityStart" class="meta-tag">
+          📅 From {{ app.availabilityStart | date:'mediumDate' }}
+        </span>
+      </div>
+
+      <!-- Proposal preview -->
+      <p class="app-card__proposal">{{ app.proposalMessage }}</p>
+
+      <!-- Footer divider -->
+      <div class="app-card__footer"></div>
+
+      <!-- Actions -->
+      <div class="app-card__actions">
+        <button class="btn-outline" (click)="viewApplication(app.id!)">View</button>
+        <a class="btn-ghost" [routerLink]="['/dashboard/my-job-applications', app.id, 'edit']">Edit</a>
+        <button class="btn-danger" (click)="confirmDelete(app.id!)">Withdraw</button>
+      </div>
+
     </div>
   </div>
+
 </div>
 
-<!-- Withdraw confirmation -->
-<div *ngIf="showDeleteModal" class="modal fade show d-block" tabindex="-1" style="background:rgba(0,0,0,.5)">
-  <div class="modal-dialog modal-dialog-centered">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title text-danger"><i class="bi bi-exclamation-triangle me-2"></i>Withdraw Application</h5>
-        <button class="btn-close" (click)="cancelDelete()"></button>
-      </div>
-      <div class="modal-body">
-        <p>Are you sure you want to withdraw this application?</p>
-        <div *ngIf="deleteError" class="alert alert-danger">{{ deleteError }}</div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn btn-secondary" (click)="cancelDelete()">Cancel</button>
-        <button class="btn btn-danger" (click)="doDelete()">Withdraw</button>
-      </div>
+<!-- Withdraw confirmation modal -->
+<div *ngIf="showDeleteModal" class="modal-overlay" (click)="cancelDelete()">
+  <div class="modal-box" (click)="$event.stopPropagation()">
+    <h3 class="modal-box__title">Withdraw Application</h3>
+    <p class="modal-box__body">Are you sure you want to withdraw this application? This action cannot be undone.</p>
+    <div *ngIf="deleteError" class="error-state error-state--inline">{{ deleteError }}</div>
+    <div class="modal-box__actions">
+      <button class="btn-ghost" (click)="cancelDelete()">Cancel</button>
+      <button class="btn-danger" (click)="doDelete()">Withdraw</button>
     </div>
   </div>
 </div>

@@ -6,7 +6,8 @@ import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.CalendarScopes;
 import com.google.auth.http.HttpCredentialsAdapter;
 import com.google.auth.oauth2.GoogleCredentials;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -24,8 +25,9 @@ import java.util.Collections;
  * and {@code google.calendar.credentials-path} is set.
  */
 @Configuration
-@Slf4j
 public class GoogleCalendarConfig {
+
+    private static final Logger log = LoggerFactory.getLogger(GoogleCalendarConfig.class);
 
     @Bean
     @ConditionalOnProperty(prefix = "google.calendar", name = "enabled", havingValue = "true")

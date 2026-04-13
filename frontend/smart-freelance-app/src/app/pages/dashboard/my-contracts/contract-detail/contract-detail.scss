@@ -276,6 +276,13 @@
   vertical-align: middle;
 }
 
+.conflict-section-actions {
+  display: flex;
+  align-items: center;
+  gap: $spacing-sm;
+  flex-wrap: wrap;
+}
+
 .btn-report-conflict {
   flex-shrink: 0;
   padding: $spacing-xs $spacing-md;
@@ -289,6 +296,21 @@
   transition: $transition-fast;
   white-space: nowrap;
   &:hover { background: $error-700; transform: translateY(-1px); }
+}
+
+.btn-schedule-meeting {
+  flex-shrink: 0;
+  padding: $spacing-xs $spacing-md;
+  border-radius: $radius-full;
+  background: $primary-500;
+  color: $white;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-bold;
+  border: none;
+  cursor: pointer;
+  transition: $transition-fast;
+  white-space: nowrap;
+  &:hover { background: $primary-600; transform: translateY(-1px); }
 }
 
 .conflict-empty {

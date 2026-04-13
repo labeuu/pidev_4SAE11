@@ -1,0 +1,58 @@
+###############################################################################
+# Ingress — routes external traffic into the cluster.
+# Requires nginx ingress controller: kubectl apply -f
+#   https://raw.githubusercontent.com/kubernetes/ingress-nginx/...
+#
+# Replace smartfreelance.example.com with your real domain.
+# For TLS, create a cert-manager ClusterIssuer or add a manual tls secret.
+###############################################################################
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: smart-freelance-ingress
+  namespace: smart-freelance
+  annotations:
+    nginx.ingress.kubernetes.io/rewrite-target: /
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-body-size: "50m"
+    # Uncomment when using cert-manager for TLS:
+    # cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  ingressClassName: nginx
+  # tls:
+  #   - hosts: [smartfreelance.example.com]
+  #     secretName: smartfreelance-tls
+  rules:
+    # Frontend — serves Angular SPA
+    - host: smartfreelance.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: {number: 80}
+
+    # API — all backend traffic goes through the gateway
+    - host: api.smartfreelance.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: api-gateway
+                port: {number: 8078}
+
+    # Keycloak — browser auth flows (login, registration)
+    - host: auth.smartfreelance.example.com
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: keycloak
+                port: {number: 8080}

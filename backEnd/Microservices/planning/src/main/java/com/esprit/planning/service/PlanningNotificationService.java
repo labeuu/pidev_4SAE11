@@ -2,8 +2,8 @@ package com.esprit.planning.service;
 
 import com.esprit.planning.client.NotificationClient;
 import com.esprit.planning.dto.NotificationRequestDto;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.util.Map;
@@ -13,11 +13,15 @@ import java.util.Map;
  * Failures are logged but do not affect the calling flow (fire-and-forget).
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class PlanningNotificationService {
 
+    private static final Logger log = LoggerFactory.getLogger(PlanningNotificationService.class);
+
     private final NotificationClient notificationClient;
+
+    public PlanningNotificationService(NotificationClient notificationClient) {
+        this.notificationClient = notificationClient;
+    }
 
     public static final String TYPE_PROGRESS_UPDATE = "PROGRESS_UPDATE";
     public static final String TYPE_PROGRESS_COMMENT = "PROGRESS_COMMENT";

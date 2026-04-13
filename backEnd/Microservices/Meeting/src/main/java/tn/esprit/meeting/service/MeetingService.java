@@ -171,30 +171,35 @@ public class MeetingService {
 
     private void createCalendarEvent(Meeting meeting) {
         if (meeting.getMeetingType() == MeetingType.IN_PERSON) return;
-        if (!googleMeetService.isAvailable()) {
-            log.info("[MeetingService] Google Calendar unavailable — meeting {} has no Meet link", meeting.getId());
-            return;
+        if (googleMeetService.isAvailable()) {
+            try {
+                List<String> emails = resolveEmails(meeting.getClientId(), meeting.getFreelancerId());
+                Optional<GoogleMeetService.EventResult> result = googleMeetService.createMeetingEvent(
+                        null,
+                        meeting.getTitle(),
+                        meeting.getAgenda(),
+                        meeting.getStartTime(),
+                        meeting.getEndTime(),
+                        emails);
+                result.ifPresent(r -> {
+                    meeting.setGoogleEventId(r.eventId());
+                    meeting.setCalendarId(r.calendarId());
+                    // Only use the Google Meet link if one was actually returned
+                    if (r.meetLink() != null && !r.meetLink().isBlank()) {
+                        meeting.setMeetLink(r.meetLink());
+                    }
+                    log.info("[MeetingService] Calendar event created for meeting {}, meetLink={}", meeting.getId(), r.meetLink());
+                });
+            } catch (Exception e) {
+                log.warn("[MeetingService] Error creating calendar event for meeting {}: {}", meeting.getId(), e.getMessage());
+            }
         }
-        try {
-            // Resolve attendee emails via UserClient (graceful fallback)
-            List<String> emails = resolveEmails(meeting.getClientId(), meeting.getFreelancerId());
-
-            Optional<GoogleMeetService.EventResult> result = googleMeetService.createMeetingEvent(
-                    null,
-                    meeting.getTitle(),
-                    meeting.getAgenda(),
-                    meeting.getStartTime(),
-                    meeting.getEndTime(),
-                    emails);
-
-            result.ifPresent(r -> {
-                meeting.setGoogleEventId(r.eventId());
-                meeting.setMeetLink(r.meetLink());
-                meeting.setCalendarId(r.calendarId());
-                log.info("[MeetingService] Meet link set for meeting {}: {}", meeting.getId(), r.meetLink());
-            });
-        } catch (Exception e) {
-            log.warn("[MeetingService] Error creating calendar event for meeting {}: {}", meeting.getId(), e.getMessage());
+        // Fallback: if no Meet link was obtained (Google unavailable or service account
+        // cannot generate Meet links), create a Jitsi Meet room — free, no account required.
+        if (meeting.getMeetLink() == null || meeting.getMeetLink().isBlank()) {
+            String jitsiLink = "https://meet.jit.si/SmartFreelanceMeeting-" + meeting.getId();
+            meeting.setMeetLink(jitsiLink);
+            log.info("[MeetingService] Using Jitsi Meet fallback for meeting {}: {}", meeting.getId(), jitsiLink);
         }
     }
 

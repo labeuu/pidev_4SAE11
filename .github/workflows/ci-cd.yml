@@ -1,0 +1,166 @@
+###############################################################################
+# CI/CD — Build all Docker images in parallel, push to Docker Hub,
+# then optionally deploy to Kubernetes.
+#
+# Required GitHub Secrets:
+#   DOCKERHUB_USERNAME  — your Docker Hub username
+#   DOCKERHUB_TOKEN     — Docker Hub access token (not password)
+#   KUBECONFIG_DATA     — base64-encoded kubeconfig (for K8s deploy step)
+###############################################################################
+name: CI/CD Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+env:
+  REGISTRY: docker.io
+  IMAGE_PREFIX: ${{ secrets.DOCKERHUB_USERNAME }}/
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────
+  # Build & push each service image in parallel using a matrix
+  # ─────────────────────────────────────────────────────────────────────────
+  build:
+    name: Build ${{ matrix.service }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Infrastructure
+          - service: eureka
+            context: backEnd/Eureka
+          - service: config-server
+            context: backEnd/ConfigServer
+          - service: api-gateway
+            context: backEnd/apiGateway
+          - service: keycloak-auth
+            context: backEnd/KeyCloak
+          # Microservices
+          - service: user
+            context: backEnd/Microservices/user
+          - service: project
+            context: backEnd/Microservices/Project
+          - service: offer
+            context: backEnd/Microservices/Offer
+          - service: contract
+            context: backEnd/Microservices/Contract
+          - service: portfolio
+            context: backEnd/Microservices/Portfolio
+          - service: review
+            context: backEnd/Microservices/review
+          - service: planning
+            context: backEnd/Microservices/planning
+          - service: task
+            context: backEnd/Microservices/task
+          - service: notification
+            context: backEnd/Microservices/Notification
+          - service: gamification
+            context: backEnd/Microservices/gamification
+          - service: chat
+            context: backEnd/Microservices/Chat
+          - service: meeting
+            context: backEnd/Microservices/Meeting
+          - service: freelancia-job
+            context: backEnd/Microservices/FreelanciaJob
+          - service: vendor
+            context: backEnd/Microservices/Vendor
+          # Frontend
+          - service: frontend
+            context: frontend/smart-freelance-app
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to Docker Hub
+        if: github.event_name == 'push'
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKERHUB_USERNAME }}
+          password: ${{ secrets.DOCKERHUB_TOKEN }}
+
+      - name: Extract metadata (tags, labels)
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE_PREFIX }}${{ matrix.service }}
+          tags: |
+            type=sha,prefix=sha-
+            type=ref,event=branch
+            type=raw,value=latest,enable=${{ github.ref == 'refs/heads/main' }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v6
+        with:
+          context: ${{ matrix.context }}
+          push: ${{ github.event_name == 'push' }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to:   type=gha,scope=${{ matrix.service }},mode=max
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Deploy to Kubernetes (only on push to main, after all builds succeed)
+  # ─────────────────────────────────────────────────────────────────────────
+  deploy:
+    name: Deploy to Kubernetes
+    runs-on: ubuntu-latest
+    needs: build
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    environment: production   # requires manual approval in GitHub settings
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up kubectl
+        uses: azure/setup-kubectl@v4
+
+      - name: Configure kubeconfig
+        run: |
+          mkdir -p ~/.kube
+          echo "${{ secrets.KUBECONFIG_DATA }}" | base64 -d > ~/.kube/config
+          chmod 600 ~/.kube/config
+
+      - name: Set image tag
+        id: tag
+        run: echo "sha=sha-$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
+
+      - name: Apply K8s manifests
+        run: |
+          kubectl apply -f k8s/00-namespace.yaml
+          kubectl apply -f k8s/01-configmap.yaml
+          kubectl apply -f k8s/02-secrets.yaml
+          kubectl apply -f k8s/03-mysql.yaml
+          kubectl apply -f k8s/04-keycloak.yaml
+          kubectl apply -f k8s/05-eureka.yaml
+          kubectl apply -f k8s/06-config-server.yaml
+          kubectl apply -f k8s/07-api-gateway.yaml
+          kubectl apply -f k8s/08-microservices.yaml
+          kubectl apply -f k8s/09-frontend.yaml
+          kubectl apply -f k8s/10-ingress.yaml
+
+      - name: Rolling update all deployments to new image tag
+        env:
+          HUB: ${{ secrets.DOCKERHUB_USERNAME }}
+          TAG: ${{ steps.tag.outputs.sha }}
+          NS: smart-freelance
+        run: |
+          for svc in eureka config-server api-gateway keycloak-auth \
+                     user project offer contract portfolio review \
+                     planning task notification gamification chat \
+                     meeting freelancia-job vendor frontend; do
+            kubectl set image deployment/$svc $svc=$HUB/$svc:$TAG -n $NS || true
+          done
+
+      - name: Wait for rollout
+        run: |
+          kubectl rollout status deployment/api-gateway -n smart-freelance --timeout=300s
+          kubectl rollout status deployment/frontend    -n smart-freelance --timeout=300s

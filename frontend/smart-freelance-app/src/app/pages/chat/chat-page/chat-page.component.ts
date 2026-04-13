@@ -5,7 +5,7 @@ import {
   OnInit,
 } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterModule } from '@angular/router';
+import { ActivatedRoute, RouterModule } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
 import { ChatService } from '../../../core/services/chat.service';
 import { ConversationListComponent } from '../conversation-list/conversation-list.component';
@@ -26,6 +26,7 @@ export class ChatPageComponent implements OnInit, OnDestroy {
   constructor(
     private authService: AuthService,
     private chatService: ChatService,
+    private route: ActivatedRoute,
   ) {}
 
   ngOnInit(): void {
@@ -35,6 +36,11 @@ export class ChatPageComponent implements OnInit, OnDestroy {
       this.chatService.connect(token, this.currentUserId);
     }
     this.updateMobile();
+    // Auto-open conversation when navigated from e.g. a job application
+    const partnerId = this.route.snapshot.queryParamMap.get('partnerId');
+    if (partnerId) {
+      this.selectedPartnerId = Number(partnerId);
+    }
   }
 
   @HostListener('window:resize')

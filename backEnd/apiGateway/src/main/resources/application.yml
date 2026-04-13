@@ -32,7 +32,7 @@ spring:
               - Accept
               - Origin
               - X-Requested-With
-              - X-AI-Backend
+              - X-User-Id
             exposedHeaders:
               - Content-Disposition
               - Content-Type
@@ -161,6 +161,29 @@ spring:
           filters:
             - StripPrefix=1
 
+        # Meeting (port 8094)
+        - id: meeting
+          uri: http://localhost:8094
+          predicates:
+            - Path=/meeting/**
+          filters:
+            - StripPrefix=1
+
+        # FreelanciaJob (port 8095 — moved off 8092 to avoid Vendor conflict)
+        - id: freelancia-job
+          uri: http://localhost:8095
+          predicates:
+            - Path=/freelancia-job/**
+          filters:
+            - StripPrefix=1
+
+        # Chat / Messaging (port 8093)
+        - id: chat
+          uri: http://localhost:8093
+          predicates:
+            - Path=/chat/**
+          filters:
+            - StripPrefix=1
         # Vendor Management — port must match Config Server VENDOR.properties (8093); 8095 is AImodel.
         - id: vendor
           uri: http://localhost:8093

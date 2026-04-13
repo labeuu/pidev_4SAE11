@@ -13,7 +13,6 @@ import com.esprit.planning.repository.ProgressCommentRepository;
 import com.esprit.planning.repository.ProgressUpdateRepository;
 import com.esprit.planning.repository.ProgressUpdateSpecification;
 import com.esprit.planning.repository.ProjectDeadlineSyncRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -31,7 +30,6 @@ import java.util.stream.Collectors;
  * calendar sync, and notifications. Enforces the rule that progress percentage cannot decrease per project.
  */
 @Service
-@RequiredArgsConstructor
 public class ProgressUpdateService {
 
     private final ProgressUpdateRepository progressUpdateRepository;
@@ -40,6 +38,20 @@ public class ProgressUpdateService {
     private final ProjectClient projectClient;
     private final GoogleCalendarService googleCalendarService;
     private final ProjectDeadlineSyncRepository projectDeadlineSyncRepository;
+
+    public ProgressUpdateService(ProgressUpdateRepository progressUpdateRepository,
+                                 ProgressCommentRepository progressCommentRepository,
+                                 PlanningNotificationService planningNotificationService,
+                                 ProjectClient projectClient,
+                                 GoogleCalendarService googleCalendarService,
+                                 ProjectDeadlineSyncRepository projectDeadlineSyncRepository) {
+        this.progressUpdateRepository = progressUpdateRepository;
+        this.progressCommentRepository = progressCommentRepository;
+        this.planningNotificationService = planningNotificationService;
+        this.projectClient = projectClient;
+        this.googleCalendarService = googleCalendarService;
+        this.projectDeadlineSyncRepository = projectDeadlineSyncRepository;
+    }
 
     /** Returns all progress updates (no filter). */
     @Transactional(readOnly = true)

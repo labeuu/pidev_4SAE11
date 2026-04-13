@@ -1,7 +1,7 @@
 import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MeetingService } from '../../../core/services/meeting.service';
 import { UserService, User } from '../../../core/services/user.service';
 import { MeetingType } from '../../../core/models/meeting.models';
@@ -52,9 +52,17 @@ export class ScheduleMeeting implements OnInit {
     private meetingService: MeetingService,
     private userService: UserService,
     private router: Router,
+    private route: ActivatedRoute,
   ) {}
 
   ngOnInit() {
+    // Pre-fill from query params (e.g. when coming from contract conflict page)
+    const params = this.route.snapshot.queryParamMap;
+    const contractId = params.get('contractId');
+    const freelancerId = params.get('freelancerId');
+    if (contractId) this.form.contractId = Number(contractId);
+    if (freelancerId) this.form.freelancerId = Number(freelancerId);
+
     this.loading.set(true);
     this.userService.getAll().subscribe(users => {
       this.freelancers.set(users.filter(u => u.role === 'FREELANCER' && u.isActive));

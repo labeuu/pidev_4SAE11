@@ -47,3 +47,6 @@ dist/
 *.log
 .DS_Store
 Thumbs.db
+.idea/
+.vscode/
+backEnd/KeyCloak/src/main/resources/application.properties
