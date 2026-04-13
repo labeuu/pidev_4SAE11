@@ -44,6 +44,19 @@ public class Ticket {
     @Column(nullable = false)
     private LocalDateTime lastActivityAt;
 
+    /** First human admin reply (system auto-replies use authorUserId 0 and do not set this). */
+    private LocalDateTime firstResponseAt;
+
+    /** Set when ticket becomes CLOSED (manual or auto). */
+    private LocalDateTime resolvedAt;
+
+    /** Minutes between createdAt and firstResponseAt. */
+    private Long responseTimeMinutes;
+
+    @Column(nullable = false)
+    @Builder.Default
+    private int reopenCount = 0;
+
     @PrePersist
     void prePersist() {
         if (status == null) status = TicketStatus.OPEN;

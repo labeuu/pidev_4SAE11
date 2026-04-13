@@ -1,0 +1,53 @@
+<div class="ticket-stats-host">
+  <div class="ticket-stats-page">
+    <header class="ticket-stats-hero">
+      <div class="ticket-stats-hero__copy">
+        <span class="ticket-stats-badge">Admin</span>
+        <h1 class="ticket-stats-title">Ticket statistics</h1>
+        <p class="ticket-stats-lead">Volume, response times, and monthly trends for the support queue.</p>
+      </div>
+      <div class="ticket-stats-hero__actions">
+        <a routerLink="/admin/tickets" class="ticket-stats-btn-secondary">Back to queue</a>
+        <button type="button" class="ticket-stats-btn-primary" (click)="load()" [disabled]="loading">Refresh</button>
+        <button type="button" class="ticket-stats-btn-pdf" (click)="downloadPdf()" [disabled]="exportingPdf || loading">
+          {{ exportingPdf ? 'Generating…' : 'Export PDF' }}
+        </button>
+      </div>
+    </header>
+
+    <div *ngIf="errorMessage" class="ticket-stats-alert" role="alert">{{ errorMessage }}</div>
+
+    <div *ngIf="loading" class="ticket-stats-loading">Loading statistics…</div>
+
+    <ng-container *ngIf="!loading && stats">
+      <div class="ticket-stats-cards">
+        <div class="ticket-stats-card">
+          <span class="ticket-stats-card__label">Total tickets</span>
+          <span class="ticket-stats-card__value">{{ stats.total }}</span>
+        </div>
+        <div class="ticket-stats-card ticket-stats-card--open">
+          <span class="ticket-stats-card__label">Open</span>
+          <span class="ticket-stats-card__value">{{ stats.open }}</span>
+        </div>
+        <div class="ticket-stats-card ticket-stats-card--closed">
+          <span class="ticket-stats-card__label">Closed</span>
+          <span class="ticket-stats-card__value">{{ stats.closed }}</span>
+        </div>
+        <div class="ticket-stats-card ticket-stats-card--avg">
+          <span class="ticket-stats-card__label">Avg. first response</span>
+          <span class="ticket-stats-card__value">{{ avgResponseLabel() }}</span>
+        </div>
+      </div>
+
+      <section class="ticket-stats-chart-panel" aria-label="Tickets per month">
+        <h2 class="ticket-stats-chart-title">Tickets per month</h2>
+        <div class="ticket-stats-chart-wrap" *ngIf="monthly.length > 0; else noMonthly">
+          <canvas baseChart [data]="barData" [options]="barOptions" [type]="'bar'"></canvas>
+        </div>
+        <ng-template #noMonthly>
+          <p class="ticket-stats-empty">No ticket data grouped by month yet.</p>
+        </ng-template>
+      </section>
+    </ng-container>
+  </div>
+</div>

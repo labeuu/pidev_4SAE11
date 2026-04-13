@@ -3,7 +3,8 @@
     <header class="ticket-detail-hero">
       <div class="ticket-detail-hero__main">
         <div class="ticket-detail-meta">
-          Ticket #{{ t.id }}<span *ngIf="ownerLabel"> · {{ ownerLabel }}</span>
+          <span class="ticket-detail-meta__label">Requester</span>
+          {{ ownerLabel }}
         </div>
         <h1 class="ticket-detail-title">{{ t.subject }}</h1>
         <div class="ticket-detail-badges">
@@ -16,21 +17,39 @@
         <a class="ticket-detail-btn-secondary" routerLink="/admin/tickets">Back</a>
         <button
           type="button"
-          class="ticket-detail-btn-danger"
-          (click)="deleteTicket()"
-          [disabled]="deleting"
+          class="ticket-detail-btn-secondary"
+          *ngIf="t.status === 'CLOSED' && (t.canReopen ?? (t.reopenCount ?? 0) < 1)"
+          (click)="reopenTicket()"
+          [disabled]="reopening"
         >
-          <span *ngIf="deleting" class="ticket-detail-spinner" aria-hidden="true"></span>
-          Delete
+          <span *ngIf="reopening" class="ticket-detail-spinner" aria-hidden="true"></span>
+          Reopen ticket
         </button>
         <button
           type="button"
           class="ticket-detail-btn-primary"
-          (click)="closeTicket()"
+          (click)="openCloseDialog()"
           [disabled]="closing || t.status === 'CLOSED'"
+          [attr.aria-expanded]="closeDialogOpen"
+          aria-haspopup="dialog"
+          aria-controls="admin-ticket-close-dialog"
         >
           <span *ngIf="closing" class="ticket-detail-spinner" aria-hidden="true"></span>
           Close ticket
+        </button>
+        <button
+          type="button"
+          class="ticket-detail-btn-danger ticket-detail-btn-danger--outline"
+          (click)="openDeleteDialog()"
+          [disabled]="deleting"
+          [attr.aria-expanded]="deleteDialogOpen"
+          aria-haspopup="dialog"
+          aria-controls="admin-ticket-delete-dialog"
+        >
+          <svg class="ticket-detail-btn-danger__icon" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M14.74 9l-.346 9m-4.788 0L9.26 9m9.968-3.21c.342.052.682.107 1.022.166m-1.022-.165L18.16 19.673a2.25 2.25 0 01-2.244 2.077H8.084a2.25 2.25 0 01-2.244-2.077L4.772 5.79m14.456 0a48.108 48.108 0 00-3.478-.397m-12 .562c.34-.059.68-.114 1.022-.165m0 0a48.11 48.11 0 013.478-.397m7.5 0v-.916c0-1.18-.91-2.164-2.09-2.201a51.964 51.964 0 00-3.32 0c-1.18.037-2.09 1.022-2.09 2.201v.916m7.5 0a48.667 48.667 0 00-7.5 0" />
+          </svg>
+          Delete
         </button>
       </div>
     </header>
@@ -80,6 +99,79 @@
         </button>
       </div>
     </form>
+  </div>
+
+  <div
+    *ngIf="closeDialogOpen && ticket"
+    class="ticket-delete-overlay"
+    role="presentation"
+    (click)="closeCloseDialog()"
+  >
+    <div
+      id="admin-ticket-close-dialog"
+      class="ticket-delete-modal ticket-delete-modal--info"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ticket-close-title"
+      aria-describedby="ticket-close-desc"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="ticket-delete-modal__icon-wrap ticket-delete-modal__icon-wrap--info" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M9 12.75L11.25 15 15 9.75M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+        </svg>
+      </div>
+      <h2 id="ticket-close-title" class="ticket-delete-modal__title">Close this ticket?</h2>
+      <p id="ticket-close-desc" class="ticket-delete-modal__text">
+        The customer will not be able to add new replies after it is closed.
+      </p>
+      <div class="ticket-delete-modal__actions">
+        <button type="button" class="ticket-detail-btn-secondary" (click)="closeCloseDialog()" [disabled]="closing">Cancel</button>
+        <button type="button" class="ticket-close-modal__confirm" (click)="confirmCloseTicket()" [disabled]="closing">
+          <span *ngIf="closing" class="ticket-detail-spinner ticket-detail-spinner--light" aria-hidden="true"></span>
+          {{ closing ? 'Closing…' : 'Close ticket' }}
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div
+    *ngIf="deleteDialogOpen && ticket as del"
+    class="ticket-delete-overlay"
+    role="presentation"
+    (click)="closeDeleteDialog()"
+  >
+    <div
+      id="admin-ticket-delete-dialog"
+      class="ticket-delete-modal"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="ticket-delete-title"
+      aria-describedby="ticket-delete-desc"
+      (click)="$event.stopPropagation()"
+    >
+      <div class="ticket-delete-modal__icon-wrap" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="1.5">
+          <path
+            stroke-linecap="round"
+            stroke-linejoin="round"
+            d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126zM12 15.75h.007v.008H12v-.008z"
+          />
+        </svg>
+      </div>
+      <h2 id="ticket-delete-title" class="ticket-delete-modal__title">Delete this ticket?</h2>
+      <p id="ticket-delete-desc" class="ticket-delete-modal__text">
+        This removes the conversation thread and every reply. This action cannot be undone.
+      </p>
+      <p class="ticket-delete-modal__subject" *ngIf="del.subject">{{ del.subject }}</p>
+      <div class="ticket-delete-modal__actions">
+        <button type="button" class="ticket-detail-btn-secondary" (click)="closeDeleteDialog()" [disabled]="deleting">Cancel</button>
+        <button type="button" class="ticket-delete-modal__confirm" (click)="confirmDeleteTicket()" [disabled]="deleting">
+          <span *ngIf="deleting" class="ticket-detail-spinner ticket-detail-spinner--light" aria-hidden="true"></span>
+          {{ deleting ? 'Deleting…' : 'Delete permanently' }}
+        </button>
+      </div>
+    </div>
   </div>
 </div>
 

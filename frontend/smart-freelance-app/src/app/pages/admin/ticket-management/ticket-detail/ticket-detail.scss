@@ -41,12 +41,21 @@
 }
 
 .ticket-detail-meta {
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $neutral-700;
+  line-height: $line-height-relaxed;
+  margin-bottom: $spacing-sm;
+}
+
+.ticket-detail-meta__label {
+  display: block;
   font-size: $font-size-xs;
-  font-weight: $font-weight-semibold;
+  font-weight: $font-weight-bold;
   color: $primary-600;
   text-transform: uppercase;
   letter-spacing: 0.06em;
-  margin-bottom: $spacing-sm;
+  margin-bottom: $spacing-xs;
 }
 
 .ticket-detail-title {
@@ -148,7 +157,7 @@ button.ticket-detail-btn-secondary {
   border: 1.5px solid $error-200;
   border-radius: $radius-lg;
   cursor: pointer;
-  transition: background $transition-fast, border-color $transition-fast;
+  transition: background $transition-fast, border-color $transition-fast, box-shadow $transition-fast;
 
   &:hover:not(:disabled) {
     background: $error-50;
@@ -159,6 +168,23 @@ button.ticket-detail-btn-secondary {
     opacity: 0.55;
     cursor: not-allowed;
   }
+
+  &--outline {
+    background: transparent;
+    border-color: rgba($error-600, 0.35);
+
+    &:hover:not(:disabled) {
+      background: rgba($error-600, 0.06);
+      border-color: rgba($error-600, 0.5);
+      box-shadow: 0 0 0 1px rgba($error-600, 0.08);
+    }
+  }
+}
+
+.ticket-detail-btn-danger__icon {
+  width: 1.125rem;
+  height: 1.125rem;
+  flex-shrink: 0;
 }
 
 .ticket-detail-alert {
@@ -355,6 +381,197 @@ button.ticket-detail-btn-secondary {
   &--lg {
     width: 1.35rem;
     height: 1.35rem;
+  }
+
+  &--light {
+    border-color: rgba($white, 0.35);
+    border-top-color: $white;
+  }
+}
+
+@keyframes ticket-delete-fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes ticket-delete-pop {
+  from {
+    opacity: 0;
+    transform: translateY(0.75rem) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.ticket-delete-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1080;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: $spacing-lg;
+  box-sizing: border-box;
+  background: rgba($neutral-900, 0.45);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  animation: ticket-delete-fade-in 0.2s ease;
+}
+
+.ticket-delete-modal {
+  width: 100%;
+  max-width: 26rem;
+  padding: $spacing-xl;
+  background: $white;
+  border-radius: $radius-xl;
+  border: 1px solid $neutral-200;
+  box-shadow: 0 24px 48px -12px rgba(0, 0, 0, 0.22);
+  animation: ticket-delete-pop 0.28s ease;
+}
+
+.ticket-delete-modal__icon-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 3rem;
+  height: 3rem;
+  margin: 0 auto $spacing-md;
+  color: $error-600;
+  background: $error-50;
+  border-radius: $radius-lg;
+  border: 1px solid $error-100;
+
+  svg {
+    width: 1.5rem;
+    height: 1.5rem;
+  }
+
+  &--info {
+    color: $primary-600;
+    background: rgba(227, 126, 51, 0.1);
+    border-color: rgba(227, 126, 51, 0.22);
+  }
+}
+
+.ticket-delete-modal--info .ticket-delete-modal__title {
+  color: $neutral-900;
+}
+
+.ticket-delete-modal__title {
+  margin: 0 0 $spacing-sm;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-extrabold;
+  color: $neutral-900;
+  text-align: center;
+  letter-spacing: $letter-spacing-tight;
+  line-height: $line-height-snug;
+}
+
+.ticket-delete-modal__text {
+  margin: 0 0 $spacing-md;
+  font-size: $font-size-sm;
+  line-height: $line-height-relaxed;
+  color: $neutral-600;
+  text-align: center;
+}
+
+.ticket-delete-modal__subject {
+  margin: 0 0 $spacing-lg;
+  padding: $spacing-sm $spacing-md;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-medium;
+  color: $neutral-800;
+  text-align: center;
+  line-height: $line-height-relaxed;
+  word-break: break-word;
+  background: $neutral-50;
+  border-radius: $radius-md;
+  border: 1px solid $neutral-200;
+}
+
+.ticket-delete-modal__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+  justify-content: stretch;
+
+  .ticket-detail-btn-secondary {
+    flex: 1 1 auto;
+    min-width: 6rem;
+    justify-content: center;
+  }
+}
+
+.ticket-delete-modal__confirm {
+  flex: 1 1 auto;
+  min-width: 8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-lg;
+  font-family: $font-family;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $white;
+  background: linear-gradient(135deg, $error-600 0%, darken($error-600, 6%) 100%);
+  border: none;
+  border-radius: $radius-lg;
+  cursor: pointer;
+  box-shadow: 0 4px 14px -4px rgba($error-600, 0.55);
+  transition: filter $transition-fast, transform 0.15s ease, box-shadow $transition-fast;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.05);
+    box-shadow: 0 6px 18px -4px rgba($error-600, 0.5);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+}
+
+.ticket-close-modal__confirm {
+  @include button-gradient;
+  flex: 1 1 auto;
+  min-width: 8rem;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: $spacing-sm;
+  padding: $spacing-sm $spacing-lg;
+  font-family: $font-family;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  color: $white;
+  border: none;
+  border-radius: $radius-lg;
+  cursor: pointer;
+  transition: filter $transition-fast, transform 0.15s ease, opacity $transition-fast;
+
+  &:hover:not(:disabled) {
+    filter: brightness(1.03);
+  }
+
+  &:active:not(:disabled) {
+    transform: translateY(1px);
+  }
+
+  &:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
   }
 }
 

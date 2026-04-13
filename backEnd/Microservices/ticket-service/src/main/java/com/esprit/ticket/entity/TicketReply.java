@@ -43,5 +43,15 @@ public class TicketReply {
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    /** USER has seen this reply (relevant for ADMIN-authored replies). */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean readByUser = true;
+
+    /** ADMIN has seen this reply (relevant for USER-authored replies). */
+    @Column(nullable = false)
+    @Builder.Default
+    private boolean readByAdmin = false;
 }
 

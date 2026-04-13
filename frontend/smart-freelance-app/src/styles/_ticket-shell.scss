@@ -28,13 +28,15 @@
   }
 
   .tk-pill--open {
-    background: $info-100;
-    color: $info-600;
+    background: rgba($success-600, 0.12);
+    color: $success-600;
+    border: 1px solid rgba($success-600, 0.25);
   }
 
   .tk-pill--closed {
-    background: $neutral-200;
-    color: $neutral-700;
+    background: rgba($error-600, 0.1);
+    color: $error-700;
+    border: 1px solid rgba($error-600, 0.22);
   }
 
   .tk-pill--high {
