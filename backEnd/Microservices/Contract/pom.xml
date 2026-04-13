@@ -5,7 +5,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.2.2</version>
+        <version>3.3.6</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
     <groupId>org.example</groupId>
@@ -15,7 +15,10 @@
     <description>Microservice for Contract and Conflict management</description>
     <properties>
         <java.version>17</java.version>
-        <spring-cloud.version>2023.0.0</spring-cloud.version>
+        <spring-cloud.version>2023.0.3</spring-cloud.version>
+        <!-- Override: Lombok 1.18.30 (managed by Spring Boot parent) crashes on Java 21+;
+             1.18.36 is the first release with full Java 25 support. -->
+        <lombok.version>1.18.36</lombok.version>
     </properties>
     <dependencies>
         <!-- Spring Cloud Config Client -->

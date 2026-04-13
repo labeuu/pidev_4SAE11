@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>ML Results Dashboard — Rapport de validation</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <header class="page-header">
+    <h1>Smart Freelance — Tableau de bord ML &amp; rapport de validation</h1>
+    <p>Classification, régression, clustering et grille d'évaluation Module MLA (export PDF via impression)</p>
+    <div class="toolbar no-print">
+      <button id="export-pdf-btn" type="button">Exporter PDF (impression)</button>
+      <p class="toolbar-hint">
+        Utilisez <strong>Enregistrer au format PDF</strong> dans la boîte d'impression du navigateur.
+        Le rapport structuré (sections 1 à 6) apparaît en premier, puis les annexes (tableaux et graphiques).
+      </p>
+    </div>
+  </header>
+
+  <main class="validation-doc" id="validation-report" aria-label="Rapport de validation numéroté"></main>
+
+  <section class="summary" id="summary-cards"></section>
+
+  <section class="panel annex-block">
+    <h2 class="annex-title">Annexe — Classification</h2>
+    <div id="classification-table" class="table-wrap"></div>
+    <div class="plot-grid" id="classification-plots"></div>
+  </section>
+
+  <section class="panel annex-block">
+    <h2 class="annex-title">Annexe — Régression</h2>
+    <div id="regression-table" class="table-wrap"></div>
+    <div class="plot-grid" id="regression-plots"></div>
+  </section>
+
+  <section class="panel annex-block">
+    <h2 class="annex-title">Annexe — Clustering</h2>
+    <div id="clustering-table" class="table-wrap"></div>
+    <div class="plot-grid" id="clustering-plots"></div>
+  </section>
+
+  <section class="panel annex-block">
+    <h2 class="annex-title">Annexe — Synthèse inter-tâches</h2>
+    <div id="conclusion"></div>
+  </section>
+
+  <footer class="no-print">
+    <small>
+      Serveur local depuis <code>ml-workspace</code> : <code>python -m http.server</code>
+      — Après réentraînement, exécuter <code>python src/run_all_models.py</code> et mettre à jour
+      <code>results/metrics/validation_report.json</code> si les jeux ou objectifs changent.
+    </small>
+  </footer>
+
+  <script src="./app.js"></script>
+</body>
+</html>

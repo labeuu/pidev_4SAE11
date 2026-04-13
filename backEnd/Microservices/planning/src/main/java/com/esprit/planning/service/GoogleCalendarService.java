@@ -4,7 +4,8 @@ import com.google.api.services.calendar.Calendar;
 import com.google.api.services.calendar.model.Event;
 import com.google.api.services.calendar.model.EventDateTime;
 import com.google.api.services.calendar.model.Events;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.scheduling.annotation.Async;
@@ -22,8 +23,9 @@ import java.util.Optional;
  * No-ops when Calendar is disabled or credentials are missing (fail gracefully).
  */
 @Service
-@Slf4j
 public class GoogleCalendarService {
+
+    private static final Logger log = LoggerFactory.getLogger(GoogleCalendarService.class);
 
     private final Calendar calendar;
     private final String defaultCalendarId;

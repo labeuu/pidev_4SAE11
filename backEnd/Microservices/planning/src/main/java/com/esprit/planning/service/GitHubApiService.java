@@ -4,7 +4,8 @@ import com.esprit.planning.dto.GitHubBranchDto;
 import com.esprit.planning.dto.GitHubCommitDto;
 import com.esprit.planning.dto.GitHubIssueRequest;
 import com.esprit.planning.dto.GitHubIssueResponseDto;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
@@ -24,9 +25,9 @@ import java.util.List;
  * Token is read from github.token, GITHUB_TOKEN env, or github.token-file (e.g. githubToken.txt).
  */
 @Service
-@Slf4j
 public class GitHubApiService {
 
+    private static final Logger log = LoggerFactory.getLogger(GitHubApiService.class);
     private static final String GITHUB_API_BASE = "https://api.github.com";
 
     private final RestTemplate restTemplate;

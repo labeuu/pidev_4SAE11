@@ -134,6 +134,7 @@ export class Sidebar {
         { label: 'My Offer Applications', route: '/dashboard/my-offer-applications', icon: 'contracts' },
         { label: 'Post a Job',            route: '/dashboard/post-job',              icon: 'add'       },
         { label: 'My Projects',           route: '/dashboard/my-projects',           icon: 'folder'    },
+        { label: 'My Jobs',               route: '/dashboard/my-jobs',               icon: 'tasks'     },
         { label: 'My Reviews',            route: '/dashboard/reviews',               icon: 'star'      },
         { label: 'Reviews about me',      route: '/dashboard/reviews/about-me',      icon: 'chat'      },
         { label: 'My Contracts',          route: '/dashboard/my-contracts',          icon: 'contracts' },
@@ -150,9 +151,11 @@ export class Sidebar {
     if (this.auth.isFreelancer()) {
       return [
         ...commonItems,
-        { label: 'My Offers',          route: '/dashboard/my-offers',         icon: 'offers'     },
-        { label: 'Browse Jobs',        route: '/dashboard/browse-jobs',       icon: 'search'     },
-        { label: 'My Applications',    route: '/dashboard/my-applications',   icon: 'contracts'  },
+        { label: 'My Offers',              route: '/dashboard/my-offers',                icon: 'offers'    },
+        { label: 'Browse Jobs',            route: '/dashboard/browse-jobs',              icon: 'search'    },
+        { label: 'My Applications',        route: '/dashboard/my-applications',          icon: 'contracts' },
+        { label: 'Browse Freelancia Jobs', route: '/dashboard/browse-freelancia-jobs',   icon: 'folder'    },
+        { label: 'My Job Applications',    route: '/dashboard/my-job-applications',      icon: 'tasks'     },
         { label: 'My Reviews',         route: '/dashboard/reviews',           icon: 'star'       },
         { label: 'Reviews about me',   route: '/dashboard/reviews/about-me', icon: 'chat'       },
         { label: 'My Contracts',       route: '/dashboard/my-contracts',     icon: 'contracts'  },

@@ -6,8 +6,8 @@ import com.esprit.planning.dto.CalendarEventDto;
 import com.esprit.planning.dto.ProjectDto;
 import com.esprit.planning.entity.ProgressUpdate;
 import com.esprit.planning.repository.ProgressUpdateRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -26,13 +26,21 @@ import java.util.Set;
  * see only their projects and freelancers see only their assigned work.
  */
 @Service
-@Slf4j
-@RequiredArgsConstructor
 public class CalendarEventService {
+
+    private static final Logger log = LoggerFactory.getLogger(CalendarEventService.class);
 
     private final ProgressUpdateRepository progressUpdateRepository;
     private final ProjectClient projectClient;
     private final TaskClient taskClient;
+
+    public CalendarEventService(ProgressUpdateRepository progressUpdateRepository,
+                                ProjectClient projectClient,
+                                TaskClient taskClient) {
+        this.progressUpdateRepository = progressUpdateRepository;
+        this.projectClient = projectClient;
+        this.taskClient = taskClient;
+    }
 
     /**
      * Returns calendar events from our own data (no user filter). Use {@link #listEventsFromDb(LocalDateTime, LocalDateTime, Long, String)}

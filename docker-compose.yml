@@ -1,0 +1,473 @@
+###############################################################################
+# Smart Freelance Platform — Docker Compose
+#
+# Usage:
+#   cp .env.example .env          # fill in secrets
+#   docker-compose build          # build all images
+#   docker-compose up -d          # start everything
+#   docker-compose logs -f        # follow logs
+#   docker-compose down -v        # stop + remove volumes
+#
+# Image naming convention (for Docker Hub push):
+#   docker-compose push
+#
+# Startup order enforced via healthcheck conditions:
+#   MySQL → Eureka → ConfigServer → Gateway/KeycloakAuth → Microservices → Frontend
+###############################################################################
+
+x-java-svc: &java-svc   # common settings for every Spring Boot service
+  restart: unless-stopped
+  networks: [sf-net]
+  env_file: [.env]
+
+x-java-depends: &java-depends  # wait for infra before starting any microservice
+  depends_on:
+    mysql:
+      condition: service_healthy
+    eureka:
+      condition: service_healthy
+
+services:
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Infrastructure
+  # ─────────────────────────────────────────────────────────────────────────
+
+  mysql:
+    image: mysql:8.0
+    container_name: sf-mysql
+    restart: unless-stopped
+    networks: [sf-net]
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      MYSQL_ROOT_HOST: '%'
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql-data:/var/lib/mysql
+      - ./scripts/mysql-init.sql:/docker-entrypoint-initdb.d/00-init.sql:ro
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost",
+             "-u", "root", "-p${MYSQL_ROOT_PASSWORD:-rootpassword}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # Keycloak Identity Provider (the Keycloak server itself, not our custom adapter)
+  keycloak:
+    image: quay.io/keycloak/keycloak:25.0
+    container_name: sf-keycloak
+    restart: unless-stopped
+    networks: [sf-net]
+    command: start-dev --import-realm
+    volumes:
+      - ./keycloak/smart-freelance-realm.json:/opt/keycloak/data/import/smart-freelance-realm.json:ro
+    environment:
+      KEYCLOAK_ADMIN: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASSWORD: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+      KC_DB: mysql
+      KC_DB_URL: jdbc:mysql://mysql:3306/keycloakdb
+      KC_DB_USERNAME: root
+      KC_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      KC_HTTP_PORT: 8080
+      KC_HOSTNAME_STRICT: "false"
+      KC_HOSTNAME_STRICT_HTTPS: "false"
+      KC_HEALTH_ENABLED: "true"
+    ports:
+      - "8080:8080"          # Keycloak IdP on 8080 (keycloak.auth-server-url=http://localhost:8080)
+    depends_on:
+      mysql:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 90s
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Service Registry
+  # ─────────────────────────────────────────────────────────────────────────
+
+  eureka:
+    build:
+      context: ./backEnd/Eureka
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/eureka:${TAG:-latest}
+    container_name: sf-eureka
+    <<: *java-svc
+    environment:
+      SERVER_PORT: 8420
+    ports:
+      - "8420:8420"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8420/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Config Server
+  # ─────────────────────────────────────────────────────────────────────────
+
+  config-server:
+    build:
+      context: ./backEnd/ConfigServer
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/config-server:${TAG:-latest}
+    container_name: sf-config
+    <<: *java-svc
+    environment:
+      SERVER_PORT: 8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+    depends_on:
+      eureka:
+        condition: service_healthy
+    ports:
+      - "8888:8888"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # API Gateway
+  # ─────────────────────────────────────────────────────────────────────────
+
+  api-gateway:
+    build:
+      context: ./backEnd/apiGateway
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/api-gateway:${TAG:-latest}
+    container_name: sf-gateway
+    <<: *java-svc
+    environment:
+      SERVER_PORT: 8078
+      SPRING_PROFILES_ACTIVE: docker     # activates application-docker.yml routes
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+    depends_on:
+      eureka:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8078:8078"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8078/actuator/health"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Keycloak Auth Adapter (our custom Spring Boot service)
+  # ─────────────────────────────────────────────────────────────────────────
+
+  keycloak-auth:
+    build:
+      context: ./backEnd/KeyCloak
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/keycloak-auth:${TAG:-latest}
+    container_name: sf-keycloak-auth
+    <<: *java-svc
+    environment:
+      SERVER_PORT: 8079
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      KEYCLOAK_AUTH_SERVER_URL: http://keycloak:8080
+      KEYCLOAK_REALM: smart-freelance
+      KEYCLOAK_ADMIN_CLIENT_SECRET: ${KEYCLOAK_ADMIN_CLIENT_SECRET:-}
+      KEYCLOAK_ADMIN_USERNAME: ${KEYCLOAK_ADMIN:-admin}
+      KEYCLOAK_ADMIN_PASS: ${KEYCLOAK_ADMIN_PASSWORD:-admin}
+    depends_on:
+      eureka:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    ports:
+      - "8079:8079"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Microservices
+  # ─────────────────────────────────────────────────────────────────────────
+
+  user:
+    build:
+      context: ./backEnd/Microservices/user
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/user:${TAG:-latest}
+    container_name: sf-user
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8090
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/userdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      KEYCLOAK_AUTH_SERVICE_URL: http://keycloak-auth:8079
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
+    volumes:
+      - user-uploads:/uploads/avatars
+    ports:
+      - "8090:8090"
+
+  project:
+    build:
+      context: ./backEnd/Microservices/Project
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/project:${TAG:-latest}
+    container_name: sf-project
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8084
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/projectdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
+    ports:
+      - "8084:8084"
+
+  offer:
+    build:
+      context: ./backEnd/Microservices/Offer
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/offer:${TAG:-latest}
+    container_name: sf-offer
+    <<: *java-svc
+    environment:
+      SERVER_PORT: 8082
+      SPRING_PROFILES_ACTIVE: docker          # activates application-docker.properties
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gestion_offre_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8082:8082"
+
+  contract:
+    build:
+      context: ./backEnd/Microservices/Contract
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/contract:${TAG:-latest}
+    container_name: sf-contract
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8083
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gestion_contract_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+    ports:
+      - "8083:8083"
+
+  portfolio:
+    build:
+      context: ./backEnd/Microservices/Portfolio
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/portfolio:${TAG:-latest}
+    container_name: sf-portfolio
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8086
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/portfolio_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      AI_API_KEY: ${AI_API_KEY:-}
+    ports:
+      - "8086:8086"
+
+  review:
+    build:
+      context: ./backEnd/Microservices/review
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/review:${TAG:-latest}
+    container_name: sf-review
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8085
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/reviewdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      NOTIFICATION_SERVICE_URL: http://notification:8087
+      USER_SERVICE_URL: http://user:8090
+      SPRING_MAIL_HOST: ${MAIL_HOST:-sandbox.smtp.mailtrap.io}
+      SPRING_MAIL_PORT: ${MAIL_PORT:-2525}
+      SPRING_MAIL_USERNAME: ${MAIL_USERNAME:-}
+      SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
+    ports:
+      - "8085:8085"
+
+  planning:
+    build:
+      context: ./backEnd/Microservices/planning
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/planning:${TAG:-latest}
+    container_name: sf-planning
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8081
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/planningdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      GITHUB_TOKEN: ${GITHUB_TOKEN:-}
+      GOOGLE_APPLICATION_CREDENTIALS: /credentials/planning-service-account.json
+    volumes:
+      - ${PLANNING_CALENDAR_CREDENTIALS:-./credentials/calendar-service-account.json}:/credentials/planning-service-account.json:ro
+    ports:
+      - "8081:8081"
+
+  task:
+    build:
+      context: ./backEnd/Microservices/task
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/task:${TAG:-latest}
+    container_name: sf-task
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8091
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/taskdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+    ports:
+      - "8091:8091"
+
+  notification:
+    build:
+      context: ./backEnd/Microservices/Notification
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/notification:${TAG:-latest}
+    container_name: sf-notification
+    <<: *java-svc
+    environment:
+      SERVER_PORT: 8087
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      GOOGLE_APPLICATION_CREDENTIALS: /firebase/firebase-credentials.json
+    volumes:
+      # Mount your real Firebase JSON here. A placeholder file is created by the
+      # init container below so the service starts (but Firebase calls will fail
+      # without real credentials). Replace with the real file path in .env:
+      #   FIREBASE_CREDENTIALS=./firebase-credentials/firebase-credentials.json
+      - ${FIREBASE_CREDENTIALS:-./firebase-credentials/placeholder.json}:/firebase/firebase-credentials.json:ro
+    depends_on:
+      eureka:
+        condition: service_healthy
+    ports:
+      - "8087:8087"
+
+  gamification:
+    build:
+      context: ./backEnd/Microservices/gamification
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/gamification:${TAG:-latest}
+    container_name: sf-gamification
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8088
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gamificationdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
+    ports:
+      - "8088:8088"
+
+  chat:
+    build:
+      context: ./backEnd/Microservices/Chat
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/chat:${TAG:-latest}
+    container_name: sf-chat
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8093
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/chatdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+    ports:
+      - "8093:8093"
+
+  meeting:
+    build:
+      context: ./backEnd/Microservices/Meeting
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/meeting:${TAG:-latest}
+    container_name: sf-meeting
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8094
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/meetingdb
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      GOOGLE_APPLICATION_CREDENTIALS: /credentials/meeting-service-account.json
+    volumes:
+      - ${MEETING_CALENDAR_CREDENTIALS:-./credentials/meeting-service-account.json}:/credentials/meeting-service-account.json:ro
+    ports:
+      - "8094:8094"
+
+  freelancia-job:
+    build:
+      context: ./backEnd/Microservices/FreelanciaJob
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/freelancia-job:${TAG:-latest}
+    container_name: sf-freelancia-job
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8095
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/freelancia_job_db
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+    ports:
+      - "8095:8095"
+
+  vendor:
+    build:
+      context: ./backEnd/Microservices/Vendor
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/vendor:${TAG:-latest}
+    container_name: sf-vendor
+    <<: *java-svc
+    environment:
+      SERVER_PORT: 8092
+      SPRING_PROFILES_ACTIVE: docker          # activates application-docker.properties
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8092:8092"
+
+  # ─────────────────────────────────────────────────────────────────────────
+  # Frontend
+  # ─────────────────────────────────────────────────────────────────────────
+
+  frontend:
+    build:
+      context: ./frontend/smart-freelance-app
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/frontend:${TAG:-latest}
+    container_name: sf-frontend
+    restart: unless-stopped
+    networks: [sf-net]
+    depends_on:
+      api-gateway:
+        condition: service_healthy
+    ports:
+      - "4200:80"
+
+# ─────────────────────────────────────────────────────────────────────────
+# Networks & Volumes
+# ─────────────────────────────────────────────────────────────────────────
+
+networks:
+  sf-net:
+    name: smart-freelance-network
+    driver: bridge
+
+volumes:
+  mysql-data:
+    name: sf-mysql-data
+  user-uploads:
+    name: sf-user-uploads

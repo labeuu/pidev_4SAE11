@@ -7,7 +7,6 @@ import com.esprit.planning.exception.EntityNotFoundException;
 import com.esprit.planning.entity.ProgressUpdate;
 import com.esprit.planning.repository.ProgressCommentRepository;
 import com.esprit.planning.repository.ProgressUpdateRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,13 +21,22 @@ import java.util.List;
  * Validates that the progress update and user exist; notifies the freelancer when someone else comments.
  */
 @Service
-@RequiredArgsConstructor
 public class ProgressCommentService {
 
     private final ProgressCommentRepository progressCommentRepository;
     private final ProgressUpdateRepository progressUpdateRepository;
     private final UserClient userClient;
     private final PlanningNotificationService planningNotificationService;
+
+    public ProgressCommentService(ProgressCommentRepository progressCommentRepository,
+                                  ProgressUpdateRepository progressUpdateRepository,
+                                  UserClient userClient,
+                                  PlanningNotificationService planningNotificationService) {
+        this.progressCommentRepository = progressCommentRepository;
+        this.progressUpdateRepository = progressUpdateRepository;
+        this.userClient = userClient;
+        this.planningNotificationService = planningNotificationService;
+    }
 
     /** Returns all progress comments. */
     @Transactional(readOnly = true)

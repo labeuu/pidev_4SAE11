@@ -12,7 +12,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -22,12 +21,15 @@ import org.springframework.web.bind.annotation.*;
  */
 @RestController
 @RequestMapping("/api/progress-updates/stats")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Tag(name = "Progress Update Statistics", description = "Statistics and dashboard stats for progress updates")
 public class ProgressUpdateStatsController {
 
     private final ProgressUpdateService progressUpdateService;
+
+    public ProgressUpdateStatsController(ProgressUpdateService progressUpdateService) {
+        this.progressUpdateService = progressUpdateService;
+    }
 
     /** Returns progress statistics for the given freelancer (update count, comments, average %, last update, etc.). */
     @GetMapping("/freelancer/{freelancerId}")

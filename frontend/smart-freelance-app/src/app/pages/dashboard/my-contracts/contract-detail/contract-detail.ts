@@ -405,6 +405,23 @@ export class ContractDetail implements OnInit {
     });
   }
 
+  // ── Schedule meeting from conflict ───────────────────────────────
+
+  scheduleMeeting() {
+    if (!this.contract) return;
+    if (this.auth.isClient()) {
+      this.router.navigate(['/dashboard/meetings/schedule'], {
+        queryParams: {
+          contractId: this.contract.id,
+          freelancerId: this.contract.freelancerId,
+        },
+      });
+    } else {
+      // Freelancers go to their meetings list; only clients can create meetings
+      this.router.navigate(['/dashboard/meetings']);
+    }
+  }
+
   // ── Conflict modal ────────────────────────────────────────────────
 
   openConflictModal() { this.showConflictModal = true; }

@@ -94,6 +94,10 @@ export class ShowJob implements OnInit {
     this.router.navigate(['/dashboard/my-job-applications/add', this.job?.id]);
   }
 
+  messageFreelancer(freelancerId: number): void {
+    this.router.navigate(['/dashboard/messages'], { queryParams: { partnerId: freelancerId } });
+  }
+
   statusBadgeClass(status: string): string {
     switch (status) {
       case 'OPEN': return 'badge bg-success';
