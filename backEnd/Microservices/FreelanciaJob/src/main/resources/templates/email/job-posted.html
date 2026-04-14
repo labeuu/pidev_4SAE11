@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>New Job Posted</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f4f4f4; font-family: 'Segoe UI', Arial, sans-serif; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #ffffff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+    .header { background: #1a1a2e; padding: 32px 40px; text-align: center; }
+    .header h1 { margin: 0; color: #e94560; font-size: 26px; letter-spacing: 1px; }
+    .header p  { margin: 4px 0 0; color: #a0a0b0; font-size: 13px; }
+    .body { padding: 36px 40px; color: #333; }
+    .body h2 { margin: 0 0 8px; color: #1a1a2e; font-size: 20px; }
+    .tag { display: inline-block; background: #f0f0f8; color: #555; border-radius: 4px; padding: 3px 10px; font-size: 12px; margin-right: 6px; }
+    .cta { display: block; width: fit-content; margin: 28px auto 0; padding: 14px 36px; background: #e94560; color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; }
+    .footer { background: #f4f4f4; text-align: center; padding: 20px; font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>Freelancia</h1>
+    <p>Your gateway to great projects</p>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+    <p>Hi <strong th:text="${freelancerName}">Freelancer</strong>,</p>
+    <p>A new job has just been posted that might interest you:</p>
+
+    <h2 th:text="${jobTitle}">Job Title</h2>
+
+    <p>
+      <span class="tag" th:text="${jobCategory}">Category</span>
+      <span class="tag" th:text="${jobLocation}">Location Type</span>
+      <span class="tag"
+            th:if="${budgetMin != null}"
+            th:text="'Budget: ' + ${currency} + ' ' + ${budgetMin} + ' – ' + ${budgetMax}">Budget</span>
+    </p>
+
+    <p>Posted by <strong th:text="${clientName}">Client</strong>.</p>
+    <p>Don't miss your chance — head to the platform and apply before the deadline!</p>
+
+    <a class="cta" href="#">View &amp; Apply Now</a>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>You received this email because you are registered as a freelancer on Freelancia.</p>
+    <p>© 2025 Freelancia. All rights reserved.</p>
+  </div>
+
+</div>
+</body>
+</html>

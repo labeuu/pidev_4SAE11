@@ -24,7 +24,7 @@
       "clientId": "smart-freelance-backend",
       "enabled": true,
       "clientAuthenticatorType": "client-secret",
-      "secret": "zeTsPbqaXlOh6kptCLqmDJQwPjvqkHx2",
+      "secret": "PpZuiHLBeLfl3xsxaQsmBDjT9nYgfoJE",
       "redirectUris": ["*"],
       "webOrigins": ["*"],
       "publicClient": false,

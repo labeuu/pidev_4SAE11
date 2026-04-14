@@ -47,6 +47,45 @@
 
     <!-- Header actions -->
     <div class="cw-header__actions">
+
+      <!-- ── Translation controls ── -->
+      <div class="cw-translate" [class.cw-translate--active]="translateEnabled">
+
+        <!-- Language picker (only when translate is on) -->
+        <div class="cw-lang-picker" *ngIf="translateEnabled">
+          <button class="cw-lang-picker__btn" (click)="showLangPicker = !showLangPicker">
+            {{ currentLangFlag }} {{ currentLangName }}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          <div class="cw-lang-picker__dropdown" *ngIf="showLangPicker">
+            <button
+              *ngFor="let lang of languages"
+              class="cw-lang-picker__option"
+              [class.cw-lang-picker__option--active]="lang.code === selectedLang"
+              (click)="selectLang(lang.code)">
+              {{ lang.flag }} {{ lang.name }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Globe toggle button -->
+        <button
+          class="cw-header__btn cw-translate__toggle"
+          [class.cw-translate__toggle--on]="translateEnabled"
+          (click)="toggleTranslate()"
+          [title]="translateEnabled ? 'Disable translation' : 'Translate messages'"
+          [attr.aria-pressed]="translateEnabled"
+          aria-label="Toggle translation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </button>
+      </div>
+
       <button class="cw-header__btn" aria-label="Start video call" title="Video call">
         <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
           <polygon points="23 7 16 12 23 17 23 7"/>
@@ -58,13 +97,14 @@
           <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
         </svg>
       </button>
-      <button class="cw-header__btn" aria-label="More options" title="More">
-        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
-          <circle cx="12" cy="5" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="12" cy="19" r="1.5"/>
-        </svg>
-      </button>
     </div>
   </header>
+
+  <!-- ── Connection banner ── -->
+  <div class="cw-offline-banner" *ngIf="!isConnected">
+    <span class="cw-offline-banner__dot"></span>
+    Connecting to chat server…
+  </div>
 
   <!-- ── Messages ── -->
   <div class="cw-messages" #messagesContainer>
@@ -84,7 +124,7 @@
     <!-- Bubbles -->
     <ng-container *ngFor="let msg of messages; trackBy: trackById; let i = index">
 
-      <!-- Date divider when day changes -->
+      <!-- Date divider -->
       <div
         class="cw-date-divider"
         *ngIf="i === 0 || isDifferentDay(messages[i - 1].timestamp, msg.timestamp)"
@@ -97,7 +137,7 @@
         [class.cw-msg-group--mine]="isMine(msg)"
         [class.cw-msg-group--theirs]="!isMine(msg)"
       >
-        <!-- Received: show avatar on left -->
+        <!-- Received: avatar on left -->
         <div class="cw-msg-avatar" *ngIf="!isMine(msg)">
           <img *ngIf="partnerAvatar" [src]="partnerAvatar" [alt]="partnerName" class="cw-msg-avatar__img"/>
           <span *ngIf="!partnerAvatar" class="cw-msg-avatar__initials">
@@ -111,7 +151,23 @@
           [class.cw-bubble--mine]="isMine(msg)"
           [class.cw-bubble--theirs]="!isMine(msg)"
         >
-          <p class="cw-bubble__text">{{ msg.content }}</p>
+          <!-- Message text -->
+          <p class="cw-bubble__text">{{ getDisplayContent(msg) }}</p>
+
+          <!-- Translation loading indicator -->
+          <span class="cw-bubble__translating" *ngIf="isTranslatingMsg(msg)">
+            <span class="cw-bubble__translating-dot"></span>
+            Translating…
+          </span>
+
+          <!-- Show original / show translation toggle -->
+          <button
+            class="cw-bubble__original-btn"
+            *ngIf="isTranslatedMsg(msg) && !isTranslatingMsg(msg)"
+            (click)="toggleMsgOriginal(msg)">
+            {{ isShowingOriginal(msg) ? '🌍 Show translation' : 'Show original' }}
+          </button>
+
           <div class="cw-bubble__meta">
             <span class="cw-bubble__time">{{ msg.timestamp | date:'shortTime' }}</span>
             <span
@@ -120,7 +176,6 @@
               [class.cw-bubble__ticks--seen]="msg.status === 'SEEN'"
               [attr.aria-label]="msg.status === 'SEEN' ? 'Seen' : msg.status === 'DELIVERED' ? 'Delivered' : 'Sent'"
             >
-              <!-- Double tick for DELIVERED/SEEN, single for SENT -->
               <svg viewBox="0 0 20 12" fill="none" aria-hidden="true">
                 <path d="M1 6l4.5 4.5L13 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
                 <path
@@ -152,6 +207,14 @@
 
   </div>
 
+  <!-- ── Send error ── -->
+  <div class="cw-send-error" *ngIf="sendError">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+    </svg>
+    {{ sendError }}
+  </div>
+
   <!-- ── Input bar ── -->
   <div class="cw-input-bar">
 
@@ -178,13 +241,12 @@
         (keydown)="onKeydown($event)"
         placeholder="Aa"
         rows="1"
-        [disabled]="!currentUserId"
+        [disabled]="!currentUserId || !isConnected"
         autocomplete="off"
         aria-label="Type a message"
       ></textarea>
     </div>
 
-    <!-- Like / Send -->
     <button
       *ngIf="newMessage.trim()"
       class="cw-send-btn"

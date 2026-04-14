@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Application Accepted</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f4f4f4; font-family: 'Segoe UI', Arial, sans-serif; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+
+    /* Celebratory gradient header */
+    .header { background: linear-gradient(135deg, #1a1a2e 0%, #e94560 100%); padding: 40px; text-align: center; }
+    .header .icon { font-size: 48px; margin-bottom: 12px; }
+    .header h1 { margin: 0; color: #fff; font-size: 28px; }
+    .header p  { margin: 6px 0 0; color: rgba(255,255,255,.8); font-size: 14px; }
+
+    /* Body */
+    .body { padding: 36px 40px; color: #333; line-height: 1.7; }
+    .body h2 { color: #1a1a2e; margin: 0 0 12px; font-size: 20px; }
+    .job-box { background: #f8f8ff; border: 1px solid #e0e0f0; border-radius: 6px; padding: 16px 20px; margin: 20px 0; }
+    .job-box p { margin: 0; }
+    .job-box .label { font-size: 11px; text-transform: uppercase; color: #888; letter-spacing: .5px; }
+    .job-box .value { font-size: 18px; font-weight: bold; color: #1a1a2e; }
+
+    /* Steps */
+    .steps { margin: 24px 0; padding: 0; list-style: none; }
+    .steps li { display: flex; align-items: flex-start; margin-bottom: 14px; }
+    .steps li .num { flex-shrink: 0; width: 28px; height: 28px; border-radius: 50%; background: #e94560; color: #fff;
+                     font-weight: bold; font-size: 13px; display: flex; align-items: center; justify-content: center; margin-right: 14px; margin-top: 2px; }
+    .steps li .text { color: #444; font-size: 14px; }
+
+    .cta { display: block; width: fit-content; margin: 28px auto 0; padding: 14px 40px; background: #e94560;
+           color: #fff; text-decoration: none; border-radius: 6px; font-weight: bold; font-size: 15px; }
+
+    /* Footer */
+    .footer { background: #f4f4f4; text-align: center; padding: 20px; font-size: 12px; color: #999; }
+    .footer a { color: #e94560; text-decoration: none; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- ── Header ── -->
+  <div class="header">
+    <div class="icon">&#127881;</div>
+    <h1>Congratulations!</h1>
+    <p>Your application has been accepted</p>
+  </div>
+
+  <!-- ── Body ── -->
+  <div class="body">
+    <p>Hi <strong th:text="${freelancerName}">Freelancer</strong>,</p>
+    <p>
+      Excellent news — the client has reviewed your proposal and selected <strong>you</strong>
+      for this project. Here are the details:
+    </p>
+
+    <!-- Job summary box -->
+    <div class="job-box">
+      <p class="label">Position</p>
+      <p class="value" th:text="${jobTitle}">Job Title</p>
+      <p style="margin-top:8px;font-size:12px;color:#888;">
+        Application ref:&nbsp;<strong>#<span th:text="${applicationId}">0</span></strong>
+      </p>
+    </div>
+
+    <!-- Next steps -->
+    <h2>Next Steps</h2>
+    <ul class="steps">
+      <li>
+        <div class="num">1</div>
+        <div class="text">
+          <strong>Check your messages</strong> — the client may reach out directly through
+          the platform chat to discuss project details.
+        </div>
+      </li>
+      <li>
+        <div class="num">2</div>
+        <div class="text">
+          <strong>Review the contract</strong> — a project contract will be generated on the
+          platform for your review and signature.
+        </div>
+      </li>
+      <li>
+        <div class="num">3</div>
+        <div class="text">
+          <strong>Set up your workspace</strong> — agree on milestones, deadlines, and
+          communication channels with the client.
+        </div>
+      </li>
+      <li>
+        <div class="num">4</div>
+        <div class="text">
+          <strong>Get started!</strong> — deliver outstanding work and build your reputation
+          on Freelancia.
+        </div>
+      </li>
+    </ul>
+
+    <p>We wish you a successful collaboration. You've got this!</p>
+
+    <a class="cta" href="#">Go to Dashboard</a>
+  </div>
+
+  <!-- ── Footer ── -->
+  <div class="footer">
+    <p>
+      Questions? Contact us at <a href="mailto:support@freelancia.com">support@freelancia.com</a>
+    </p>
+    <p>© 2025 Freelancia Platform. All rights reserved.</p>
+  </div>
+
+</div>
+</body>
+</html>

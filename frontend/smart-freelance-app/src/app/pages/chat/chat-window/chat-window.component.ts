@@ -17,6 +17,7 @@ import { Subscription } from 'rxjs';
 import { filter } from 'rxjs/operators';
 import { ChatService } from '../../../core/services/chat.service';
 import { UserService } from '../../../core/services/user.service';
+import { TranslationService, Language } from '../../../core/services/translation.service';
 import { ChatMessage, TypingEvent, UserStatus } from '../../../core/models/chat.models';
 
 @Component({
@@ -45,6 +46,22 @@ export class ChatWindowComponent implements OnInit, OnChanges, AfterViewChecked,
   totalPages = 1;
   isLoadingMore = false;
 
+  // ── Connection state ───────────────────────────────────────
+  isConnected = false;
+  sendError: string | null = null;
+
+  // ── Translation state ──────────────────────────────────────
+  languages: Language[] = [];
+  translateEnabled = false;
+  selectedLang = 'fr';
+  showLangPicker = false;
+  /** keyed by msg id (string) → translated text */
+  translations = new Map<string, string>();
+  /** keyed by msg id → true while translating that specific msg */
+  translatingIds = new Set<string>();
+  /** keyed by msg id → user toggled to show original */
+  showOriginalIds = new Set<string>();
+
   private typingTimer: ReturnType<typeof setTimeout> | null = null;
   private shouldScrollToBottom = false;
   private subscriptions: Subscription[] = [];
@@ -52,12 +69,20 @@ export class ChatWindowComponent implements OnInit, OnChanges, AfterViewChecked,
   constructor(
     private chatService: ChatService,
     private userService: UserService,
+    public translationService: TranslationService,
   ) {}
 
   ngOnInit(): void {
+    this.languages = this.translationService.LANGUAGES;
     this.initSubscriptions();
     this.loadPartnerInfo();
     this.loadMessages();
+
+    // Track connection state
+    const connSub = this.chatService.isConnected$.subscribe(
+      v => this.isConnected = v
+    );
+    this.subscriptions.push(connSub);
   }
 
   ngOnChanges(changes: SimpleChanges): void {
@@ -66,6 +91,9 @@ export class ChatWindowComponent implements OnInit, OnChanges, AfterViewChecked,
       this.currentPage = 0;
       this.totalPages = 1;
       this.isPartnerTyping = false;
+      this.translations.clear();
+      this.translatingIds.clear();
+      this.showOriginalIds.clear();
       this.loadPartnerInfo();
       this.loadMessages();
     }
@@ -92,6 +120,10 @@ export class ChatWindowComponent implements OnInit, OnChanges, AfterViewChecked,
         this.shouldScrollToBottom = true;
         if (msg.senderId === this.partnerId && msg.id) {
           this.chatService.markSeen(msg.id);
+          // Auto-translate if translate mode is on
+          if (this.translateEnabled) {
+            this.translateMessage(msg);
+          }
         }
       });
     this.subscriptions.push(msgSub);
@@ -118,6 +150,93 @@ export class ChatWindowComponent implements OnInit, OnChanges, AfterViewChecked,
     this.subscriptions.push(statusSub);
   }
 
+  // ── Translation ────────────────────────────────────────────
+
+  toggleTranslate(): void {
+    this.translateEnabled = !this.translateEnabled;
+    this.showLangPicker = false;
+    if (this.translateEnabled) {
+      // Translate all currently visible partner messages
+      this.messages
+        .filter(m => !this.isMine(m) && m.content)
+        .forEach(m => this.translateMessage(m));
+    } else {
+      this.translations.clear();
+      this.showOriginalIds.clear();
+    }
+  }
+
+  selectLang(code: string): void {
+    this.selectedLang = code;
+    this.showLangPicker = false;
+    if (this.translateEnabled) {
+      // Re-translate all with new language
+      this.translations.clear();
+      this.showOriginalIds.clear();
+      this.messages
+        .filter(m => !this.isMine(m) && m.content)
+        .forEach(m => this.translateMessage(m));
+    }
+  }
+
+  translateMessage(msg: ChatMessage): void {
+    const key = this.msgKey(msg);
+    if (this.translations.has(key) || this.translatingIds.has(key)) return;
+
+    this.translatingIds.add(key);
+    this.translationService.translateMessage(msg.content, this.selectedLang).subscribe({
+      next: translated => {
+        this.translations.set(key, translated);
+        this.translatingIds.delete(key);
+      },
+      error: () => {
+        this.translatingIds.delete(key);
+      }
+    });
+  }
+
+  getDisplayContent(msg: ChatMessage): string {
+    if (this.isMine(msg) || !this.translateEnabled) return msg.content;
+    const key = this.msgKey(msg);
+    if (this.showOriginalIds.has(key)) return msg.content;
+    return this.translations.get(key) ?? msg.content;
+  }
+
+  isTranslatingMsg(msg: ChatMessage): boolean {
+    return !this.isMine(msg) && this.translateEnabled && this.translatingIds.has(this.msgKey(msg));
+  }
+
+  isTranslatedMsg(msg: ChatMessage): boolean {
+    return !this.isMine(msg) && this.translateEnabled && this.translations.has(this.msgKey(msg));
+  }
+
+  toggleMsgOriginal(msg: ChatMessage): void {
+    const key = this.msgKey(msg);
+    if (this.showOriginalIds.has(key)) {
+      this.showOriginalIds.delete(key);
+    } else {
+      this.showOriginalIds.add(key);
+    }
+  }
+
+  isShowingOriginal(msg: ChatMessage): boolean {
+    return this.showOriginalIds.has(this.msgKey(msg));
+  }
+
+  get currentLangFlag(): string {
+    return this.translationService.getLangFlag(this.selectedLang);
+  }
+
+  get currentLangName(): string {
+    return this.translationService.getLangName(this.selectedLang);
+  }
+
+  private msgKey(msg: ChatMessage): string {
+    return msg.id ? String(msg.id) : `${msg.senderId}_${msg.timestamp}`;
+  }
+
+  // ── Existing logic ─────────────────────────────────────────
+
   loadMessages(): void {
     if (!this.currentUserId || !this.partnerId) return;
     this.isLoading = true;
@@ -131,9 +250,7 @@ export class ChatWindowComponent implements OnInit, OnChanges, AfterViewChecked,
         this.shouldScrollToBottom = true;
         this.markMessagesAsSeen();
       },
-      error: () => {
-        this.isLoading = false;
-      },
+      error: () => { this.isLoading = false; },
     });
   }
 
@@ -150,15 +267,14 @@ export class ChatWindowComponent implements OnInit, OnChanges, AfterViewChecked,
         this.messages = [...older, ...this.messages];
         this.currentPage = nextPage;
         this.isLoadingMore = false;
+        if (this.translateEnabled) {
+          older.filter(m => !this.isMine(m)).forEach(m => this.translateMessage(m));
+        }
         setTimeout(() => {
-          if (container) {
-            container.scrollTop = container.scrollHeight - prevScrollHeight;
-          }
+          if (container) container.scrollTop = container.scrollHeight - prevScrollHeight;
         }, 0);
       },
-      error: () => {
-        this.isLoadingMore = false;
-      },
+      error: () => { this.isLoadingMore = false; },
     });
   }
 
@@ -166,7 +282,14 @@ export class ChatWindowComponent implements OnInit, OnChanges, AfterViewChecked,
     const content = this.newMessage.trim();
     if (!content || !this.currentUserId) return;
 
-    this.chatService.sendMessage(this.partnerId, content);
+    const sent = this.chatService.sendMessage(this.partnerId, content);
+    if (!sent) {
+      this.sendError = 'Chat server is unreachable. Please try again in a moment.';
+      setTimeout(() => this.sendError = null, 4000);
+      return;
+    }
+
+    this.sendError = null;
     this.messages.push({
       senderId: this.currentUserId,
       receiverId: this.partnerId,
@@ -208,9 +331,7 @@ export class ChatWindowComponent implements OnInit, OnChanges, AfterViewChecked,
     try {
       const el = this.messagesContainer?.nativeElement;
       if (el) el.scrollTop = el.scrollHeight;
-    } catch {
-      // ignore
-    }
+    } catch { /* ignore */ }
   }
 
   markMessagesAsSeen(): void {

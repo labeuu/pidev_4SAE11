@@ -59,28 +59,41 @@ export class ChatService {
     this.isConnected$.next(false);
   }
 
-  sendMessage(receiverId: number, content: string): void {
-    if (!this.client?.active) return;
-    this.client.publish({
-      destination: '/app/chat',
-      body: JSON.stringify({ receiverId, content }),
-    });
+  get isConnected(): boolean {
+    return this.client?.connected === true;
+  }
+
+  sendMessage(receiverId: number, content: string): boolean {
+    if (!this.isConnected) return false;
+    try {
+      this.client.publish({
+        destination: '/app/chat',
+        body: JSON.stringify({ receiverId, content }),
+      });
+      return true;
+    } catch {
+      return false;
+    }
   }
 
   sendTyping(receiverId: number, typing: boolean): void {
-    if (!this.client?.active) return;
-    this.client.publish({
-      destination: '/app/typing',
-      body: JSON.stringify({ receiverId, typing }),
-    });
+    if (!this.isConnected) return;
+    try {
+      this.client.publish({
+        destination: '/app/typing',
+        body: JSON.stringify({ receiverId, typing }),
+      });
+    } catch { /* ignore typing errors */ }
   }
 
   markSeen(messageId: number): void {
-    if (!this.client?.active) return;
-    this.client.publish({
-      destination: '/app/seen',
-      body: JSON.stringify({ messageId }),
-    });
+    if (!this.isConnected) return;
+    try {
+      this.client.publish({
+        destination: '/app/seen',
+        body: JSON.stringify({ messageId }),
+      });
+    } catch { /* ignore */ }
   }
 
   getConversation(user1: number, user2: number, page = 0, size = 20): Observable<PagedMessages> {

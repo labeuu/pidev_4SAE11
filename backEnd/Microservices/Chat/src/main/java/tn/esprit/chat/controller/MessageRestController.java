@@ -1,12 +1,16 @@
 package tn.esprit.chat.controller;
 
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import tn.esprit.chat.dto.ChatMessageDTO;
 import tn.esprit.chat.dto.ConversationSummary;
+import tn.esprit.chat.dto.TranslationRequest;
+import tn.esprit.chat.dto.TranslationResponse;
 import tn.esprit.chat.service.IChatService;
+import tn.esprit.chat.service.TranslationService;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +22,15 @@ import java.util.Map;
 public class MessageRestController {
 
     private final IChatService chatService;
+    private final TranslationService translationService;
+
+    @PostMapping("/translate")
+    public ResponseEntity<TranslationResponse> translate(@Valid @RequestBody TranslationRequest request) {
+        String src = (request.getSourceLang() != null && !request.getSourceLang().isBlank())
+                ? request.getSourceLang() : "auto";
+        String translated = translationService.translate(request.getText(), request.getTargetLang(), src);
+        return ResponseEntity.ok(new TranslationResponse(translated));
+    }
 
     @GetMapping("/conversation/{user1}/{user2}")
     public ResponseEntity<Page<ChatMessageDTO>> getConversation(

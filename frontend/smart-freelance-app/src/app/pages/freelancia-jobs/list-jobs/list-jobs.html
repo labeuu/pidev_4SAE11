@@ -7,7 +7,7 @@
         <span *ngIf="userRole === 'CLIENT'">My Jobs</span>
         <span *ngIf="userRole !== 'CLIENT'">Browse Jobs</span>
       </h2>
-      <p class="page-subtitle">{{ filteredJobs.length }} job(s) found</p>
+      <p class="page-subtitle">{{ totalElements }} job(s) found</p>
     </div>
     <div class="page-header__actions">
       <button *ngIf="userRole === 'CLIENT'" class="btn-primary" routerLink="/dashboard/my-jobs/add">
@@ -36,7 +36,7 @@
     <!-- Main bar -->
     <div class="search-bar-row">
 
-      <!-- Keyword input -->
+      <!-- Keyword input (debounced 300 ms) -->
       <div class="search-input-wrap">
         <svg class="search-icon" viewBox="0 0 20 20" fill="none" aria-hidden="true">
           <circle cx="8.5" cy="8.5" r="5.5" stroke="currentColor" stroke-width="1.8"/>
@@ -47,10 +47,10 @@
           class="search-input"
           placeholder="Search by title, description…"
           [(ngModel)]="filterKeyword"
-          (ngModelChange)="onFilterChange()"
+          (ngModelChange)="onKeywordChange()"
           autocomplete="off"
         />
-        <button *ngIf="filterKeyword" type="button" class="search-clear-btn" (click)="filterKeyword=''; onFilterChange()" aria-label="Clear search">✕</button>
+        <button *ngIf="filterKeyword" type="button" class="search-clear-btn" (click)="filterKeyword=''; onKeywordChange()" aria-label="Clear search">✕</button>
       </div>
 
       <!-- Filters toggle -->
@@ -105,6 +105,18 @@
           </select>
         </div>
 
+        <div class="filter-group">
+          <label class="filter-label">Budget min</label>
+          <input type="number" class="filter-select" placeholder="e.g. 500"
+                 [(ngModel)]="filterBudgetMin" (ngModelChange)="onFilterChange()" min="0" />
+        </div>
+
+        <div class="filter-group">
+          <label class="filter-label">Budget max</label>
+          <input type="number" class="filter-select" placeholder="e.g. 5000"
+                 [(ngModel)]="filterBudgetMax" (ngModelChange)="onFilterChange()" min="0" />
+        </div>
+
       </div>
 
       <!-- Active filter chips -->
@@ -120,6 +132,14 @@
         <span *ngIf="filterStatus" class="filter-chip">
           ● {{ filterStatus }}
           <button type="button" (click)="filterStatus=''; onFilterChange()" aria-label="Remove status filter">✕</button>
+        </span>
+        <span *ngIf="filterBudgetMin != null" class="filter-chip">
+          💰 Min {{ filterBudgetMin }}
+          <button type="button" (click)="filterBudgetMin=null; onFilterChange()" aria-label="Remove budget min filter">✕</button>
+        </span>
+        <span *ngIf="filterBudgetMax != null" class="filter-chip">
+          💰 Max {{ filterBudgetMax }}
+          <button type="button" (click)="filterBudgetMax=null; onFilterChange()" aria-label="Remove budget max filter">✕</button>
         </span>
       </div>
 
@@ -139,7 +159,7 @@
   </div>
 
   <!-- Empty state -->
-  <div *ngIf="!isLoading && filteredJobs.length === 0 && !errorMessage" class="empty-state">
+  <div *ngIf="!isLoading && jobs.length === 0 && !errorMessage" class="empty-state">
     <div class="empty-state__icon">🧳</div>
     <h5 class="empty-state__title">No jobs found</h5>
     <p class="empty-state__subtitle" *ngIf="userRole === 'CLIENT'">Post your first job to get started.</p>
@@ -149,8 +169,8 @@
   </div>
 
   <!-- Jobs Grid -->
-  <div class="jobs-grid" *ngIf="!isLoading && filteredJobs.length > 0">
-    <div class="job-card" *ngFor="let job of pagedJobs">
+  <div class="jobs-grid" *ngIf="!isLoading && jobs.length > 0">
+    <div class="job-card" *ngFor="let job of jobs">
 
       <!-- Card Top: company badge + status -->
       <div class="job-card__top">
@@ -216,7 +236,7 @@
   <!-- Pagination -->
   <nav *ngIf="!isLoading && totalPages > 1" class="feed-pagination">
     <div class="pagination-info">
-      Showing {{ (currentPage - 1) * pageSize + 1 }}–{{ pageEnd }} of {{ filteredJobs.length }} jobs
+      Showing {{ (currentPage - 1) * pageSize + 1 }}–{{ pageEnd }} of {{ totalElements }} jobs
     </div>
     <div class="pagination-controls">
       <button class="btn-pagination" [disabled]="currentPage === 1" (click)="goToPage(currentPage - 1)">&#8592;</button>

@@ -35,10 +35,69 @@ export interface JobFilters {
   skillId?: number;
 }
 
+/** Mirrors JobSearchRequest DTO on the backend. */
+export interface JobSearchRequest {
+  keyword?: string;
+  clientId?: number;
+  status?: string;
+  clientType?: string;
+  locationType?: string;
+  category?: string;
+  budgetMin?: number;
+  budgetMax?: number;
+  skillIds?: number[];
+  page?: number;
+  size?: number;
+  sortBy?: string;
+  sortDir?: string;
+}
+
+/** Spring Data Page<JobResponse> serialised shape. */
+export interface JobPage {
+  content: Job[];
+  totalElements: number;
+  totalPages: number;
+  number: number;   // current page (0-based)
+  size: number;
+  first: boolean;
+  last: boolean;
+  empty: boolean;
+}
+
+export interface GeneratedJobDraft {
+  title: string;
+  description: string;
+  requiredSkills: string[];
+  budgetMin: number | null;
+  budgetMax: number | null;
+  currency: string;
+  estimatedDurationWeeks: number | null;
+  category: string;
+  locationType: string;
+}
+
 export interface JobStats {
   jobId: number;
   jobTitle: string;
   applicationsCount: number;
+}
+
+export interface FitScoreResult {
+  score: number;
+  tier: 'STRONG_MATCH' | 'GOOD_MATCH' | 'PARTIAL_MATCH' | 'LOW_MATCH';
+  summary: string;
+  matchedSkills: string[];
+  missingSkills: string[];
+  recommendations: string[];
+}
+
+export interface JobAdminStats {
+  totalJobs: number;
+  avgApplicationsPerJob: number;
+  uniqueFreelancers: number;
+  jobsByStatus: Record<string, number>;
+  top5Jobs: JobStats[];
+  jobsPerMonth: { month: string; count: number }[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -115,10 +174,43 @@ export class JobService {
     );
   }
 
+  generateJobDraft(prompt: string): Observable<GeneratedJobDraft | null> {
+    return this.http.post<GeneratedJobDraft>(`${JOB_API}/generate`, { prompt }).pipe(
+      timeout(30_000),
+      catchError(() => of(null))
+    );
+  }
+
+  /** Server-side filter + pagination via POST /jobs/filter */
+  filterJobs(request: JobSearchRequest): Observable<JobPage> {
+    return this.http.post<JobPage>(`${JOB_API}/filter`, request).pipe(
+      timeout(REQUEST_TIMEOUT_MS),
+      catchError(() => of({
+        content: [], totalElements: 0, totalPages: 0, number: 0,
+        size: request.size ?? 9, first: true, last: true, empty: true
+      }))
+    );
+  }
+
   getApplicationStats(): Observable<JobStats[]> {
     return this.http.get<JobStats[]>(`${JOB_API}/application-stats`).pipe(
       timeout(REQUEST_TIMEOUT_MS),
       catchError(() => of([]))
     );
+  }
+
+  getFitScore(jobId: number, freelancerId: number): Observable<FitScoreResult | null> {
+    return this.http.get<FitScoreResult>(`${JOB_API}/${jobId}/fit-score`, {
+      params: { freelancerId }
+    }).pipe(
+      timeout(60_000),
+      catchError(() => of(null))
+    );
+  }
+
+  getAdminStats(): Observable<JobAdminStats | null> {
+    return this.http
+      .get<JobAdminStats>(`${environment.apiGatewayUrl}/freelancia-job/api/admin/job-stats`)
+      .pipe(timeout(REQUEST_TIMEOUT_MS), catchError(() => of(null)));
   }
 }

@@ -1,0 +1,126 @@
+<div class="job-stats-page">
+
+  <!-- ── Header ── -->
+  <header class="page-header">
+    <div class="page-header__content">
+      <div class="page-header__text">
+        <span class="page-badge">Admin</span>
+        <h1 class="page-title">Freelancia Job Board — Statistics</h1>
+        <p class="page-subtitle">Aggregated metrics across all posted jobs and applications</p>
+      </div>
+      <div class="page-header__graphic" aria-hidden="true">
+        <span class="header-icon">📊</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Loading ── -->
+  @if (loading) {
+    <div class="loading-state">
+      <div class="loading-spinner" aria-hidden="true"></div>
+      <p>Loading statistics…</p>
+    </div>
+  } @else if (!stats) {
+    <div class="loading-state">
+      <p>Could not load statistics. Make sure the FreelanciaJob service is running.</p>
+    </div>
+  } @else {
+
+    <!-- ── KPI Cards ── -->
+    <section class="stats-section">
+      <h2 class="section-title">Key metrics</h2>
+      <div class="stats-grid">
+
+        <app-card class="stat-card stat-card--jobs">
+          <div class="stat-icon">💼</div>
+          <div class="stat-value">{{ stats.totalJobs }}</div>
+          <div class="stat-label">Total Jobs</div>
+        </app-card>
+
+        <app-card class="stat-card stat-card--avg">
+          <div class="stat-icon">📨</div>
+          <div class="stat-value">{{ stats.avgApplicationsPerJob | number:'1.1-1' }}</div>
+          <div class="stat-label">Avg. Applications / Job</div>
+        </app-card>
+
+        <app-card class="stat-card stat-card--freelancers">
+          <div class="stat-icon">🧑‍💻</div>
+          <div class="stat-value">{{ stats.uniqueFreelancers }}</div>
+          <div class="stat-label">Unique Freelancers Applied</div>
+        </app-card>
+
+      </div>
+    </section>
+
+    <!-- ── Charts Row 1: Line + Pie ── -->
+    <section class="charts-section">
+      <div class="charts-grid">
+
+        <app-card class="chart-card chart-card--wide">
+          <h3 class="chart-title">Jobs posted per month (last 12 months)</h3>
+          <div class="chart-container chart-container--line">
+            <canvas baseChart
+              [data]="monthlyChartData"
+              [type]="'line'"
+              [options]="monthlyChartOptions">
+            </canvas>
+          </div>
+        </app-card>
+
+        <app-card class="chart-card">
+          <h3 class="chart-title">Status distribution</h3>
+          <div class="chart-container chart-container--pie">
+            <canvas baseChart
+              [data]="statusChartData"
+              [type]="'pie'"
+              [options]="statusChartOptions">
+            </canvas>
+          </div>
+        </app-card>
+
+        <app-card class="chart-card">
+          <h3 class="chart-title">Top 5 most applied jobs</h3>
+          <div class="chart-container chart-container--bar">
+            <canvas baseChart
+              [data]="topJobsChartData"
+              [type]="'bar'"
+              [options]="topJobsChartOptions">
+            </canvas>
+          </div>
+        </app-card>
+
+      </div>
+    </section>
+
+    <!-- ── Top-5 Table ── -->
+    <section class="table-section">
+      <app-card>
+        <h3 class="table-title">Top 5 jobs by applications</h3>
+        <div class="table-wrapper">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Job title</th>
+                <th>Applications</th>
+              </tr>
+            </thead>
+            <tbody>
+              @for (job of stats.top5Jobs; track job.jobId; let i = $index) {
+                <tr>
+                  <td>{{ i + 1 }}</td>
+                  <td>{{ job.jobTitle }}</td>
+                  <td><strong>{{ job.applicationsCount }}</strong></td>
+                </tr>
+              }
+              @if (stats.top5Jobs.length === 0) {
+                <tr><td colspan="3" class="empty-msg">No data yet.</td></tr>
+              }
+            </tbody>
+          </table>
+        </div>
+      </app-card>
+    </section>
+
+  }
+</div>
