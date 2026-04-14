@@ -85,6 +85,43 @@ services:
       retries: 10
       start_period: 90s
 
+  ollama:
+    image: ollama/ollama:latest
+    container_name: sf-ollama
+    restart: unless-stopped
+    networks: [sf-net]
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama-data:/root/.ollama
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O - http://localhost:11434/api/tags >/dev/null 2>&1"]
+      interval: 15s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  ollama-model-init:
+    image: curlimages/curl:8.11.1
+    container_name: sf-ollama-model-init
+    restart: "no"
+    networks: [sf-net]
+    environment:
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b}
+    depends_on:
+      ollama:
+        condition: service_healthy
+    entrypoint: ["/bin/sh", "-c"]
+    command: >
+      until curl -fsS http://ollama:11434/api/tags >/dev/null; do
+        echo "Waiting for Ollama...";
+        sleep 2;
+      done;
+      echo "Pulling model $${OLLAMA_MODEL}...";
+      curl -fsS http://ollama:11434/api/pull
+      -H "Content-Type: application/json"
+      -d "{\"name\":\"$${OLLAMA_MODEL}\"}"
+
   # ─────────────────────────────────────────────────────────────────────────
   # Service Registry
   # ─────────────────────────────────────────────────────────────────────────
@@ -339,8 +376,65 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      AIMODEL_SERVICE_URL: http://aimodel:8095
     ports:
       - "8091:8091"
+
+  ticket-service:
+    build:
+      context: ./backEnd/Microservices/ticket-service
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/ticket-service:${TAG:-latest}
+    container_name: sf-ticket-service
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8096
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ticketdb?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/smart-freelance/protocol/openid-connect/certs
+      NOTIFICATION_SERVICE_URL: http://notification:8087
+      USER_SERVICE_BASE_URL: http://api-gateway:8078/user/api/users
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    ports:
+      - "8096:8096"
+
+  subcontracting:
+    build:
+      context: ./backEnd/Microservices/Subcontracting
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/subcontracting:${TAG:-latest}
+    container_name: sf-subcontracting
+    <<: [*java-svc, *java-depends]
+    environment:
+      SERVER_PORT: 8099
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888,optional:classpath:application-local.properties
+      SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gestion_subcontracting_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+      SPRING_DATASOURCE_USERNAME: root
+      SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      SERVICE_USER_URL: http://user:8090
+      SERVICE_PROJECT_URL: http://project:8084
+      SERVICE_NOTIFICATION_URL: http://notification:8087
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+    ports:
+      - "8099:8099"
 
   notification:
     build:
@@ -417,6 +511,29 @@ services:
     ports:
       - "8094:8094"
 
+  aimodel:
+    build:
+      context: ./backEnd/Microservices/AImodel
+    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/aimodel:${TAG:-latest}
+    container_name: sf-aimodel
+    <<: *java-svc
+    environment:
+      SERVER_PORT: 8095
+      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
+      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      OLLAMA_BASE_URL: http://ollama:11434
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b}
+    depends_on:
+      eureka:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      ollama-model-init:
+        condition: service_completed_successfully
+    ports:
+      - "8095:8095"
+
   freelancia-job:
     build:
       context: ./backEnd/Microservices/FreelanciaJob
@@ -485,3 +602,5 @@ volumes:
     name: sf-mysql-data
   user-uploads:
     name: sf-user-uploads
+  ollama-data:
+    name: sf-ollama-data
