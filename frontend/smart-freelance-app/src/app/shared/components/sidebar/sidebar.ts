@@ -108,6 +108,7 @@ export class Sidebar {
           { label: 'Reviews',        route: '/admin/reviews',        icon: 'reviews'        },
           { label: 'Contract Stats', route: '/admin/contract-stats', icon: 'contract-stats' },
           { label: 'Job Stats',      route: '/admin/job-stats',      icon: 'skill-stats'    },
+          { label: 'Ticket statistics', route: '/admin/tickets/stats', icon: 'support' },
         ]
       },
       {

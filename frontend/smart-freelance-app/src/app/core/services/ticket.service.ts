@@ -16,6 +16,11 @@ export interface Ticket {
   priority: TicketPriority;
   createdAt: string;
   lastActivityAt: string;
+  firstResponseAt?: string | null;
+  resolvedAt?: string | null;
+  responseTimeMinutes?: number | null;
+  reopenCount?: number;
+  canReopen?: boolean;
 }
 
 export interface CreateTicketRequest {
@@ -25,6 +30,24 @@ export interface CreateTicketRequest {
 export interface UpdateTicketRequest {
   subject?: string | null;
   priority?: TicketPriority | null;
+}
+
+export interface TicketStats {
+  total: number;
+  open: number;
+  closed: number;
+  averageResponseTimeMinutes: number | null;
+}
+
+export interface MonthlyTicketCount {
+  year: number;
+  month: number;
+  count: number;
+}
+
+export interface TicketUnreadCountEntry {
+  ticketId: number;
+  unreadCount: number;
 }
 
 @Injectable({ providedIn: 'root' })
@@ -55,7 +78,31 @@ export class TicketService {
     return this.http.put<Ticket>(`${TICKET_API}/tickets/${id}/close`, {});
   }
 
+  reopen(id: number): Observable<Ticket> {
+    return this.http.put<Ticket>(`${TICKET_API}/tickets/${id}/reopen`, {});
+  }
+
+  markRead(id: number): Observable<void> {
+    return this.http.put<void>(`${TICKET_API}/tickets/${id}/read`, {});
+  }
+
   delete(id: number): Observable<void> {
     return this.http.delete<void>(`${TICKET_API}/tickets/${id}`);
+  }
+
+  getUnreadCounts(): Observable<TicketUnreadCountEntry[]> {
+    return this.http.get<TicketUnreadCountEntry[]>(`${TICKET_API}/tickets/unread-counts`);
+  }
+
+  getStats(): Observable<TicketStats> {
+    return this.http.get<TicketStats>(`${TICKET_API}/tickets/stats`);
+  }
+
+  getMonthlyStats(): Observable<MonthlyTicketCount[]> {
+    return this.http.get<MonthlyTicketCount[]>(`${TICKET_API}/tickets/stats/monthly`);
+  }
+
+  exportPdf(): Observable<Blob> {
+    return this.http.get(`${TICKET_API}/tickets/export/pdf`, { responseType: 'blob' });
   }
 }

@@ -39,3 +39,14 @@ MySQL hosts vary in repo configs: many services use `localhost:3306`, some **330
 - `/task/api/tasks/ai/**` is ordered before `/task/**` so AI endpoints get extended timeouts on the gateway.
 
 Detail pages: [Documentation/services/](services/README.md)
+
+## Ticket service (`/ticket` via gateway)
+
+Notable REST paths (JWT required; admin routes need `ADMIN` role):
+
+- `GET /tickets/stats`, `GET /tickets/stats/monthly`, `GET /tickets/export/pdf` — admin analytics and PDF export.
+- `GET /tickets/unread-counts` — per-ticket unread reply counts (user: unread admin messages; admin: unread user messages).
+- `PUT /tickets/{id}/read` — mark relevant replies read for the current viewer.
+- `PUT /tickets/{id}/reopen` — ticket **owner** or **admin** reopens a closed ticket (at most once per ticket).
+
+PurgoMalum: `app.moderation.reject-on-profanity` (default `true`) uses `containsprofanity`; when `false`, profane text is censored via `/plain`.

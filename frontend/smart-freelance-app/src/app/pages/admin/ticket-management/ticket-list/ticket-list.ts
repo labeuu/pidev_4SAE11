@@ -1,6 +1,6 @@
 import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { Router, RouterModule } from '@angular/router';
+import { Router, RouterLink, RouterModule } from '@angular/router';
 
 import { Ticket, TicketService } from '../../../../core/services/ticket.service';
 import { UserService } from '../../../../core/services/user.service';
@@ -11,12 +11,13 @@ type StatusFilter = 'ALL' | 'OPEN' | 'CLOSED';
 @Component({
   selector: 'app-admin-ticket-list',
   standalone: true,
-  imports: [CommonModule, RouterModule],
+  imports: [CommonModule, RouterModule, RouterLink],
   templateUrl: './ticket-list.html',
   styleUrl: './ticket-list.scss',
 })
 export class AdminTicketList implements OnInit {
   tickets: Ticket[] = [];
+  unreadByTicket: Record<number, number> = {};
   /** userId -> "First Last" or email snippet */
   userLabels = new Map<number, string>();
   loading = true;
@@ -41,16 +42,31 @@ export class AdminTicketList implements OnInit {
       next: (tickets) => {
         this.tickets = tickets;
         this.resolveUserLabels(tickets);
-        this.loading = false;
-        this.cdr.detectChanges();
+        this.ticketService.getUnreadCounts().subscribe({
+          next: (rows) => {
+            this.unreadByTicket = Object.fromEntries(rows.map((r) => [r.ticketId, r.unreadCount]));
+          },
+          error: () => {
+            this.unreadByTicket = {};
+          },
+          complete: () => {
+            this.loading = false;
+            this.cdr.detectChanges();
+          },
+        });
       },
       error: (err: unknown) => {
         this.errorMessage = messageFromHttpError(err, 'Failed to load tickets.');
         this.tickets = [];
+        this.unreadByTicket = {};
         this.loading = false;
         this.cdr.detectChanges();
       },
     });
+  }
+
+  unreadCount(ticketId: number): number {
+    return this.unreadByTicket[ticketId] ?? 0;
   }
 
   setFilter(f: StatusFilter): void {

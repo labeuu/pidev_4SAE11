@@ -1,12 +1,19 @@
 package com.esprit.ticket.service;
 
+import com.esprit.ticket.TicketConstants;
+import com.esprit.ticket.domain.ReplySender;
 import com.esprit.ticket.domain.TicketPriority;
 import com.esprit.ticket.domain.TicketStatus;
 import com.esprit.ticket.dto.ticket.CreateTicketRequest;
+import com.esprit.ticket.dto.ticket.MonthlyTicketCount;
 import com.esprit.ticket.dto.ticket.TicketResponse;
+import com.esprit.ticket.dto.ticket.TicketStatsResponse;
+import com.esprit.ticket.dto.ticket.TicketUnreadCountEntry;
 import com.esprit.ticket.dto.ticket.UpdateTicketRequest;
 import com.esprit.ticket.entity.Ticket;
+import com.esprit.ticket.entity.TicketReply;
 import com.esprit.ticket.exception.EntityNotFoundException;
+import com.esprit.ticket.repository.TicketReplyRepository;
 import com.esprit.ticket.repository.TicketRepository;
 import com.esprit.ticket.security.CurrentUserService;
 import lombok.RequiredArgsConstructor;
@@ -17,6 +24,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.springframework.http.HttpStatus.*;
@@ -25,9 +33,15 @@ import static org.springframework.http.HttpStatus.*;
 @RequiredArgsConstructor
 public class TicketService {
 
+    private static final int SPAM_WINDOW_MINUTES = 10;
+    private static final int SPAM_MAX_TICKETS = 5;
+
     private final TicketRepository ticketRepository;
+    private final TicketReplyRepository ticketReplyRepository;
     private final CurrentUserService currentUserService;
     private final ContentModerationService contentModerationService;
+    private final ReplyService replyService;
+    private final TicketNotificationService ticketNotificationService;
 
     @Value("${app.ticket.auto-close-after-hours:48}")
     private long autoCloseAfterHours;
@@ -35,7 +49,16 @@ public class TicketService {
     @Transactional
     public TicketResponse create(CreateTicketRequest req) {
         Long currentUserId = currentUserService.requireCurrentUserId();
-        String subject = contentModerationService.censorIfProfane(req.subject()).trim();
+        LocalDateTime since = LocalDateTime.now().minusMinutes(SPAM_WINDOW_MINUTES);
+        if (ticketRepository.countByUserIdAndCreatedAtAfter(currentUserId, since) >= SPAM_MAX_TICKETS) {
+            throw new ResponseStatusException(
+                    TOO_MANY_REQUESTS, "Too many tickets created in a short period. Please wait before opening another.");
+        }
+
+        String subject = contentModerationService.validateAndPrepareText(req.subject()).trim();
+        if (subject.isBlank()) {
+            throw new ResponseStatusException(BAD_REQUEST, "Subject is required");
+        }
         TicketPriority priority = smartPriority(subject);
 
         Ticket t = Ticket.builder()
@@ -44,15 +67,29 @@ public class TicketService {
                 .status(TicketStatus.OPEN)
                 .priority(priority)
                 .lastActivityAt(LocalDateTime.now())
+                .reopenCount(0)
                 .build();
         t = ticketRepository.save(t);
+
+        TicketReply welcome = TicketReply.builder()
+                .ticket(t)
+                .message(TicketConstants.WELCOME_REPLY_MESSAGE)
+                .sender(ReplySender.ADMIN)
+                .authorUserId(TicketConstants.SYSTEM_AUTHOR_USER_ID)
+                .readByUser(false)
+                .readByAdmin(true)
+                .build();
+        ticketReplyRepository.save(welcome);
+
+        ticketNotificationService.notifyTicketCreated(t);
+
         return toResponse(t);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
-    public List<TicketResponse> getAll() {
-        return ticketRepository.findAll().stream().map(this::toResponse).toList();
+    public List<TicketResponse> getAll(TicketPriority priority) {
+        return ticketRepository.findAllForAdmin(priority).stream().map(this::toResponse).toList();
     }
 
     @Transactional(readOnly = true)
@@ -63,12 +100,12 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public List<TicketResponse> getByUserId(Long userId) {
+    public List<TicketResponse> getByUserId(Long userId, TicketPriority priority) {
         Long currentUserId = currentUserService.requireCurrentUserId();
         if (!currentUserService.isAdmin() && !currentUserId.equals(userId)) {
             throw new ResponseStatusException(FORBIDDEN, "Not allowed");
         }
-        return ticketRepository.findByUserIdOrderByCreatedAtDesc(userId).stream().map(this::toResponse).toList();
+        return ticketRepository.findByUserIdForList(userId, priority).stream().map(this::toResponse).toList();
     }
 
     @Transactional
@@ -80,10 +117,9 @@ public class TicketService {
         }
         boolean changed = false;
         if (req.subject() != null) {
-            String subject = contentModerationService.censorIfProfane(req.subject().trim());
+            String subject = contentModerationService.validateAndPrepareText(req.subject().trim());
             if (!subject.isBlank()) {
                 t.setSubject(subject);
-                // Re-evaluate priority only if priority is not explicitly set in this update
                 if (req.priority() == null) {
                     t.setPriority(smartPriority(subject));
                 }
@@ -107,14 +143,57 @@ public class TicketService {
         Ticket t = ticketRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Ticket", id));
         if (t.getStatus() == TicketStatus.CLOSED) return toResponse(t);
         t.setStatus(TicketStatus.CLOSED);
+        t.setResolvedAt(LocalDateTime.now());
         t.setLastActivityAt(LocalDateTime.now());
-        return toResponse(ticketRepository.save(t));
+        t = ticketRepository.save(t);
+        ticketNotificationService.notifyTicketClosed(t);
+        return toResponse(t);
+    }
+
+    @Transactional
+    public TicketResponse reopen(Long id) {
+        Ticket t = ticketRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Ticket", id));
+        Long currentUserId = currentUserService.requireCurrentUserId();
+        if (!currentUserService.isAdmin() && !currentUserId.equals(t.getUserId())) {
+            throw new ResponseStatusException(FORBIDDEN, "Only the ticket owner or an admin can reopen");
+        }
+        if (t.getStatus() != TicketStatus.CLOSED) {
+            throw new ResponseStatusException(CONFLICT, "Ticket is not closed");
+        }
+        if (t.getReopenCount() >= 1) {
+            throw new ResponseStatusException(CONFLICT, "This ticket can only be reopened once");
+        }
+        t.setStatus(TicketStatus.OPEN);
+        t.setReopenCount(t.getReopenCount() + 1);
+        LocalDateTime now = LocalDateTime.now();
+        t.setLastReopenedAt(now);
+        t.setLastActivityAt(now);
+        t = ticketRepository.save(t);
+        ticketNotificationService.notifyTicketReopened(t);
+        return toResponse(t);
+    }
+
+    @Transactional
+    public void markTicketRepliesRead(Long ticketId) {
+        Ticket t = ticketRepository.findById(ticketId).orElseThrow(() -> new EntityNotFoundException("Ticket", ticketId));
+        enforceTicketReadableByCaller(t);
+        replyService.markRepliesReadForViewer(ticketId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<TicketUnreadCountEntry> unreadCountsForCurrentUser() {
+        if (currentUserService.isAdmin()) {
+            return replyService.unreadUserMessageCountsByTicketForAdmin();
+        }
+        Long uid = currentUserService.requireCurrentUserId();
+        return replyService.unreadAdminMessageCountsByTicketForUser(uid);
     }
 
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional
     public void delete(Long id) {
         if (!ticketRepository.existsById(id)) throw new EntityNotFoundException("Ticket", id);
+        ticketReplyRepository.deleteByTicket_Id(id);
         ticketRepository.deleteById(id);
     }
 
@@ -122,11 +201,37 @@ public class TicketService {
     public int autoCloseInactiveOpenTickets() {
         LocalDateTime cutoff = LocalDateTime.now().minusHours(autoCloseAfterHours);
         List<Ticket> stale = ticketRepository.findByStatusAndLastActivityAtBefore(TicketStatus.OPEN, cutoff);
+        LocalDateTime now = LocalDateTime.now();
         for (Ticket t : stale) {
             t.setStatus(TicketStatus.CLOSED);
+            t.setResolvedAt(now);
         }
         ticketRepository.saveAll(stale);
         return stale.size();
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
+    public TicketStatsResponse getStats() {
+        long total = ticketRepository.count();
+        long open = ticketRepository.countByStatus(TicketStatus.OPEN);
+        long closed = ticketRepository.countByStatus(TicketStatus.CLOSED);
+        Double avg = ticketRepository.averageResponseTimeMinutes();
+        return new TicketStatsResponse(total, open, closed, avg);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional(readOnly = true)
+    public List<MonthlyTicketCount> getMonthlyStats() {
+        List<Object[]> rows = ticketRepository.countTicketsGroupedByYearMonth();
+        List<MonthlyTicketCount> out = new ArrayList<>();
+        for (Object[] row : rows) {
+            int year = ((Number) row[0]).intValue();
+            int month = ((Number) row[1]).intValue();
+            long count = ((Number) row[2]).longValue();
+            out.add(new MonthlyTicketCount(year, month, count));
+        }
+        return out;
     }
 
     private void enforceTicketReadableByCaller(Ticket t) {
@@ -151,11 +256,11 @@ public class TicketService {
         if (s.contains("urgent") || s.contains("payment") || s.contains("error")) {
             return TicketPriority.HIGH;
         }
-        // Keep it simple and predictable: default MEDIUM.
         return TicketPriority.MEDIUM;
     }
 
     private TicketResponse toResponse(Ticket t) {
+        boolean canReopen = t.getStatus() == TicketStatus.CLOSED && t.getReopenCount() < 1;
         return new TicketResponse(
                 t.getId(),
                 t.getUserId(),
@@ -163,8 +268,11 @@ public class TicketService {
                 t.getStatus(),
                 t.getPriority(),
                 t.getCreatedAt(),
-                t.getLastActivityAt()
-        );
+                t.getLastActivityAt(),
+                t.getFirstResponseAt(),
+                t.getResolvedAt(),
+                t.getResponseTimeMinutes(),
+                t.getReopenCount(),
+                canReopen);
     }
 }
-

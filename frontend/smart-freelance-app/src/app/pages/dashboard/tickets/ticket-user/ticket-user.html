@@ -91,7 +91,6 @@
       <table class="ticket-user-table">
         <thead>
           <tr>
-            <th scope="col">ID</th>
             <th scope="col">Subject</th>
             <th scope="col">Status</th>
             <th scope="col">Priority</th>
@@ -101,8 +100,12 @@
         </thead>
         <tbody>
           <tr *ngFor="let t of filteredTickets">
-            <td class="ticket-user-table__id">#{{ t.id }}</td>
-            <td class="ticket-user-table__subject">{{ t.subject }}</td>
+            <td class="ticket-user-table__subject">
+              <span class="ticket-user-subject-text">{{ t.subject }}</span>
+              <span *ngIf="unreadCount(t.id) > 0" class="ticket-user-unread-badge" [attr.aria-label]="unreadCount(t.id) + ' unread messages'">
+                {{ unreadCount(t.id) }}
+              </span>
+            </td>
             <td><span [ngClass]="badgeStatusClasses(t.status)">{{ t.status }}</span></td>
             <td><span [ngClass]="badgePriorityClasses(t.priority)">{{ t.priority }}</span></td>
             <td class="ticket-user-table__hide-sm ticket-user-table__muted">{{ t.lastActivityAt | date : 'medium' }}</td>
