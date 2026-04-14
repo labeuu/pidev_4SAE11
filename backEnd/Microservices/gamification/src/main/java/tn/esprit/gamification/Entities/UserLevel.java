@@ -3,6 +3,7 @@ package tn.esprit.gamification.Entities;
 import jakarta.persistence.*;
 import lombok.*;
 import lombok.experimental.FieldDefaults;
+import java.time.LocalDate;
 
 @Entity
 @Getter
@@ -24,4 +25,8 @@ public class UserLevel {
     // 🆕 Nouveaux champs
     private int fastResponderStreak = 0;  // compteur de réponses rapides
     private boolean isTopFreelancer = false; // badge actif ou non
+
+    // Active Streak (Gamification Snapchat-like)
+    private int activeStreak = 0;
+    private LocalDate lastActiveDate;
 }
