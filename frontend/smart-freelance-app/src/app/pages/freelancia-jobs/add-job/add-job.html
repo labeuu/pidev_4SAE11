@@ -1,129 +1,206 @@
-<div class="container py-4" style="max-width:780px">
-  <div class="card border-0 shadow-sm">
-    <div class="card-header bg-white border-bottom py-3">
-      <h4 class="fw-bold mb-0"><i class="bi bi-briefcase-fill me-2 text-primary"></i>Post a New Job</h4>
-    </div>
-    <div class="card-body p-4">
+<div class="add-job-page">
 
-      <div *ngIf="submitSuccess" class="alert alert-success">
-        <i class="bi bi-check-circle me-2"></i>Job posted successfully! Redirecting...
-      </div>
-      <div *ngIf="submitError" class="alert alert-danger">{{ submitError }}</div>
+  <!-- Back -->
+  <button class="btn-back" routerLink="/dashboard/my-jobs">
+    <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+      <path d="M12 4L6 10l6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+    </svg>
+    My Jobs
+  </button>
 
-      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
-
-        <!-- Client type -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Posting as *</label>
-          <div class="d-flex gap-3">
-            <div class="form-check">
-              <input class="form-check-input" type="radio" formControlName="clientType" value="INDIVIDUAL" id="typeInd">
-              <label class="form-check-label" for="typeInd">Individual</label>
-            </div>
-            <div class="form-check">
-              <input class="form-check-input" type="radio" formControlName="clientType" value="COMPANY" id="typeCo">
-              <label class="form-check-label" for="typeCo">Company</label>
-            </div>
-          </div>
-        </div>
-
-        <!-- Company name (conditional) -->
-        <div class="mb-3" *ngIf="isCompany">
-          <label class="form-label fw-semibold">Company Name *</label>
-          <input type="text" class="form-control" formControlName="companyName" placeholder="Acme Corp">
-        </div>
-
-        <!-- Title -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Job Title *</label>
-          <input type="text" class="form-control" formControlName="title" placeholder="e.g. Senior React Developer">
-          <div *ngIf="f('title')?.invalid && f('title')?.touched" class="text-danger small mt-1">
-            Title is required (min 3 characters).
-          </div>
-        </div>
-
-        <!-- Description -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Job Description *</label>
-          <textarea class="form-control" rows="5" formControlName="description"
-                    placeholder="Describe the job, responsibilities, requirements..."></textarea>
-          <div *ngIf="f('description')?.invalid && f('description')?.touched" class="text-danger small mt-1">
-            Description is required (min 10 characters).
-          </div>
-        </div>
-
-        <!-- Budget row -->
-        <div class="row mb-3">
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Budget Min</label>
-            <input type="number" class="form-control" formControlName="budgetMin" placeholder="500">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Budget Max</label>
-            <input type="number" class="form-control" formControlName="budgetMax" placeholder="2000">
-          </div>
-          <div class="col-md-4">
-            <label class="form-label fw-semibold">Currency</label>
-            <select class="form-select" formControlName="currency">
-              <option value="USD">USD</option>
-              <option value="EUR">EUR</option>
-              <option value="TND">TND</option>
-              <option value="GBP">GBP</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Deadline -->
-        <div class="mb-3">
-          <label class="form-label fw-semibold">Application Deadline</label>
-          <input type="date" class="form-control" formControlName="deadline" [min]="minDate">
-        </div>
-
-        <!-- Category & Location -->
-        <div class="row mb-3">
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Category *</label>
-            <select class="form-select" formControlName="category">
-              <option value="">Select a category</option>
-              <option *ngFor="let cat of CATEGORIES" [value]="cat">{{ cat }}</option>
-            </select>
-            <div *ngIf="f('category')?.invalid && f('category')?.touched" class="text-danger small mt-1">Category is required.</div>
-          </div>
-          <div class="col-md-6">
-            <label class="form-label fw-semibold">Location Type *</label>
-            <select class="form-select" formControlName="locationType">
-              <option value="REMOTE">Remote</option>
-              <option value="ONSITE">On-site</option>
-              <option value="HYBRID">Hybrid</option>
-            </select>
-          </div>
-        </div>
-
-        <!-- Skills -->
-        <div class="mb-4" *ngIf="allSkills.length > 0">
-          <label class="form-label fw-semibold">Required Skills</label>
-          <div class="d-flex flex-wrap gap-2">
-            <button type="button" *ngFor="let skill of allSkills"
-                    class="btn btn-sm"
-                    [class.btn-primary]="isSkillSelected(skill.id!)"
-                    [class.btn-outline-secondary]="!isSkillSelected(skill.id!)"
-                    (click)="toggleSkill(skill.id!)">
-              {{ skill.name }}
-            </button>
-          </div>
-        </div>
-
-        <!-- Actions -->
-        <div class="d-flex gap-2">
-          <button type="submit" class="btn btn-primary" [disabled]="isSubmitting">
-            <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
-            <i *ngIf="!isSubmitting" class="bi bi-send me-2"></i>
-            {{ isSubmitting ? 'Posting...' : 'Post Job' }}
-          </button>
-          <button type="button" class="btn btn-outline-secondary" routerLink="/dashboard/my-jobs">Cancel</button>
-        </div>
-
-      </form>
+  <!-- Page title -->
+  <div class="page-header">
+    <div>
+      <h2 class="page-title">Post a New Job</h2>
+      <p class="page-subtitle">Fill in the details below or let AI generate a draft for you</p>
     </div>
   </div>
+
+  <!-- ── AI GENERATOR CARD ──────────────────────────────────── -->
+  <div class="ai-card">
+    <div class="ai-card__header">
+      <span class="ai-badge">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+        </svg>
+        AI Generator
+      </span>
+      <p class="ai-card__hint">Describe your project in one sentence — AI generates a complete job post</p>
+    </div>
+
+    <div class="ai-input-row">
+      <input
+        type="text"
+        class="ai-input"
+        [(ngModel)]="aiPrompt"
+        [ngModelOptions]="{standalone: true}"
+        placeholder='e.g. "I want a carpooling mobile app with real-time tracking"'
+        (keydown.enter)="generateWithAI()"
+        [disabled]="isGenerating"
+      />
+      <button
+        class="btn-generate"
+        type="button"
+        (click)="generateWithAI()"
+        [disabled]="isGenerating || !aiPrompt.trim()">
+        <span *ngIf="isGenerating" class="spinner-sm"></span>
+        <svg *ngIf="!isGenerating" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M12 2L9.5 9.5 2 12l7.5 2.5L12 22l2.5-7.5L22 12l-7.5-2.5z"/>
+        </svg>
+        {{ isGenerating ? 'Generating…' : 'Generate' }}
+      </button>
+    </div>
+
+    <div *ngIf="aiError" class="ai-error">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+      </svg>
+      {{ aiError }}
+    </div>
+
+    <div *ngIf="aiDraftReady" class="ai-success">
+      <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+      </svg>
+      Draft generated! Review and adjust the fields below before posting.
+    </div>
+  </div>
+  <!-- ── END AI GENERATOR ───────────────────────────────────── -->
+
+  <!-- ── FORM CARD ─────────────────────────────────────────── -->
+  <div class="form-card">
+
+    <div *ngIf="submitSuccess" class="notice notice--success">
+      <svg width="16" height="16" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clip-rule="evenodd"/>
+      </svg>
+      Job posted successfully! Redirecting…
+    </div>
+    <div *ngIf="submitError" class="notice notice--error">{{ submitError }}</div>
+
+    <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+
+      <!-- Posting as -->
+      <div class="field-group">
+        <label class="field-label">Posting as *</label>
+        <div class="radio-row">
+          <label class="radio-option" [class.radio-option--active]="form.get('clientType')?.value === 'INDIVIDUAL'">
+            <input type="radio" formControlName="clientType" value="INDIVIDUAL">
+            <span>👤 Individual</span>
+          </label>
+          <label class="radio-option" [class.radio-option--active]="form.get('clientType')?.value === 'COMPANY'">
+            <input type="radio" formControlName="clientType" value="COMPANY">
+            <span>🏢 Company</span>
+          </label>
+        </div>
+      </div>
+
+      <!-- Company name -->
+      <div class="field-group" *ngIf="isCompany">
+        <label class="field-label" for="companyName">Company Name *</label>
+        <input id="companyName" class="field-input" type="text" formControlName="companyName" placeholder="Acme Corp">
+      </div>
+
+      <!-- Title -->
+      <div class="field-group">
+        <label class="field-label" for="title">Job Title *</label>
+        <input id="title" class="field-input" type="text" formControlName="title"
+               placeholder="e.g. Senior React Developer"
+               [class.field-input--error]="f('title')?.invalid && f('title')?.touched">
+        <span *ngIf="f('title')?.invalid && f('title')?.touched" class="field-error">
+          Title is required (min 3 characters).
+        </span>
+      </div>
+
+      <!-- Description -->
+      <div class="field-group">
+        <label class="field-label" for="description">Job Description *</label>
+        <textarea id="description" class="field-textarea" rows="6" formControlName="description"
+                  placeholder="Describe the job, responsibilities, requirements…"
+                  [class.field-input--error]="f('description')?.invalid && f('description')?.touched"></textarea>
+        <span *ngIf="f('description')?.invalid && f('description')?.touched" class="field-error">
+          Description is required (min 10 characters).
+        </span>
+      </div>
+
+      <!-- Budget -->
+      <div class="fields-row">
+        <div class="field-group">
+          <label class="field-label" for="budgetMin">Budget Min</label>
+          <input id="budgetMin" class="field-input" type="number" formControlName="budgetMin" placeholder="500">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="budgetMax">Budget Max</label>
+          <input id="budgetMax" class="field-input" type="number" formControlName="budgetMax" placeholder="2000">
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="currency">Currency</label>
+          <select id="currency" class="field-select" formControlName="currency">
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="TND">TND</option>
+            <option value="GBP">GBP</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Deadline -->
+      <div class="field-group">
+        <label class="field-label" for="deadline">Application Deadline</label>
+        <input id="deadline" class="field-input" type="date" formControlName="deadline" [min]="minDate">
+      </div>
+
+      <!-- Category & Location -->
+      <div class="fields-row">
+        <div class="field-group">
+          <label class="field-label" for="category">Category *</label>
+          <select id="category" class="field-select" formControlName="category"
+                  [class.field-input--error]="f('category')?.invalid && f('category')?.touched">
+            <option value="">Select a category</option>
+            <option *ngFor="let cat of CATEGORIES" [value]="cat">{{ cat }}</option>
+          </select>
+          <span *ngIf="f('category')?.invalid && f('category')?.touched" class="field-error">Category is required.</span>
+        </div>
+        <div class="field-group">
+          <label class="field-label" for="locationType">Location Type *</label>
+          <select id="locationType" class="field-select" formControlName="locationType">
+            <option value="REMOTE">🌐 Remote</option>
+            <option value="ONSITE">🏢 On-site</option>
+            <option value="HYBRID">⚡ Hybrid</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Skills -->
+      <div class="field-group" *ngIf="allSkills.length > 0">
+        <label class="field-label">Required Skills</label>
+        <div class="skills-picker">
+          <button type="button" *ngFor="let skill of allSkills"
+                  class="skill-toggle"
+                  [class.skill-toggle--active]="isSkillSelected(skill.id!)"
+                  (click)="toggleSkill(skill.id!)">
+            {{ skill.name }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Divider -->
+      <div class="form-divider"></div>
+
+      <!-- Actions -->
+      <div class="form-actions">
+        <button type="submit" class="btn-primary" [disabled]="isSubmitting">
+          <span *ngIf="isSubmitting" class="spinner-sm spinner-sm--white"></span>
+          <svg *ngIf="!isSubmitting" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+          {{ isSubmitting ? 'Posting…' : 'Post Job' }}
+        </button>
+        <button type="button" class="btn-ghost" routerLink="/dashboard/my-jobs">Cancel</button>
+      </div>
+
+    </form>
+  </div>
+
 </div>

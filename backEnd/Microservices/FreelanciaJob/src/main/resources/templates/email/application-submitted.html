@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Application Submitted</title>
+  <style>
+    body { margin: 0; padding: 0; background: #f4f4f4; font-family: 'Segoe UI', Arial, sans-serif; }
+    .wrapper { max-width: 600px; margin: 32px auto; background: #fff; border-radius: 8px; overflow: hidden; box-shadow: 0 2px 8px rgba(0,0,0,.1); }
+    .header { background: #0f3460; padding: 32px 40px; text-align: center; }
+    .header h1 { margin: 0; color: #e94560; font-size: 26px; }
+    .header p  { margin: 4px 0 0; color: #a0b4c8; font-size: 13px; }
+    .body { padding: 36px 40px; color: #333; line-height: 1.6; }
+    .badge { display: block; width: fit-content; margin: 20px 0; background: #e8f5e9; color: #2e7d32; border-left: 4px solid #43a047; padding: 12px 20px; border-radius: 4px; font-weight: bold; }
+    .footer { background: #f4f4f4; text-align: center; padding: 20px; font-size: 12px; color: #999; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+
+  <!-- Header -->
+  <div class="header">
+    <h1>Freelancia</h1>
+    <p>Application confirmation</p>
+  </div>
+
+  <!-- Body -->
+  <div class="body">
+    <p>Hi <strong th:text="${freelancerName}">Freelancer</strong>,</p>
+
+    <p>We have received your application for:</p>
+
+    <div class="badge">
+      &#10003;&nbsp; <span th:text="${jobTitle}">Job Title</span>
+    </div>
+
+    <p>Your application reference number is <strong>#<span th:text="${applicationId}">0</span></strong>.</p>
+
+    <p>The client will review your proposal and get back to you. In the meantime, feel free to browse
+      other open positions on the platform.</p>
+
+    <p>Good luck! 🤞</p>
+  </div>
+
+  <!-- Footer -->
+  <div class="footer">
+    <p>© 2025 Freelancia. All rights reserved.</p>
+  </div>
+
+</div>
+</body>
+</html>

@@ -1,7 +1,7 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
-import { Router } from '@angular/router';
+import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { Router, RouterModule } from '@angular/router';
 import { JobService } from '../../../core/services/job.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
@@ -10,7 +10,7 @@ import { PortfolioService, Skill } from '../../../core/services/portfolio.servic
 @Component({
   selector: 'app-add-job',
   standalone: true,
-  imports: [CommonModule, ReactiveFormsModule],
+  imports: [CommonModule, ReactiveFormsModule, FormsModule, RouterModule],
   templateUrl: './add-job.html',
   styleUrl: './add-job.scss',
 })
@@ -22,6 +22,12 @@ export class AddJob implements OnInit {
   minDate!: string;
   allSkills: Skill[] = [];
   userId: number | null = null;
+
+  // AI generation state
+  aiPrompt = '';
+  isGenerating = false;
+  aiError: string | null = null;
+  aiDraftReady = false;
 
   readonly CATEGORIES = [
     'Web Development', 'Mobile Development', 'UI/UX Design',
@@ -81,6 +87,50 @@ export class AddJob implements OnInit {
 
   isSkillSelected(skillId: number): boolean {
     return (this.form.get('requiredSkillIds')?.value ?? []).includes(skillId);
+  }
+
+  generateWithAI(): void {
+    if (!this.aiPrompt.trim()) return;
+    this.isGenerating = true;
+    this.aiError = null;
+    this.aiDraftReady = false;
+
+    this.jobService.generateJobDraft(this.aiPrompt.trim()).subscribe({
+      next: draft => {
+        this.isGenerating = false;
+        if (!draft) {
+          this.aiError = 'AI generation failed. Please try again or fill the form manually.';
+          return;
+        }
+
+        // Patch form fields with AI-generated values
+        this.form.patchValue({
+          title: draft.title,
+          description: draft.description,
+          budgetMin: draft.budgetMin,
+          budgetMax: draft.budgetMax,
+          currency: draft.currency || 'USD',
+          category: this.CATEGORIES.includes(draft.category) ? draft.category : '',
+          locationType: ['REMOTE', 'ONSITE', 'HYBRID'].includes(draft.locationType)
+            ? draft.locationType : 'REMOTE',
+        });
+
+        // Auto-select skills by name matching
+        if (draft.requiredSkills?.length && this.allSkills.length) {
+          const draftSkillNames = draft.requiredSkills.map(s => s.toLowerCase());
+          const matchedIds = this.allSkills
+            .filter(s => draftSkillNames.some(n => s.name?.toLowerCase().includes(n) || n.includes(s.name?.toLowerCase() ?? '')))
+            .map(s => s.id!);
+          this.form.get('requiredSkillIds')!.setValue(matchedIds);
+        }
+
+        this.aiDraftReady = true;
+      },
+      error: () => {
+        this.isGenerating = false;
+        this.aiError = 'AI generation failed. Please try again or fill the form manually.';
+      }
+    });
   }
 
   onSubmit(): void {

@@ -1,6 +1,6 @@
 import { Injectable } from '@angular/core';
-import { HttpClient } from '@angular/common/http';
-import { Observable, catchError, map, of, timeout } from 'rxjs';
+import { HttpClient, HttpEventType, HttpRequest, HttpResponse } from '@angular/common/http';
+import { Observable, catchError, filter, map, of, tap, timeout } from 'rxjs';
 import { environment } from '../../../environments/environment';
 
 const REQUEST_TIMEOUT_MS = 15_000;
@@ -17,6 +17,29 @@ export interface JobApplication {
   status?: 'PENDING' | 'SHORTLISTED' | 'REJECTED' | 'ACCEPTED' | 'WITHDRAWN';
   createdAt?: string;
   updatedAt?: string;
+}
+
+export interface AttachmentDto {
+  id: number;
+  jobApplicationId: number;
+  fileName: string;
+  fileType: string;
+  fileUrl: string;    // relative — prefix with gateway URL for full link
+  fileSize: number;
+  uploadedAt: string;
+}
+
+export interface ApplyJobResponse {
+  id: number;
+  jobId: number;
+  jobTitle: string;
+  freelancerId: number;
+  proposalMessage: string;
+  expectedRate: number | null;
+  availabilityStart: string | null;
+  status: string;
+  createdAt: string;
+  attachments: AttachmentDto[];
 }
 
 @Injectable({ providedIn: 'root' })
@@ -81,5 +104,45 @@ export class JobApplicationService {
       timeout(REQUEST_TIMEOUT_MS),
       catchError(() => of(null))
     );
+  }
+
+  /**
+   * Enhanced apply endpoint — multipart/form-data with optional file attachments.
+   * @param onProgress optional callback receiving upload % (0-100)
+   */
+  applyToJob(
+    jobId: number,
+    formData: FormData,
+    onProgress?: (pct: number) => void
+  ): Observable<ApplyJobResponse | null> {
+    return this.http
+      .request<ApplyJobResponse>(
+        new HttpRequest('POST', `${APP_API}/${jobId}/apply`, formData, {
+          reportProgress: true,
+        })
+      )
+      .pipe(
+        tap(event => {
+          if (event.type === HttpEventType.UploadProgress && onProgress) {
+            const pct = Math.round((100 * event.loaded) / (event.total ?? event.loaded));
+            onProgress(pct);
+          }
+        }),
+        filter(event => event.type === HttpEventType.Response),
+        map(event => (event as HttpResponse<ApplyJobResponse>).body),
+        catchError(() => of(null))
+      );
+  }
+
+  /** Retrieve attachment metadata list for an application. */
+  getAttachments(applicationId: number): Observable<AttachmentDto[]> {
+    return this.http
+      .get<AttachmentDto[]>(`${APP_API}/${applicationId}/attachments`)
+      .pipe(timeout(REQUEST_TIMEOUT_MS), catchError(() => of([])));
+  }
+
+  /** Build a full download URL for an attachment (served as static resource). */
+  buildDownloadUrl(fileUrl: string): string {
+    return `${environment.apiGatewayUrl}/freelancia-job${fileUrl}`;
   }
 }

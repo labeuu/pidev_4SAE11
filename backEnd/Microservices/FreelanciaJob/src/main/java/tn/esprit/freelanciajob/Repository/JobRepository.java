@@ -1,15 +1,18 @@
 package tn.esprit.freelanciajob.Repository;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import tn.esprit.freelanciajob.Dto.JobStats;
+import tn.esprit.freelanciajob.Dto.projection.MonthlyJobProjection;
+import tn.esprit.freelanciajob.Dto.projection.StatusCountProjection;
 import tn.esprit.freelanciajob.Entity.Job;
 import tn.esprit.freelanciajob.Entity.Enums.JobStatus;
 
 import java.util.List;
 
-public interface JobRepository extends JpaRepository<Job, Long> {
+public interface JobRepository extends JpaRepository<Job, Long>, JpaSpecificationExecutor<Job> {
 
     List<Job> findByClientId(Long clientId);
 
@@ -35,4 +38,23 @@ public interface JobRepository extends JpaRepository<Job, Long> {
            "GROUP BY j.id, j.title " +
            "ORDER BY COUNT(a) DESC")
     List<JobStats> getJobsStatistics();
+
+    // ── Admin stats ───────────────────────────────────────────────────────────
+
+    /** Count jobs grouped by status (JPQL interface projection). */
+    @Query("SELECT CAST(j.status AS string) AS status, COUNT(j) AS count FROM Job j GROUP BY j.status")
+    List<StatusCountProjection> countByStatus();
+
+    /**
+     * Count jobs created per calendar month for the last 12 months.
+     * Native query — uses MySQL DATE_FORMAT for "YYYY-MM" labels.
+     */
+    @Query(value =
+        "SELECT DATE_FORMAT(j.created_at, '%Y-%m') AS month, COUNT(*) AS count " +
+        "FROM jobs j " +
+        "WHERE j.created_at >= DATE_SUB(NOW(), INTERVAL 12 MONTH) " +
+        "GROUP BY month " +
+        "ORDER BY month ASC",
+        nativeQuery = true)
+    List<MonthlyJobProjection> getJobsPerMonth();
 }

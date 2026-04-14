@@ -1,16 +1,25 @@
 package tn.esprit.freelanciajob.Service;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import tn.esprit.freelanciajob.Client.SkillClient;
+import tn.esprit.freelanciajob.Client.UserClient;
 import tn.esprit.freelanciajob.Dto.JobStats;
 import tn.esprit.freelanciajob.Dto.Skills;
 import tn.esprit.freelanciajob.Dto.request.JobRequest;
+import tn.esprit.freelanciajob.Dto.request.JobSearchRequest;
 import tn.esprit.freelanciajob.Dto.response.JobResponse;
+import tn.esprit.freelanciajob.Dto.response.UserDto;
 import tn.esprit.freelanciajob.Entity.Job;
 import tn.esprit.freelanciajob.Entity.Enums.JobStatus;
+import tn.esprit.freelanciajob.Event.JobCreatedEvent;
 import tn.esprit.freelanciajob.Mapper.JobMapper;
 import tn.esprit.freelanciajob.Repository.JobRepository;
+import tn.esprit.freelanciajob.Specification.JobSpecification;
 
 import java.math.BigDecimal;
 import java.util.*;
@@ -22,11 +31,28 @@ public class JobService implements IJobService {
 
     private final JobRepository jobRepository;
     private final SkillClient skillClient;
+    private final UserClient userClient;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     public Job addJob(JobRequest request) {
         Job job = JobMapper.toEntity(request);
-        return jobRepository.save(job);
+        Job saved = jobRepository.save(job);
+
+        // Resolve the client's display name (graceful fallback if USER service is down)
+        String clientName = "A Client";
+        if (request.getClientId() != null) {
+            UserDto client = userClient.getUserById(request.getClientId());
+            if (client != null && client.getFirstName() != null) {
+                clientName = client.getFirstName() + " " +
+                        (client.getLastName() != null ? client.getLastName() : "");
+                clientName = clientName.trim();
+            }
+        }
+
+        // Publish — decoupled from email logic
+        eventPublisher.publishEvent(new JobCreatedEvent(this, saved, clientName));
+        return saved;
     }
 
     @Override
@@ -153,6 +179,17 @@ public class JobService implements IJobService {
     @Override
     public List<JobStats> getJobsApplicationStats() {
         return jobRepository.getJobsStatistics();
+    }
+
+    @Override
+    public Page<JobResponse> filterJobs(JobSearchRequest request) {
+        Sort sort = "asc".equalsIgnoreCase(request.getSortDir())
+                ? Sort.by(request.getSortBy()).ascending()
+                : Sort.by(request.getSortBy()).descending();
+        PageRequest pageable = PageRequest.of(request.getPage(), request.getSize(), sort);
+        return jobRepository
+                .findAll(JobSpecification.build(request), pageable)
+                .map(this::enrichWithSkills);
     }
 
     private JobResponse enrichWithSkills(Job job) {

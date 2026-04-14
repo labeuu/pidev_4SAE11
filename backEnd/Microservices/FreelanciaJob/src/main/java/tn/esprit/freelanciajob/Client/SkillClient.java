@@ -9,7 +9,7 @@ import tn.esprit.freelanciajob.Dto.Skills;
 
 import java.util.List;
 
-@FeignClient(name = "PORTFOLIO", fallback = SkillClientFallback.class)
+@FeignClient(name = "PORTFOLIO", contextId = "skillClient", fallback = SkillClientFallback.class)
 public interface SkillClient {
 
     @PostMapping("/api/skills/batch")

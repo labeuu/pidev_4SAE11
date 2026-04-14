@@ -66,8 +66,8 @@
                 },
                 {
                   "type": "anyComponentStyle",
-                  "maximumWarning": "50kB",
-                  "maximumError": "60kB"
+                  "maximumWarning": "100kB",
+                  "maximumError": "150kB"
                 }
               ],
               "outputHashing": "all",
@@ -99,7 +99,8 @@
               "buildTarget": "smart-freelance-app:build:production"
             },
             "development": {
-              "buildTarget": "smart-freelance-app:build:development"
+              "buildTarget": "smart-freelance-app:build:development",
+              "proxyConfig": "proxy.conf.json"
             }
           },
           "defaultConfiguration": "development"

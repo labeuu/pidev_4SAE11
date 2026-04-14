@@ -77,6 +77,13 @@
             <artifactId>spring-boot-starter-webflux</artifactId>
         </dependency>
 
+        <!-- Fix Netty DNS resolution on MacOS -->
+        <dependency>
+            <groupId>io.netty</groupId>
+            <artifactId>netty-resolver-dns-native-macos</artifactId>
+            <classifier>osx-aarch_64</classifier>
+        </dependency>
+
         <!-- Optional -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

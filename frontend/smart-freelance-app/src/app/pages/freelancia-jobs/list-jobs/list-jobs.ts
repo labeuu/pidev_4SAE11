@@ -2,7 +2,11 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { JobService, Job, JobFilters, JobStats } from '../../../core/services/job.service';
+import { Subject, Subscription } from 'rxjs';
+import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import {
+  JobService, Job, JobSearchRequest, JobPage, JobStats
+} from '../../../core/services/job.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 
@@ -14,8 +18,9 @@ import { UserService } from '../../../core/services/user.service';
   styleUrl: './list-jobs.scss',
 })
 export class ListJobs implements OnInit, OnDestroy {
+
+  // ── Data ──────────────────────────────────────────────────────────────────
   jobs: Job[] = [];
-  filteredJobs: Job[] = [];
   isLoading = false;
   errorMessage: string | null = null;
   deleteError: string | null = null;
@@ -29,33 +34,40 @@ export class ListJobs implements OnInit, OnDestroy {
   applicationStats: JobStats[] = [];
   showStats = false;
 
-  // Filters
-  filters: JobFilters = {};
+  // ── Filters (currentFilters tracks the live UI state) ────────────────────
+  currentFilters: JobSearchRequest = {
+    page: 0, size: 9, sortBy: 'createdAt', sortDir: 'desc'
+  };
   filterKeyword = '';
   filterCategory = '';
   filterLocationType = '';
   filterStatus = '';
+  filterBudgetMin: number | null = null;
+  filterBudgetMax: number | null = null;
   showFilters = false;
 
+  /** True when any non-keyword filter is active (drives the chip display). */
   get hasActiveFilters(): boolean {
-    return !!(this.filterCategory || this.filterLocationType || this.filterStatus);
+    return !!(
+      this.filterCategory ||
+      this.filterLocationType ||
+      this.filterStatus ||
+      this.filterBudgetMin != null ||
+      this.filterBudgetMax != null
+    );
   }
 
-  toggleFilters(): void {
-    this.showFilters = !this.showFilters;
-  }
+  toggleFilters(): void { this.showFilters = !this.showFilters; }
 
-  // Pagination
-  currentPage = 1;
+  // ── Pagination (server-driven) ────────────────────────────────────────────
+  totalElements = 0;
+  totalPages = 0;
   readonly pageSize = 9;
 
-  get totalPages(): number {
-    return Math.ceil(this.filteredJobs.length / this.pageSize);
-  }
+  get currentPage(): number { return (this.currentFilters.page ?? 0) + 1; }
 
-  get pagedJobs(): Job[] {
-    const start = (this.currentPage - 1) * this.pageSize;
-    return this.filteredJobs.slice(start, start + this.pageSize);
+  get pageEnd(): number {
+    return Math.min(this.currentPage * this.pageSize, this.totalElements);
   }
 
   get pageNumbers(): (number | '...')[] {
@@ -71,17 +83,19 @@ export class ListJobs implements OnInit, OnDestroy {
     return pages;
   }
 
-  get pageEnd(): number {
-    return Math.min(this.currentPage * this.pageSize, this.filteredJobs.length);
-  }
-
   goToPage(page: number): void {
-    if (page >= 1 && page <= this.totalPages) {
-      this.currentPage = page;
+    const zeroPage = page - 1;
+    if (zeroPage >= 0 && zeroPage < this.totalPages) {
+      this.currentFilters = { ...this.currentFilters, page: zeroPage };
+      this.triggerFilter$.next(this.currentFilters);
     }
   }
 
-  private refreshInterval: any;
+  // ── Debounce stream ───────────────────────────────────────────────────────
+  private readonly triggerFilter$ = new Subject<JobSearchRequest>();
+  private readonly keywordInput$ = new Subject<string>();
+  private subscriptions = new Subscription();
+
   readonly CATEGORIES = [
     'Web Development', 'Mobile Development', 'UI/UX Design',
     'Data Science', 'DevOps', 'Content Writing', 'Marketing', 'Backend'
@@ -97,86 +111,110 @@ export class ListJobs implements OnInit, OnDestroy {
   ngOnInit(): void {
     this.userRole = this.authService.getUserRole();
     const email = this.authService.getPreferredUsername();
+
     if (email) {
       this.userService.getByEmail(email).subscribe({
-        next: user => {
-          this.userId = user?.id ?? null;
-          this.loadJobs();
-        },
-        error: () => this.loadJobs()
+        next: user => { this.userId = user?.id ?? null; this.initFiltersAndLoad(); },
+        error: () => this.initFiltersAndLoad()
       });
     } else {
-      this.loadJobs();
+      this.initFiltersAndLoad();
     }
-    this.refreshInterval = setInterval(() => this.loadJobs(), 60_000);
+  }
+
+  private initFiltersAndLoad(): void {
+    // For CLIENT: always scope to their own jobs
+    if (this.userRole === 'CLIENT' && this.userId) {
+      this.currentFilters = { ...this.currentFilters, clientId: this.userId };
+      this.loadStats();
+    }
+    // For FREELANCER: only show OPEN jobs
+    if (this.userRole === 'FREELANCER') {
+      this.currentFilters = { ...this.currentFilters, status: 'OPEN' };
+    }
+
+    // Keyword gets its own debounce stream (300 ms)
+    this.subscriptions.add(
+      this.keywordInput$.pipe(
+        debounceTime(300),
+        distinctUntilChanged()
+      ).subscribe(kw => {
+        this.currentFilters = { ...this.currentFilters, keyword: kw || undefined, page: 0 };
+        this.triggerFilter$.next(this.currentFilters);
+      })
+    );
+
+    // Main filter stream: switchMap cancels in-flight requests on rapid changes
+    this.subscriptions.add(
+      this.triggerFilter$.pipe(
+        switchMap(req => {
+          this.isLoading = true;
+          this.errorMessage = null;
+          return this.jobService.filterJobs(req);
+        })
+      ).subscribe({
+        next: (page: JobPage) => {
+          this.jobs          = page.content;
+          this.totalElements = page.totalElements;
+          this.totalPages    = page.totalPages;
+          this.isLoading     = false;
+        },
+        error: () => {
+          this.errorMessage = 'Failed to load jobs';
+          this.isLoading    = false;
+        }
+      })
+    );
+
+    // Initial load
+    this.triggerFilter$.next(this.currentFilters);
   }
 
   ngOnDestroy(): void {
-    clearInterval(this.refreshInterval);
+    this.subscriptions.unsubscribe();
   }
 
-  loadJobs(): void {
-    this.isLoading = true;
-    if (this.userRole === 'CLIENT' && this.userId) {
-      this.jobService.getByClientId(this.userId).subscribe({
-        next: jobs => { this.jobs = jobs; this.applyFilters(); this.isLoading = false; },
-        error: () => { this.errorMessage = 'Failed to load jobs'; this.isLoading = false; }
-      });
-      this.loadStats();
-    } else if (this.userRole === 'FREELANCER') {
-      this.jobService.getAllJobs().subscribe({
-        next: jobs => {
-          this.jobs = jobs.filter(j => j.status === 'OPEN');
-          this.applyFilters();
-          this.isLoading = false;
-        },
-        error: () => { this.errorMessage = 'Failed to load jobs'; this.isLoading = false; }
-      });
-    } else {
-      this.jobService.getAllJobs().subscribe({
-        next: jobs => { this.jobs = jobs; this.applyFilters(); this.isLoading = false; },
-        error: () => { this.errorMessage = 'Failed to load jobs'; this.isLoading = false; }
-      });
-      this.loadStats();
-    }
+  // ── Filter change handlers ────────────────────────────────────────────────
+
+  onKeywordChange(): void {
+    this.keywordInput$.next(this.filterKeyword);
   }
+
+  onFilterChange(): void {
+    const filters: JobSearchRequest = {
+      ...this.currentFilters,
+      keyword:       this.filterKeyword || undefined,
+      category:      this.filterCategory || undefined,
+      locationType:  this.filterLocationType || undefined,
+      budgetMin:     this.filterBudgetMin ?? undefined,
+      budgetMax:     this.filterBudgetMax ?? undefined,
+      page:          0,
+    };
+
+    // Status: FREELANCER is always locked to OPEN; others use the dropdown
+    if (this.userRole !== 'FREELANCER') {
+      filters.status = this.filterStatus || undefined;
+    }
+
+    this.currentFilters = filters;
+    this.triggerFilter$.next(this.currentFilters);
+  }
+
+  clearFilters(): void {
+    this.filterKeyword    = '';
+    this.filterCategory   = '';
+    this.filterLocationType = '';
+    this.filterStatus     = '';
+    this.filterBudgetMin  = null;
+    this.filterBudgetMax  = null;
+    this.onFilterChange();
+  }
+
+  // ── Remaining methods (unchanged) ─────────────────────────────────────────
 
   loadStats(): void {
     this.jobService.getJobStatistics().subscribe(stats => this.statistics = stats);
     this.jobService.getApplicationStats().subscribe(s => this.applicationStats = s);
-  }
-
-  applyFilters(): void {
-    let result = [...this.jobs];
-    if (this.filterKeyword) {
-      const kw = this.filterKeyword.toLowerCase();
-      result = result.filter(j =>
-        j.title?.toLowerCase().includes(kw) || j.description?.toLowerCase().includes(kw)
-      );
-    }
-    if (this.filterCategory) {
-      result = result.filter(j => j.category === this.filterCategory);
-    }
-    if (this.filterLocationType) {
-      result = result.filter(j => j.locationType === this.filterLocationType);
-    }
-    if (this.filterStatus) {
-      result = result.filter(j => j.status === this.filterStatus);
-    }
-    this.filteredJobs = result;
-    this.currentPage = 1;
-  }
-
-  onFilterChange(): void {
-    this.applyFilters();
-  }
-
-  clearFilters(): void {
-    this.filterKeyword = '';
-    this.filterCategory = '';
-    this.filterLocationType = '';
-    this.filterStatus = '';
-    this.applyFilters();
   }
 
   viewJob(id: number): void {
@@ -207,10 +245,9 @@ export class ListJobs implements OnInit, OnDestroy {
     this.jobService.deleteJob(this.jobToDelete).subscribe({
       next: ok => {
         if (ok) {
-          this.jobs = this.jobs.filter(j => j.id !== this.jobToDelete);
-          this.applyFilters();
           this.showDeleteModal = false;
           this.jobToDelete = null;
+          this.triggerFilter$.next(this.currentFilters); // refresh current page
         } else {
           this.deleteError = 'Failed to delete job.';
         }
@@ -219,9 +256,7 @@ export class ListJobs implements OnInit, OnDestroy {
     });
   }
 
-  toggleStats(): void {
-    this.showStats = !this.showStats;
-  }
+  toggleStats(): void { this.showStats = !this.showStats; }
 
   isOwner(job: Job): boolean {
     return this.userId !== null && job.clientId === this.userId;
@@ -229,11 +264,11 @@ export class ListJobs implements OnInit, OnDestroy {
 
   statusBadgeClass(status: string): string {
     switch (status) {
-      case 'OPEN': return 'badge bg-success';
+      case 'OPEN':        return 'badge bg-success';
       case 'IN_PROGRESS': return 'badge bg-primary';
-      case 'FILLED': return 'badge bg-secondary';
-      case 'CANCELLED': return 'badge bg-danger';
-      default: return 'badge bg-light text-dark';
+      case 'FILLED':      return 'badge bg-secondary';
+      case 'CANCELLED':   return 'badge bg-danger';
+      default:            return 'badge bg-light text-dark';
     }
   }
 }

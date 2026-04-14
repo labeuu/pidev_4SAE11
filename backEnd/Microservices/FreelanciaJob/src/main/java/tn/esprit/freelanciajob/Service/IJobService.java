@@ -1,7 +1,9 @@
 package tn.esprit.freelanciajob.Service;
 
+import org.springframework.data.domain.Page;
 import tn.esprit.freelanciajob.Dto.JobStats;
 import tn.esprit.freelanciajob.Dto.request.JobRequest;
+import tn.esprit.freelanciajob.Dto.request.JobSearchRequest;
 import tn.esprit.freelanciajob.Dto.response.JobResponse;
 import tn.esprit.freelanciajob.Entity.Job;
 
@@ -23,4 +25,5 @@ public interface IJobService {
                                   BigDecimal budgetMax, String locationType, Long skillId);
     Map<String, Long> getJobStatistics();
     List<JobStats> getJobsApplicationStats();
+    Page<JobResponse> filterJobs(JobSearchRequest request);
 }

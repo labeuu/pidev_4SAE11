@@ -43,14 +43,14 @@ spring:
           lower-case-service-id: true
       routes:
         - id: keycloak-auth
-          uri: http://localhost:8079
+          uri: http://127.0.0.1:8079
           predicates:
             - Path=/keycloak-auth/**
           filters:
             - StripPrefix=1
 
         - id: user
-          uri: http://localhost:8090
+          uri: http://127.0.0.1:8090
           predicates:
             - Path=/user/**
           filters:
@@ -58,7 +58,7 @@ spring:
 
         # Portfolio: direct URL to avoid intermittent Eureka resolution misses
         - id: portfolio
-          uri: http://localhost:8086
+          uri: http://127.0.0.1:8086
           predicates:
             - Path=/portfolio/**
           filters:
@@ -70,7 +70,7 @@ spring:
 
         # Planning: direct URL (no Eureka), port 8081 - ensure Planning microservice is running
         - id: planning
-          uri: http://localhost:8081
+          uri: http://127.0.0.1:8081
           predicates:
             - Path=/planning/**
           filters:
@@ -81,7 +81,7 @@ spring:
 
         # Review: direct URL so it works without Eureka (service runs on 8085)
         - id: review
-          uri: http://localhost:8085
+          uri: http://127.0.0.1:8085
           predicates:
             - Path=/review/**
           filters:
@@ -89,7 +89,7 @@ spring:
 
         # Project: direct URL so requests always hit the Project microservice (port 8084)
         - id: project
-          uri: http://localhost:8084
+          uri: http://127.0.0.1:8084
           predicates:
             - Path=/project/**
           filters:
@@ -97,7 +97,7 @@ spring:
 
         # Gamification: achievements, levels, XP (port 8088)
         - id: gamification
-          uri: http://localhost:8088
+          uri: http://127.0.0.1:8088
           predicates:
             - Path=/gamification/**
           filters:
@@ -111,7 +111,7 @@ spring:
             - StripPrefix=1
 
         - id: contract
-          uri: http://localhost:8083
+          uri: http://127.0.0.1:8083
           predicates:
             - Path=/contract/**
           filters:
@@ -119,7 +119,7 @@ spring:
 
         # Notification (Firestore): direct URL (port 8098)
         - id: notification
-          uri: http://localhost:8098
+          uri: http://127.0.0.1:8098
           predicates:
             - Path=/notification/**
           filters:
@@ -127,7 +127,7 @@ spring:
 
         # Ticket: support tickets (must match ticket-service server.port)
         - id: ticket
-          uri: http://localhost:8094
+          uri: http://127.0.0.1:8094
           predicates:
             - Path=/ticket/**
           filters:
@@ -135,7 +135,7 @@ spring:
 
         # Subcontracting Management (port 8099)
         - id: subcontracting
-          uri: http://localhost:8099
+          uri: http://127.0.0.1:8099
           predicates:
             - Path=/subcontracting/**
           filters:
@@ -143,7 +143,7 @@ spring:
 
         # Task AI: match first — metadata response-timeout in milliseconds (4h) for slow Ollama.
         - id: task-ai
-          uri: http://localhost:8091
+          uri: http://127.0.0.1:8091
           order: -1
           predicates:
             - Path=/task/api/tasks/ai/**
@@ -155,7 +155,7 @@ spring:
 
         # Task: direct URL (port 8091)
         - id: task
-          uri: http://localhost:8091
+          uri: http://127.0.0.1:8091
           predicates:
             - Path=/task/**
           filters:
@@ -163,30 +163,31 @@ spring:
 
         # Meeting (port 8094)
         - id: meeting
-          uri: http://localhost:8094
+          uri: http://127.0.0.1:8094
           predicates:
             - Path=/meeting/**
           filters:
             - StripPrefix=1
 
-        # FreelanciaJob (port 8095 — moved off 8092 to avoid Vendor conflict)
+        # FreelanciaJob (port 8097)
         - id: freelancia-job
-          uri: http://localhost:8095
+          uri: http://127.0.0.1:8097
           predicates:
             - Path=/freelancia-job/**
           filters:
             - StripPrefix=1
 
-        # Chat / Messaging (port 8093)
+        # Chat / Messaging (port 8096)
         - id: chat
-          uri: http://localhost:8093
+          uri: http://127.0.0.1:8096
           predicates:
             - Path=/chat/**
           filters:
             - StripPrefix=1
-        # Vendor Management — port must match Config Server VENDOR.properties (8093); 8095 is AImodel.
+
+        # Vendor Management
         - id: vendor
-          uri: http://localhost:8093
+          uri: http://127.0.0.1:8092
           predicates:
             - Path=/vendor/**
           filters:
@@ -195,10 +196,9 @@ spring:
             response-timeout: 14400000
             connect-timeout: 30000
 
-        # AImodel (Spring AI + Ollama): direct URL (port 8095) — same pattern as Task/Project;
-        # avoids 502 when the service is up but not yet visible via lb://AIMODEL in Eureka.
+        # AImodel (Spring AI + Ollama): direct URL (port 8095)
         - id: aimodel
-          uri: http://localhost:8095
+          uri: http://127.0.0.1:8095
           predicates:
             - Path=/aimodel/**
           filters:

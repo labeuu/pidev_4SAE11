@@ -78,6 +78,12 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Jackson (parse MyMemory JSON response) -->
+        <dependency>
+            <groupId>com.fasterxml.jackson.core</groupId>
+            <artifactId>jackson-databind</artifactId>
+        </dependency>
+
         <!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>

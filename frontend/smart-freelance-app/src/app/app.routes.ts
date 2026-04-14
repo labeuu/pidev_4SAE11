@@ -286,6 +286,7 @@ export const routes: Routes = [
       { path: 'evaluations', loadComponent: () => import('./pages/admin/admin-dashboard/admin-dashboard').then(m => m.AdminDashboard) },
       { path: 'skill-stats', loadComponent: () => import('./pages/admin/skill-stats/skill-stats').then(m => m.SkillStats) },
       { path: 'contract-stats', loadComponent: () => import('./pages/admin/contract-stats/contract-stats').then(m => m.ContractStats) },
+      { path: 'job-stats', loadComponent: () => import('./pages/admin/freelancia-job-stats/freelancia-job-stats').then(m => m.FreelanciaJobStats), title: 'Job Board Stats' },
       { path: 'skills', loadComponent: () => import('./pages/admin/skill-management/skill-management').then(m => m.AdminSkillManagement) },
       { path: 'reviews', loadComponent: () => import('./pages/admin/review-management/review-management').then(m => m.ReviewManagement) },
       { path: 'achievements', loadComponent: () => import('./pages/admin/achievement-management/achievement-management').then(m => m.AdminAchievementManagement), title: 'Achievements' },
