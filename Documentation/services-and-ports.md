@@ -26,7 +26,7 @@ MySQL hosts use `localhost:3307` in repo configs — align your MySQL install wi
 | Microservices/Meeting | meeting | 8101 | — | MySQL `meetingdb` |
 | Microservices/Vendor | VENDOR | 8093 | `vendor` | MySQL `gestion_vendor_db` (Config Server) |
 | Microservices/ticket-service | ticket | 8094 | `ticket` | MySQL `ticketdb` |
-| Microservices/Subcontracting | SUBCONTRACTING | 8099 | `subcontracting` | MySQL `gestion_subcontracting_db` (Config Server) |
+| Microservices/Subcontracting | SUBCONTRACTING | 8110 | `subcontracting` | MySQL `gestion_subcontracting_db` (Config Server) |
 
 **Gateway routing notes**
 

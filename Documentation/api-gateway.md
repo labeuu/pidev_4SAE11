@@ -27,7 +27,7 @@ Paths are **prefixed** as shown. The gateway applies **StripPrefix=1**: the firs
 | contract | `/contract/**` | `http://localhost:8083` | Direct |
 | notification | `/notification/**` | `http://localhost:8098` | Direct |
 | ticket | `/ticket/**` | `http://localhost:8094` | Direct |
-| subcontracting | `/subcontracting/**` | `http://localhost:8099` | Direct |
+| subcontracting | `/subcontracting/**` | `http://localhost:8110` | Direct |
 | task-ai | `/task/api/tasks/ai/**` | `http://localhost:8091` | **order: -1** (matched before generic task); 4h response timeout |
 | task | `/task/**` | `http://localhost:8091` | Direct |
 | vendor | `/vendor/**` | `http://localhost:8093` | Direct; long AI-related timeouts in config |

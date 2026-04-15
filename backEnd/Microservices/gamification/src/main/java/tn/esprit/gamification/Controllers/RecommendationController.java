@@ -6,6 +6,7 @@ import org.springframework.web.bind.annotation.*;
 import tn.esprit.gamification.Dto.RecommendationDTO;
 import tn.esprit.gamification.Services.RecommendationService;
 
+import java.util.Collections;
 import java.util.List;
 
 @RestController
@@ -18,7 +19,11 @@ public class RecommendationController {
 
     @GetMapping("/{userId}")
     public ResponseEntity<List<RecommendationDTO>> getRecommendations(@PathVariable Long userId) {
-        List<RecommendationDTO> recommendations = recommendationService.getRecommendations(userId);
-        return ResponseEntity.ok(recommendations);
+        try {
+            List<RecommendationDTO> recommendations = recommendationService.getRecommendations(userId);
+            return ResponseEntity.ok(recommendations);
+        } catch (Exception ignored) {
+            return ResponseEntity.ok(Collections.emptyList());
+        }
     }
 }

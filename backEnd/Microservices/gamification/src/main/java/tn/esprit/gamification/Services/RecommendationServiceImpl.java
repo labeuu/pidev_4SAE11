@@ -4,7 +4,6 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tn.esprit.gamification.Dto.RecommendationDTO;
 import tn.esprit.gamification.Entities.Achievement;
-import tn.esprit.gamification.Entities.Enums.conditionType;
 import tn.esprit.gamification.Entities.UserAchievement;
 import tn.esprit.gamification.Entities.UserLevel;
 import tn.esprit.gamification.Evaluator.AchievementEvaluatorRegistry;
@@ -37,11 +36,15 @@ public class RecommendationServiceImpl implements RecommendationService {
         List<UserAchievement> unlockedUserAchievements = userAchievementRepository.findByUserId(userId);
 
         Set<Long> unlockedIds = unlockedUserAchievements.stream()
+                .filter(ua -> ua != null && ua.getAchievement() != null && ua.getAchievement().getId() != null)
                 .map(ua -> ua.getAchievement().getId())
                 .collect(Collectors.toSet());
 
         boolean hasStarted = unlockedUserAchievements.stream()
                 .anyMatch(ua -> {
+                    if (ua == null || ua.getAchievement() == null) {
+                        return false;
+                    }
                     String title = ua.getAchievement().getTitle();
                     return "Newcomer".equalsIgnoreCase(title) || "Opportunity Maker".equalsIgnoreCase(title);
                 });
@@ -60,8 +63,16 @@ public class RecommendationServiceImpl implements RecommendationService {
 
         // 3. Rule-based analysis for missing achievements
         for (Achievement achievement : missingAchievements) {
-            int currentValue = evaluatorRegistry.evaluate(achievement.getConditionType(), userId);
+            int currentValue;
+            try {
+                currentValue = evaluatorRegistry.evaluate(achievement.getConditionType(), userId);
+            } catch (Exception ignored) {
+                currentValue = 0;
+            }
             int threshold = achievement.getConditionThreshold();
+            if (threshold <= 0) {
+                continue;
+            }
 
             if (currentValue < threshold) {
                 int remaining = threshold - currentValue;
@@ -102,6 +113,10 @@ public class RecommendationServiceImpl implements RecommendationService {
     }
 
     private String generateAchievementMessage(Achievement a, int remaining) {
+        if (a.getConditionType() == null) {
+            return String.format("You're close to unlocking '%s', only %d more needed!",
+                    a.getTitle(), remaining);
+        }
         switch (a.getConditionType()) {
             case PROJECT_COMPLETED:
             case FIRST_PROJECT:

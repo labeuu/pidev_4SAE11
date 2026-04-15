@@ -11,6 +11,7 @@ import tn.esprit.gamification.Repository.UserAchievementRepository;
 
 import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -66,11 +67,22 @@ public class UserAchievementServiceImpl implements UserAchievementService {
         // 2. Achievements déjà débloqués par l'user
         List<UserAchievement> unlockedRows = repo.findByUserId(userId);
         Map<Long, UserAchievement> unlockedMap = unlockedRows.stream()
-                .collect(Collectors.toMap(ua -> ua.getAchievement().getId(), ua -> ua));
+                .filter(ua -> ua != null && ua.getAchievement() != null && ua.getAchievement().getId() != null)
+                .collect(Collectors.toMap(
+                        ua -> ua.getAchievement().getId(),
+                        ua -> ua,
+                        (existing, replacement) -> existing,
+                        LinkedHashMap::new
+                ));
 
         // 3. Mapper vers DTO avec évaluation en temps réel pour ceux non débloqués
         return catalog.stream().map(a -> {
-            int currentVal = evaluatorRegistry.evaluate(a.getConditionType(), userId);
+            int currentVal = 0;
+            try {
+                currentVal = evaluatorRegistry.evaluate(a.getConditionType(), userId);
+            } catch (Exception ignored) {
+                currentVal = 0;
+            }
             int target = a.getConditionThreshold();
             
             // 🆕 LOGIQUE DE RATTRAPAGE : Si on a atteint le seuil mais le badge n'est pas marqué débloqué
@@ -79,6 +91,10 @@ public class UserAchievementServiceImpl implements UserAchievementService {
                 try {
                     this.unlockAchievement(userId, a.getId());
                     isUnlocked = true; // On marque comme débloqué pour l'UI
+                    UserAchievement justUnlocked = new UserAchievement();
+                    justUnlocked.setAchievement(a);
+                    justUnlocked.setUnlockedAt(LocalDateTime.now());
+                    unlockedMap.put(a.getId(), justUnlocked);
                 } catch (Exception e) {
                    // log ignore
                 }
@@ -98,7 +114,11 @@ public class UserAchievementServiceImpl implements UserAchievementService {
                     .progressPercent(percent)
                     .xpReward(a.getXpReward())
                     .unlocked(isUnlocked)
-                    .unlockedAt(isUnlocked ? unlockedMap.get(a.getId()).getUnlockedAt().toString() : null)
+                    .unlockedAt(
+                            isUnlocked && unlockedMap.get(a.getId()) != null && unlockedMap.get(a.getId()).getUnlockedAt() != null
+                                    ? unlockedMap.get(a.getId()).getUnlockedAt().toString()
+                                    : null
+                    )
                     .build();
         }).collect(Collectors.toList());
     }

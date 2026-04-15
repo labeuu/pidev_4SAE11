@@ -10,7 +10,7 @@ import java.util.List;
 /**
  * Feign client for the Task microservice to fetch task deadline events for the Planning calendar.
  */
-@FeignClient(name = "task", url = "${task.service.url}", path = "/api/tasks")
+@FeignClient(name = "task", url = "${task.service.url:http://localhost:8091}", path = "/api/tasks")
 public interface TaskClient {
 
     @GetMapping("/calendar-events")

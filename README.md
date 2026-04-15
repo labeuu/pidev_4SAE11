@@ -98,7 +98,7 @@ A microservices-based platform connecting freelancers and clients for project co
 | AImodel (Spring AI + Ollama) | 8095 | — (Ollama, no app DB) |
 | Chat | 8096 | `chatdb` |
 | Meeting | 8101 | `meetingdb` |
-| Subcontracting | 8099 | `gestion_subcontracting_db` |
+| Subcontracting | 8110 | `gestion_subcontracting_db` |
 
 ### Startup Order
 

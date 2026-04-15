@@ -46,6 +46,19 @@ public class ProjectService implements IProjectService{
 
     // ------------------- CRUD -------------------
 
+    @Override
+    public Project addProject(Project project) {
+        if (project.getStatus() == null) {
+            project.setStatus(ProjectStatus.OPEN);
+        }
+        Project saved = projectRepository.save(project);
+        if (saved.getClientId() != null) {
+            eventPublisher.publishEvent(new ProjectCreatedEvent(saved.getClientId()));
+        }
+        return saved;
+    }
+
+    @Override
     public Project addProject(tn.esprit.project.Dto.request.ProjectRequest request) {
         Project project = new Project();
         project.setClientId(request.getClientId());

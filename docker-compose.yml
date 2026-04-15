@@ -432,7 +432,7 @@ services:
     container_name: sf-subcontracting
     <<: [*java-svc, *java-depends]
     environment:
-      SERVER_PORT: 8099
+      SERVER_PORT: 8110
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888,optional:classpath:application-local.properties
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gestion_subcontracting_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
@@ -450,7 +450,7 @@ services:
       config-server:
         condition: service_healthy
     ports:
-      - "8099:8099"
+      - "8110:8110"
 
   notification:
     build:

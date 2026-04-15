@@ -133,9 +133,9 @@ spring:
           filters:
             - StripPrefix=1
 
-        # Subcontracting Management (port 8094)
+        # Subcontracting Management (port 8110)
         - id: subcontracting
-          uri: http://localhost:8094
+          uri: http://localhost:8110
           predicates:
             - Path=/subcontracting/**
           filters:

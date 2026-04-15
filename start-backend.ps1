@@ -213,7 +213,7 @@ Start-MavenService -Directory (Join-Path $Back 'Microservices\Subcontracting') -
 
 Wait-ForPort -Port 8081 -Label 'planning' -TimeoutSec 120
 Wait-ForPort -Port 8093 -Label 'Vendor' -TimeoutSec 120
-Wait-ForPort -Port 8099 -Label 'Subcontracting' -TimeoutSec 120
+Wait-ForPort -Port 8110 -Label 'Subcontracting' -TimeoutSec 120
 
 Info '--- Wave C: task (after AI + config peers) ---'
 Start-MavenService -Directory (Join-Path $Back 'Microservices\task') -Label 'task' -LogFileName 'task.log'
