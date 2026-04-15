@@ -11,7 +11,6 @@
         <module name="Offer" />
         <module name="Portfolio" />
         <module name="apiGateway" />
-        <module name="Subcontracting" />
         <module name="ConfigServer" />
         <module name="Eureka" />
         <module name="Contract" />
@@ -34,20 +33,7 @@
         </processorPath>
         <module name="meeting" />
       </profile>
-      <profile name="Annotation profile for ticket" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
-        </processorPath>
-        <module name="notification" />
-        <module name="task" />
-        <module name="ticket" />
-        <module name="aimodel" />
-        <module name="review" />
-      </profile>
-      <profile name="Annotation profile for FreelanciaJob" enabled="true">
+      <profile name="Annotation profile for gamification" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -60,10 +46,29 @@
         <module name="user" />
         <module name="chat" />
       </profile>
+      <profile name="Annotation profile for task" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
+        </processorPath>
+        <module name="notification" />
+        <module name="review" />
+        <module name="task" />
+      </profile>
+      <profile name="Annotation profile for FreelanciaJob" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
+        </processorPath>
+        <module name="ticket" />
+        <module name="aimodel" />
+      </profile>
     </annotationProcessing>
-    <bytecodeTargetLevel>
-      <module name="Vendor" target="17" />
-    </bytecodeTargetLevel>
   </component>
   <component name="JavacSettings">
     <option name="ADDITIONAL_OPTIONS_OVERRIDE">
@@ -75,8 +80,6 @@
       <module name="Offer" options="-parameters" />
       <module name="Portfolio" options="-parameters" />
       <module name="Project" options="-parameters" />
-      <module name="Subcontracting" options="-parameters" />
-      <module name="Vendor" options="-parameters" />
       <module name="aimodel" options="-parameters" />
       <module name="apiGateway" options="-parameters" />
       <module name="chat" options="-parameters" />
