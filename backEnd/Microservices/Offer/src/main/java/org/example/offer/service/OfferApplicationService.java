@@ -374,6 +374,15 @@ public class OfferApplicationService implements IOfferApplicationService {
                 .collect(Collectors.toList());
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public List<OfferApplicationResponse> listAcceptedApplicationsForFreelancerOwnedOffers(Long freelancerId) {
+        return applicationRepository.findByFreelancerIdAndStatus(freelancerId, ApplicationStatus.ACCEPTED)
+                .stream()
+                .map(this::mapToResponse)
+                .collect(Collectors.toList());
+    }
+
     // ========== Méthodes privées de validation ==========
 
     private void validateApplication(Offer offer, Long clientId) {

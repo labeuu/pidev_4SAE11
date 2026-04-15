@@ -1,5 +1,5 @@
-import { Component, Input } from '@angular/core';
-import { RouterLink, RouterLinkActive } from '@angular/router';
+import { Component, Input, signal, inject } from '@angular/core';
+import { RouterLink, RouterLinkActive, Router } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -43,7 +43,6 @@ export class Sidebar {
     projects:    'M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10',
     offers:      'M21 13.255A23.931 23.931 0 0112 15c-3.183 0-6.22-.62-9-1.745M16 6V4a2 2 0 00-2-2h-4a2 2 0 00-2 2v2m4 6h.01M5 20h14a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z',
     contracts:   'M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z',
-    vendors:     'M17 20h5v-2a3 3 0 00-5.356-1.857M9 20H2v-2a3 3 0 015.356-1.857M12 14a4 4 0 100-8 4 4 0 000 8zM19 8l1.5 1.5L23 7',
     planning:    'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
     skills:      'M11 4a2 2 0 114 0v1a1 1 0 001 1h3a1 1 0 011 1v3a1 1 0 01-1 1h-1a2 2 0 100 4h1a1 1 0 011 1v3a1 1 0 01-1 1h-3a1 1 0 01-1-1v-1a2 2 0 10-4 0v1a1 1 0 01-1 1H7a1 1 0 01-1-1v-3a1 1 0 00-1-1H4a2 2 0 110-4h1a1 1 0 001-1V7a1 1 0 011-1h3a1 1 0 001-1V4z',
     'skill-stats':    'M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z',
@@ -84,8 +83,8 @@ export class Sidebar {
           { label: 'Tasks',     route: '/admin/tasks',     icon: 'tasks'     },
           { label: 'Offers',    route: '/admin/offers',    icon: 'offers'    },
           { label: 'Contracts', route: '/admin/contracts', icon: 'contracts' },
-          { label: 'Vendors',   route: '/admin/vendors',   icon: 'vendors'   },
           { label: 'Subcontracts', route: '/admin/subcontracts', icon: 'subcontracts' },
+          { label: 'Coach wallets', route: '/admin/coach-wallets', icon: 'chart' },
 
           { label: 'Support tickets', route: '/admin/tickets', icon: 'support' },
           { label: 'Planning',  route: '/admin/planning',  icon: 'planning'  },
@@ -107,8 +106,6 @@ export class Sidebar {
           { label: 'Evaluations',    route: '/admin/evaluations',    icon: 'evaluations'    },
           { label: 'Reviews',        route: '/admin/reviews',        icon: 'reviews'        },
           { label: 'Contract Stats', route: '/admin/contract-stats', icon: 'contract-stats' },
-          { label: 'Job Stats',      route: '/admin/job-stats',      icon: 'skill-stats'    },
-          { label: 'Ticket statistics', route: '/admin/tickets/stats', icon: 'support' },
         ]
       },
       {
@@ -135,11 +132,9 @@ export class Sidebar {
         { label: 'My Offer Applications', route: '/dashboard/my-offer-applications', icon: 'contracts' },
         { label: 'Post a Job',            route: '/dashboard/post-job',              icon: 'add'       },
         { label: 'My Projects',           route: '/dashboard/my-projects',           icon: 'folder'    },
-        { label: 'My Jobs',               route: '/dashboard/my-jobs',               icon: 'tasks'     },
         { label: 'My Reviews',            route: '/dashboard/reviews',               icon: 'star'      },
         { label: 'Reviews about me',      route: '/dashboard/reviews/about-me',      icon: 'chat'      },
         { label: 'My Contracts',          route: '/dashboard/my-contracts',          icon: 'contracts' },
-        { label: 'Mes fournisseurs',      route: '/dashboard/client-vendors',        icon: 'vendors'   },
         { label: 'Track Progress',        route: '/dashboard/track-progress',        icon: 'chart'     },
           { label: 'Messages',              route: '/dashboard/messages',              icon: 'chat'      },
           { label: 'Support',               route: '/dashboard/tickets',               icon: 'support'   },
@@ -152,11 +147,9 @@ export class Sidebar {
     if (this.auth.isFreelancer()) {
       return [
         ...commonItems,
-        { label: 'My Offers',              route: '/dashboard/my-offers',                icon: 'offers'    },
-        { label: 'Browse Jobs',            route: '/dashboard/browse-jobs',              icon: 'search'    },
-        { label: 'My Applications',        route: '/dashboard/my-applications',          icon: 'contracts' },
-        { label: 'Browse Freelancia Jobs', route: '/dashboard/browse-freelancia-jobs',   icon: 'folder'    },
-        { label: 'My Job Applications',    route: '/dashboard/my-job-applications',      icon: 'tasks'     },
+        { label: 'My Offers',          route: '/dashboard/my-offers',         icon: 'offers'     },
+        { label: 'Browse Jobs',        route: '/dashboard/browse-jobs',       icon: 'search'     },
+        { label: 'My Applications',    route: '/dashboard/my-applications',   icon: 'contracts'  },
         { label: 'My Reviews',         route: '/dashboard/reviews',           icon: 'star'       },
         { label: 'Reviews about me',   route: '/dashboard/reviews/about-me', icon: 'chat'       },
         { label: 'My Contracts',       route: '/dashboard/my-contracts',     icon: 'contracts'  },

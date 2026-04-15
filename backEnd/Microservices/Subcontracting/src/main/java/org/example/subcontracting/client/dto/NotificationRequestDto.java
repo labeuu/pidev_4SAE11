@@ -5,13 +5,16 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
+import java.util.Map;
+
 @Data
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
 public class NotificationRequestDto {
-    private Long userId;
+    private String userId;
     private String type;
     private String title;
-    private String message;
+    private String body;
+    private Map<String, String> data;
 }

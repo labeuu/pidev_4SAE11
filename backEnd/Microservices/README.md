@@ -16,13 +16,8 @@ Each subdirectory is an independent service (own database and/or integrations un
 | `Notification/` | `/notification` | [Documentation/services/notification.md](../../Documentation/services/notification.md) |
 | `task/` | `/task` | [Documentation/services/task.md](../../Documentation/services/task.md) |
 | `gamification/` | `/gamification` | [Documentation/services/gamification.md](../../Documentation/services/gamification.md) |
-| `Vendor/` | `/vendor` | [Documentation/services/vendor.md](../../Documentation/services/vendor.md) |
 | `ticket-service/` | `/ticket` | [Documentation/services/ticket-service.md](../../Documentation/services/ticket-service.md) |
-| `Subcontracting/` | `/subcontracting` | [Documentation/services/subcontracting.md](../../Documentation/services/subcontracting.md) |
-| `AImodel/` (Spring Boot + Ollama) | `/aimodel` | [Documentation/services/AImodel.md](../../Documentation/services/AImodel.md) |
-| `FreelanciaJob/` | _(none)_ | [Documentation/services/freelanciajob.md](../../Documentation/services/freelanciajob.md) |
-| `Chat/` | _(none)_ | [Documentation/services/chat.md](../../Documentation/services/chat.md) |
-| `Meeting/` | _(none)_ | [Documentation/services/meeting.md](../../Documentation/services/meeting.md) |
+| `AImodel/` (Node) | `/aimodel` | [Documentation/services/AImodel.md](../../Documentation/services/AImodel.md) |
 
 ## Reference tables
 
@@ -36,6 +31,6 @@ cd backEnd/Microservices/<ServiceFolder>
 mvn spring-boot:run
 ```
 
-**AImodel** uses Spring Boot: run with Maven (`mvn spring-boot:run`).
+**AImodel** uses Node: `npm install && npm start` in `AImodel/`.
 
-**Offer**, **Vendor**, **Task**, **Planning**, **Subcontracting**, and **AIMODEL** require **Config Server**. **OFFER** uses **Eureka** for the gateway `lb://OFFER` route — start Eureka first. **AIMODEL** registers with Eureka but the gateway calls it via a direct URL (`localhost:8095`).
+**Offer** requires **Config Server**; **OFFER**, **PORTFOLIO**, and **AIMODEL** use **Eureka** for gateway `lb://` routes — start Eureka first.

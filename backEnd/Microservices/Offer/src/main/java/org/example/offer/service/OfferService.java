@@ -56,6 +56,10 @@ public class OfferService implements IOfferService {
         log.info("Creating new offer for freelancer: {}", request.getFreelancerId());
 
         Offer offer = modelMapper.map(request, Offer.class);
+        // Toujours une insertion : évite qu'un id résiduel (0, cache ModelMapper) transforme le save en UPDATE
+        // et écrase une ligne existante au lieu de créer une nouvelle offre.
+        offer.setId(null);
+        offer.setApplications(new ArrayList<>());
         offer.setOfferStatus(OfferStatus.DRAFT);
         // Ensure non-null defaults so persist does not fail (ModelMapper may set null from request)
         if (offer.getIsFeatured() == null) {
@@ -72,9 +76,6 @@ public class OfferService implements IOfferService {
         }
         if (offer.getCommunicationScore() == null) {
             offer.setCommunicationScore(BigDecimal.ZERO);
-        }
-        if (offer.getApplications() == null) {
-            offer.setApplications(new ArrayList<OfferApplication>());
         }
 
         Offer savedOffer = offerRepository.save(offer);

@@ -106,7 +106,7 @@ public class SubcontractNotificationService {
     private void notify(Long userId, String type, String title, String message) {
         try {
             notificationClient.sendNotification(NotificationRequestDto.builder()
-                    .userId(userId).type(type).title(title).message(message).build());
+                    .userId(String.valueOf(userId)).type(type).title(title).body(message).build());
         } catch (Exception e) {
             log.warn("[SUBCONTRACT] Notification failed for user={}: {}", userId, e.getMessage());
         }

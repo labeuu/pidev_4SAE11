@@ -236,6 +236,29 @@ public class ProjectService implements IProjectService{
     }
 
     @Override
+    public List<Project> getProjectsForClientWithAcceptedFreelancer(Long clientId) {
+        List<Project> list = projectRepository.findProjectsWhereClientAcceptedAFreelancer(
+                clientId, ApplicationStatus.ACCEPTED);
+        return list.stream()
+                .sorted(Comparator.comparing(
+                        Project::getUpdatedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
+    }
+
+    @Override
+    public List<Project> getProjectsForFreelancer(Long freelancerId) {
+        List<Project> list = projectRepository.findProjectsWhereFreelancerAccepted(
+                freelancerId, ApplicationStatus.ACCEPTED);
+        // Missions les plus récentes en premier (candidature acceptée par le client).
+        return list.stream()
+                .sorted(Comparator.comparing(
+                        Project::getUpdatedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
+    }
+
+    @Override
     public JointProjectsResponse getJointProjects(Long clientId, Long freelancerId) {
         List<Project> list = projectRepository.findJointProjects(clientId, freelancerId);
         List<JointProjectItem> items = list.stream()

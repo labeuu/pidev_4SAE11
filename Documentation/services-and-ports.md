@@ -2,7 +2,7 @@
 
 Reference for local development. **Gateway prefix** is the first URL segment the Angular app uses (`http://localhost:8078/<prefix>/...`).
 
-MySQL hosts vary in repo configs: many services use `localhost:3306`, some **3307** — align your MySQL install with each service’s `application.properties` or Config Server file.
+MySQL hosts use `localhost:3307` in repo configs — align your MySQL install with each service’s `application.properties` or Config Server file.
 
 | Folder (under `backEnd/`) | Application / Eureka name | Port | Gateway prefix | Primary data store / integration |
 |---------------------------|---------------------------|------|----------------|-----------------------------------|

@@ -67,7 +67,7 @@ mvn clean package -DskipTests
 ### Step 3: Start the Portfolio Service
 
 Make sure the following are running first:
-1. MySQL (port 3306)
+1. MySQL (port 3307)
 2. Eureka Service (port 8420)
 3. API Gateway (port 8078)
 

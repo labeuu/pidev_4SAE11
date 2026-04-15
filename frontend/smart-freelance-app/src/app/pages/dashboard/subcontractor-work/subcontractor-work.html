@@ -1,28 +1,44 @@
 <div class="sub-work">
-  <h2>Travaux en sous-traitance</h2>
+  <header class="sw-page-head">
+    <h2>Travaux en sous-traitance</h2>
+    <p class="sw-page-sub">Les missions qui vous sont proposées ou confiées en tant que sous-traitant.</p>
+  </header>
 
   <!-- Score card -->
-  @if (loadingScore) {
-    <div class="score-card score-card-loading">Chargement de votre score...</div>
-  } @else if (score) {
-    <div class="score-card" [style.border-color]="scoreColor()">
-      <div class="score-value" [style.color]="scoreColor()">{{ score.score }}/100</div>
-      <div class="score-label">{{ score.label }}</div>
+  @if (score) {
+    <div class="score-card">
+      <div class="score-main">
+        <div class="score-ring" [style.--score-color]="scoreColor()">
+          <span class="score-value">{{ score.score }}</span>
+          <span class="score-max">/100</span>
+        </div>
+        <div class="score-copy">
+          <p class="score-kicker">Performance globale</p>
+          <div class="score-label" [style.color]="scoreColor()">{{ score.label }}</div>
+          <p class="score-hint">Évaluation basée sur vos missions clôturées, délais et validations de livrables.</p>
+        </div>
+      </div>
       <div class="score-stats">
-        <span>{{ score.completedSubcontracts }} complétées</span>
-        <span>{{ score.onTimeRate | number:'1.0-0' }}% à temps</span>
-        <span>{{ score.approvedDeliverables }}/{{ score.totalDeliverables }} livrables approuvés</span>
+        <div class="score-stat">
+          <span class="score-stat-value">{{ score.completedSubcontracts }}</span>
+          <span class="score-stat-label">Missions complétées</span>
+        </div>
+        <div class="score-stat">
+          <span class="score-stat-value">{{ score.onTimeRate | number:'1.0-0' }}%</span>
+          <span class="score-stat-label">Respect des délais</span>
+        </div>
+        <div class="score-stat">
+          <span class="score-stat-value">{{ score.approvedDeliverables }}/{{ score.totalDeliverables }}</span>
+          <span class="score-stat-label">Livrables approuvés</span>
+        </div>
       </div>
     </div>
   }
 
-  @if (loading) {
+  @if (profileError) {
+    <div class="empty">{{ profileError }}</div>
+  } @else if (loading) {
     <p class="loading">Chargement...</p>
-  } @else if (errorMessage) {
-    <div class="error-banner">
-      <span>{{ errorMessage }}</span>
-      <button class="btn-primary btn-xs" (click)="load()">Réessayer</button>
-    </div>
   } @else if (subcontracts.length === 0) {
     <div class="empty">Aucune proposition de sous-traitance reçue.</div>
   } @else {
@@ -34,9 +50,17 @@
             <span class="badge" [class]="statusClass(s.status)">{{ s.status }}</span>
           </div>
           <div class="sc-card-body">
-            <span>De: <strong>{{ s.mainFreelancerName }}</strong></span>
-            <span>{{ s.category }}</span>
-            <span>{{ s.budget ? (s.budget + ' ' + s.currency) : '-' }}</span>
+            <div class="sc-meta">
+              <span class="sc-meta-item">
+                <span class="sc-meta-lbl">Commanditaire</span>
+                <span class="sc-meta-val">{{ s.mainFreelancerName }}</span>
+              </span>
+              <span class="sc-pill sc-pill-cat">{{ s.category }}</span>
+              <span class="sc-meta-item sc-meta-budget">
+                <span class="sc-meta-lbl">Budget</span>
+                <span class="sc-meta-val">{{ s.budget ? (s.budget + ' ' + s.currency) : '—' }}</span>
+              </span>
+            </div>
           </div>
         </div>
       }
@@ -45,50 +69,157 @@
 
   <!-- Detail Panel -->
   @if (selected) {
-    <div class="detail-panel">
+    <aside class="detail-panel">
       <div class="detail-header">
-        <h3>{{ selected.title }}</h3>
-        <button (click)="closeDetail()">✕</button>
+        <div>
+          <p class="detail-kicker">Mission</p>
+          <h3>{{ selected.title }}</h3>
+        </div>
+        <button type="button" class="detail-close" (click)="closeDetail()" aria-label="Fermer">✕</button>
       </div>
-      <p><strong>Commanditaire:</strong> {{ selected.mainFreelancerName }}</p>
-      <p><strong>Projet:</strong> {{ selected.projectTitle }}</p>
-      <p><strong>Scope:</strong> {{ selected.scope || '-' }}</p>
-      <p><strong>Budget:</strong> {{ selected.budget }} {{ selected.currency }}</p>
-      <p><strong>Deadline:</strong> {{ selected.deadline || '-' }}</p>
+      <div class="detail-kv">
+        <div class="detail-kv-grid">
+          <div class="detail-kv-row"><span class="detail-k">Commanditaire</span><span class="detail-v">{{ selected.mainFreelancerName }}</span></div>
+          <div class="detail-kv-row"><span class="detail-k">Projet</span><span class="detail-v">{{ selected.projectTitle || '—' }}</span></div>
+          <div class="detail-kv-row"><span class="detail-k">Budget</span><span class="detail-v">{{ selected.budget != null ? (selected.budget + ' ' + selected.currency) : '—' }}</span></div>
+          <div class="detail-kv-row"><span class="detail-k">Échéance</span><span class="detail-v">{{ selected.deadline || '—' }}</span></div>
+        </div>
+        <div class="detail-kv-row detail-kv-row--block">
+          <span class="detail-k">Périmètre</span>
+          <span class="detail-v detail-v-multiline">{{ selected.scope || '—' }}</span>
+        </div>
+      </div>
+
+      @if (selected.status === 'PROPOSED') {
+        <section class="decision-box" [class]="decisionClass(selected)">
+          <div class="decision-head">
+            <p class="decision-kicker">Assistant décision</p>
+            <span class="decision-badge">{{ decisionLabel(selected) }}</span>
+          </div>
+          <div class="decision-score-line">
+            <strong>{{ decisionScore(selected) }}/100</strong>
+            <span>Score de confiance pour accepter cette sous-traitance</span>
+          </div>
+          <div class="decision-progress">
+            <span class="decision-progress-fill" [style.width.%]="decisionScore(selected)"></span>
+          </div>
+
+          <div class="decision-grid">
+            <div class="decision-col">
+              <p class="decision-col-title">Points d’attention</p>
+              <ul>
+                @for (h of decisionHints(selected); track h) {
+                  <li>{{ h }}</li>
+                }
+              </ul>
+            </div>
+            <div class="decision-col">
+              <p class="decision-col-title">Checklist avant acceptation</p>
+              <ul class="decision-checks">
+                @for (c of readinessChecks(selected); track c.text) {
+                  <li [class.ok]="c.ok">{{ c.ok ? '✓' : '•' }} {{ c.text }}</li>
+                }
+              </ul>
+            </div>
+          </div>
+        </section>
+      }
 
       <!-- Accept/Reject for PROPOSED -->
       @if (selected.status === 'PROPOSED') {
         <div class="actions">
-          <button class="btn-success" [disabled]="actionLoading" (click)="accept(selected.id)">Accepter</button>
-          <button class="btn-danger" [disabled]="actionLoading" (click)="reject(selected.id)">Refuser</button>
+          <button class="btn-success" (click)="accept(selected.id)">Accepter</button>
+          <button class="btn-danger" (click)="reject(selected.id)">Refuser</button>
         </div>
       }
 
       <!-- Deliverables -->
-      <h4>Livrables ({{ selected.deliverables.length }})</h4>
-      @for (d of selected.deliverables; track d.id) {
-        <div class="deliverable-card" [class.overdue]="d.overdue">
-          <div class="del-info">
-            <span class="del-title">{{ d.title }}</span>
-            <span class="badge" [class]="statusClass(d.status)">{{ d.status }}</span>
-            @if (d.deadline) { <span class="del-deadline">📅 {{ d.deadline }}</span> }
-            @if (d.overdue) { <span class="overdue-tag">EN RETARD</span> }
-          </div>
-          @if (d.description) { <p class="del-desc">{{ d.description }}</p> }
-          @if (d.reviewNote) { <p class="review-note">Note du client: {{ d.reviewNote }}</p> }
-
-          <!-- Submit form for PENDING / IN_PROGRESS / REJECTED -->
-          @if (d.status === 'PENDING' || d.status === 'IN_PROGRESS' || d.status === 'REJECTED') {
-            <div class="submit-form">
-              <input [(ngModel)]="submitUrlByDeliverable[d.id]" placeholder="URL du livrable (lien, fichier...)" />
-              <input [(ngModel)]="submitNoteByDeliverable[d.id]" placeholder="Note de soumission" />
-              <button class="btn-primary btn-xs" [disabled]="submittingDeliverables.has(d.id)" (click)="submitDeliverable(d.id)">
-                {{ submittingDeliverables.has(d.id) ? 'Envoi...' : 'Soumettre' }}
-              </button>
+      <div class="deliverables-head">
+        <h4>Livrables <span class="del-count">({{ selected.deliverables.length }})</span></h4>
+      </div>
+      @if ((selected.deliverables?.length ?? 0) === 0) {
+        <div class="deliverables-empty">
+          <span class="empty-icon">📦</span>
+          <p class="empty-title">Aucun livrable défini</p>
+          <p class="empty-sub">Demandez au commanditaire d’ajouter les jalons attendus pour cette mission.</p>
+        </div>
+      } @else {
+        @for (d of selected.deliverables; track d.id) {
+          <div class="deliverable-card" [class.overdue]="d.overdue">
+            <div class="del-info">
+              <span class="del-title">{{ d.title }}</span>
+              <span class="badge" [class]="statusClass(d.status)">{{ d.status }}</span>
+              @if (d.deadline) { <span class="del-deadline">📅 {{ d.deadline }}</span> }
+              @if (d.overdue) { <span class="overdue-tag">EN RETARD</span> }
             </div>
+            @if (d.description) { <p class="del-desc">{{ d.description }}</p> }
+            @if (d.reviewNote) { <p class="review-note">Note du client: {{ d.reviewNote }}</p> }
+
+            <!-- Submit form for PENDING / IN_PROGRESS / REJECTED -->
+            @if (d.status === 'PENDING' || d.status === 'IN_PROGRESS' || d.status === 'REJECTED') {
+              <div class="submit-form" [class.field-invalid]="submitAttempted && (submitFieldErrors['submissionUrl'] || submitFieldErrors['submissionNote'])">
+                <input
+                  [(ngModel)]="submitUrl"
+                  (ngModelChange)="onSubmitFieldChange()"
+                  [attr.maxlength]="submitUrlMaxLen"
+                  type="url"
+                  inputmode="url"
+                  autocomplete="url"
+                  placeholder="https://… (URL du livrable)"
+                />
+                <input
+                  [(ngModel)]="submitNote"
+                  (ngModelChange)="onSubmitFieldChange()"
+                  [attr.maxlength]="submitNoteMaxLen"
+                  placeholder="Note de soumission (optionnel)"
+                />
+                @if (submitAttempted && submitFieldErrors['submissionUrl']) {
+                  <p class="sc-field-error">{{ submitFieldErrors['submissionUrl'] }}</p>
+                }
+                @if (submitAttempted && submitFieldErrors['submissionNote']) {
+                  <p class="sc-field-error">{{ submitFieldErrors['submissionNote'] }}</p>
+                }
+                <button type="button" class="btn-primary btn-xs" (click)="submitDeliverable(d.id)">Soumettre</button>
+              </div>
+            }
+          </div>
+        }
+      }
+
+      <section class="chat-section">
+        <div class="chat-head">
+          <h4>Conversation mission</h4>
+          <button type="button" class="btn-primary btn-xs" (click)="loadChatMessages()">Actualiser</button>
+        </div>
+        <div class="chat-box">
+          @if (chatLoading) {
+            <p class="chat-empty">Chargement des messages…</p>
+          } @else if (chatMessages.length === 0) {
+            <p class="chat-empty">Aucun message pour le moment. Lancez la discussion pour clarifier le projet.</p>
+          } @else {
+            @for (m of chatMessages; track m.id) {
+              <div class="chat-msg" [class.mine]="m.senderUserId === currentUserId">
+                <div class="chat-meta">
+                  <span class="chat-author">{{ m.senderName }}</span>
+                  <span class="chat-time">{{ m.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                </div>
+                <p>{{ m.message }}</p>
+              </div>
+            }
           }
         </div>
-      }
-    </div>
+        <div class="chat-input-row">
+          <textarea
+            [(ngModel)]="chatInput"
+            [maxlength]="2000"
+            rows="2"
+            placeholder="Écrire un message au freelancer..."
+          ></textarea>
+          <button type="button" class="btn-success btn-xs" (click)="sendChatMessage()" [disabled]="chatSending || !chatInput.trim()">
+            {{ chatSending ? 'Envoi...' : 'Envoyer' }}
+          </button>
+        </div>
+      </section>
+    </aside>
   }
 </div>

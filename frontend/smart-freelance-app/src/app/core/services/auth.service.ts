@@ -56,6 +56,14 @@ interface UserProfile {
   role: string;
 }
 
+interface UserProfileLite {
+  id: number;
+  email?: string;
+  firstName?: string;
+  lastName?: string;
+  role?: string;
+}
+
 @Injectable({ providedIn: 'root' })
 export class AuthService {
   private readonly baseUrl = `${environment.apiGatewayUrl}/${environment.authApiPrefix}`;
@@ -132,6 +140,20 @@ export class AuthService {
     if (!token) return of(null);
 
     const decoded = this.decodeToken(token);
+    // Fast path: some tokens already include numeric user id.
+    const tokenUserId = this.extractNumericUserId(decoded);
+    if (tokenUserId) {
+      this.storage.setItem(USER_ID_KEY, String(tokenUserId));
+      this.userIdSignal.set(tokenUserId);
+      return of({
+        id: tokenUserId,
+        email: String(decoded?.email ?? decoded?.preferred_username ?? ''),
+        firstName: String(decoded?.given_name ?? ''),
+        lastName: String(decoded?.family_name ?? ''),
+        role: String(this.getUserRole() ?? '')
+      } as UserProfile);
+    }
+
     // Align with ticket-service CurrentUserService: email preferred, else preferred_username (Keycloak often maps username to email).
     const userEmail = decoded?.email ?? decoded?.preferred_username;
 
@@ -150,7 +172,65 @@ export class AuthService {
       }),
       catchError((err) => {
         console.error('[AuthService] Failed to fetch user profile:', err);
-        return of(null);
+        // Last fallback: try id present in token under alternate claims.
+        const fallbackId = this.extractNumericUserId(decoded);
+        if (fallbackId) {
+          this.storage.setItem(USER_ID_KEY, String(fallbackId));
+          this.userIdSignal.set(fallbackId);
+          return of({
+            id: fallbackId,
+            email: String(decoded?.email ?? decoded?.preferred_username ?? ''),
+            firstName: String(decoded?.given_name ?? ''),
+            lastName: String(decoded?.family_name ?? ''),
+            role: String(this.getUserRole() ?? '')
+          } as UserProfile);
+        }
+        // Extra fallback for environments where /email/{...} fails (case, encoding, gateway)
+        return this.http.get<UserProfileLite[]>(this.userUrl).pipe(
+          map((list) => {
+            const needle = String(userEmail).trim().toLowerCase();
+            const hit = (Array.isArray(list) ? list : []).find(u =>
+              typeof u?.email === 'string' && u.email.trim().toLowerCase() === needle
+            );
+            if (!hit?.id) return null;
+            const profile: UserProfile = {
+              id: Number(hit.id),
+              email: String(hit.email ?? userEmail),
+              firstName: String(hit.firstName ?? decoded?.given_name ?? ''),
+              lastName: String(hit.lastName ?? decoded?.family_name ?? ''),
+              role: String(hit.role ?? this.getUserRole() ?? '')
+            };
+            this.storage.setItem(USER_ID_KEY, String(profile.id));
+            this.userIdSignal.set(profile.id);
+            return profile;
+          }),
+          switchMap((profileOrNull) => {
+            if (profileOrNull) return of(profileOrNull);
+            const email = String(userEmail).trim();
+            const firstName = String(decoded?.given_name ?? 'User').trim() || 'User';
+            const lastName = String(decoded?.family_name ?? 'Account').trim() || 'Account';
+            const role = String(this.getUserRole() ?? 'FREELANCER') as 'ADMIN' | 'CLIENT' | 'FREELANCER';
+            const payload = {
+              email,
+              firstName,
+              lastName,
+              role,
+              isActive: true
+            };
+            // Auto-provision local user row when Keycloak account exists but user DB row is missing.
+            return this.http.post<UserProfileLite>(this.userUrl, payload).pipe(
+              switchMap(() => this.http.get<UserProfile>(`${this.userUrl}/email/${encodeURIComponent(email)}`)),
+              tap((created) => {
+                if (created?.id) {
+                  this.storage.setItem(USER_ID_KEY, String(created.id));
+                  this.userIdSignal.set(created.id);
+                }
+              }),
+              catchError(() => of(null))
+            );
+          }),
+          catchError(() => of(null))
+        );
       })
     );
   }
@@ -321,6 +401,22 @@ export class AuthService {
       console.error('[AuthService] Failed to decode token');
       return null;
     }
+  }
+
+  /** Extract numeric id from common JWT claims used across environments. */
+  private extractNumericUserId(decoded: any): number | null {
+    if (!decoded || typeof decoded !== 'object') return null;
+    const candidates: unknown[] = [
+      decoded.user_id,
+      decoded.userId,
+      decoded.id,
+      decoded.uid
+    ];
+    for (const c of candidates) {
+      const n = Number(c);
+      if (Number.isFinite(n) && n > 0) return n;
+    }
+    return null;
   }
 
   getUserRole(): string | null {

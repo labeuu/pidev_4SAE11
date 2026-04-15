@@ -1,0 +1,201 @@
+<div class="cw-page">
+  <header class="cw-head">
+    <h1>Coach wallets</h1>
+    <p class="cw-sub">Gestion des points coaching, crédits manuels et journal d’audit.</p>
+  </header>
+
+  <nav class="cw-tabs" role="tablist">
+    <button type="button" role="tab" [class.active]="tab === 'overview'" (click)="switchTab('overview')">Vue d’ensemble</button>
+    <button type="button" role="tab" [class.active]="tab === 'credit'" (click)="switchTab('credit')">Crédit manuel</button>
+    <button type="button" role="tab" [class.active]="tab === 'audit'" (click)="switchTab('audit')">Journal d’audit</button>
+  </nav>
+
+  @if (!adminId) {
+    <div class="cw-alert">Connectez-vous en tant qu’administrateur.</div>
+  } @else {
+
+    @if (tab === 'overview') {
+      <section class="cw-section">
+        <div class="cw-kpis">
+          <div class="cw-kpi"><span class="cw-kpi-val">{{ kpiTotalWallets }}</span><span class="cw-kpi-lbl">Wallets (total)</span></div>
+          <div class="cw-kpi"><span class="cw-kpi-val">{{ kpiLowOnPage }}</span><span class="cw-kpi-lbl">Solde faible (page)</span></div>
+          <div class="cw-kpi"><span class="cw-kpi-val">{{ kpiBlockedOnPage }}</span><span class="cw-kpi-lbl">Bloqués (page)</span></div>
+        </div>
+        <p class="cw-hint">Les deux derniers KPIs portent sur la page courante ; le total reflète tous les comptes.</p>
+
+        <div class="cw-filters">
+          <label>Statut
+            <select [(ngModel)]="statusFilter">
+              <option value="ALL">Tous</option>
+              <option value="ACTIVE">Actif (&gt;300)</option>
+              <option value="LOW">Faible (≤300)</option>
+              <option value="BLOCKED">Bloqué</option>
+            </select>
+          </label>
+          <label>Utilisateur
+            <input type="text" [(ngModel)]="searchUserText" placeholder="Nom ou email" />
+          </label>
+          <label>Balance min
+            <input type="number" [(ngModel)]="balanceMin" placeholder="0" />
+          </label>
+          <label>Balance max
+            <input type="number" [(ngModel)]="balanceMax" placeholder="99999" />
+          </label>
+          <button type="button" class="btn-cw" (click)="walletsPage = 0; loadWallets()">Rafraîchir</button>
+        </div>
+
+        @if (walletsLoading) {
+          <p class="cw-loading">Chargement…</p>
+        } @else {
+          <div class="cw-table-wrap">
+            <table class="cw-table">
+              <thead>
+                <tr>
+                  <th>User</th>
+                  <th>Balance</th>
+                  <th>Dernière maj</th>
+                  <th>Statut</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (w of filteredWallets; track w.id) {
+                  <tr [class.row-blocked]="w.blocked">
+                    <td>
+                      <strong class="cw-user-name-cell">{{ userDisplayName(w.userId) }}</strong>
+                      <div class="cw-user-hint">{{ userDisplayEmail(w.userId) }}</div>
+                    </td>
+                    <td>{{ w.balance }} {{ w.currency }}</td>
+                    <td>{{ w.updatedAt | date: 'short' }}</td>
+                    <td><span class="cw-badge" [ngClass]="statusClass(w)">{{ walletStatusLabel(w) }}</span></td>
+                    <td class="cw-actions">
+                      <button type="button" class="btn-link btn-link-primary" (click)="quickCredit(w)">Créditer</button>
+                      <button type="button" class="btn-link btn-link-danger" [disabled]="blockBusyId === w.userId" (click)="toggleBlock(w)">
+                        {{ w.blocked ? 'Débloquer' : 'Bloquer' }}
+                      </button>
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          <div class="cw-pager">
+            <button type="button" class="btn-cw" (click)="changeWalletsPage(-1)" [disabled]="walletsPage <= 0">Précédent</button>
+            <span>Page {{ walletsPage + 1 }} / {{ walletPageCount }}</span>
+            <button type="button" class="btn-cw" (click)="changeWalletsPage(1)" [disabled]="walletsPage >= walletPageCount - 1">Suivant</button>
+          </div>
+        }
+      </section>
+    }
+
+    @if (tab === 'credit') {
+      <section class="cw-section cw-credit">
+        <div class="cw-credit-head">
+          <h3>Crédit manuel</h3>
+          <p>Sélectionnez un utilisateur, puis confirmez le montant et la raison du crédit.</p>
+        </div>
+
+        <label class="cw-field-label">Rechercher un utilisateur</label>
+        <input class="cw-input-lg" type="text" [(ngModel)]="creditUserSearch" placeholder="Nom ou email…" />
+        <ul class="cw-user-pick">
+          @for (u of filteredUsers; track u.id) {
+            <li>
+              <button type="button" [class.picked]="creditUserId === u.id" (click)="creditUserId = u.id">
+                <span class="cw-user-name">{{ u.firstName }} {{ u.lastName }}</span>
+                <span class="cw-user-email">{{ u.email }}</span>
+              </button>
+            </li>
+          }
+        </ul>
+
+        @if (selectedCreditUser) {
+          <div class="cw-selected-user">
+            <span class="cw-selected-dot"></span>
+            Utilisateur sélectionné : <strong>{{ selectedCreditUser.firstName }} {{ selectedCreditUser.lastName }}</strong>
+            <span class="cw-selected-email">{{ selectedCreditUser.email }}</span>
+          </div>
+        }
+
+        <div class="cw-grid2">
+          <label>Montant (points)
+            <input type="number" min="1" [(ngModel)]="creditAmount" />
+          </label>
+          <label>Raison
+            <select [(ngModel)]="creditReason">
+              @for (r of creditReasons; track r) {
+                <option [value]="r">{{ r }}</option>
+              }
+            </select>
+          </label>
+        </div>
+        <div class="cw-credit-actions">
+          <button type="button" class="btn-cw-primary" [disabled]="!creditUserId || creditBusy" (click)="openCreditConfirm()">
+            Créditer les points
+          </button>
+        </div>
+      </section>
+    }
+
+    @if (tab === 'audit') {
+      <section class="cw-section">
+        <div class="cw-audit-toolbar">
+          <label>Type
+            <select [(ngModel)]="auditTypeFilter">
+              <option value="">Tous</option>
+              <option value="CREDIT">CREDIT</option>
+              <option value="DEBIT">DEBIT</option>
+              <option value="BONUS">BONUS</option>
+              <option value="ADMIN_ADJUSTMENT">ADMIN_ADJUSTMENT</option>
+              <option value="INITIAL_FREE">INITIAL_FREE</option>
+            </select>
+          </label>
+          <button type="button" class="btn-cw" (click)="exportAuditCsv()">Export CSV</button>
+        </div>
+        @if (auditLoading) {
+          <p class="cw-loading">Chargement audit…</p>
+        } @else {
+          <ul class="cw-timeline">
+            @for (r of filteredAudit; track r.id) {
+              <li class="cw-tl-item">
+                <div class="cw-tl-date">{{ r.createdAt | date: 'medium' }}</div>
+                <div class="cw-tl-body">
+                  <strong>{{ r.type }}</strong> · montant {{ r.amount }} · solde {{ r.balanceBefore }} → {{ r.balanceAfter }}
+                  <div class="cw-tl-meta">{{ r.reason }} · {{ r.performedByRole }}</div>
+                </div>
+              </li>
+            }
+          </ul>
+          <div class="cw-pager">
+            <button type="button" (click)="changeAuditPage(-1)" [disabled]="auditPage <= 0">Précédent</button>
+            <span>Page {{ auditPage + 1 }}</span>
+            <button type="button" (click)="changeAuditPage(1)" [disabled]="auditPage >= auditPageCount - 1">Suivant</button>
+          </div>
+        }
+      </section>
+    }
+  }
+</div>
+
+@if (showCreditConfirm && creditUserId) {
+  <div class="cw-modal-bg" (click)="showCreditConfirm = false">
+    <div class="cw-modal" (click)="$event.stopPropagation()">
+      <h3>Confirmer le crédit</h3>
+      @if (creditPreviewLoading) {
+        <p>Chargement du solde…</p>
+      } @else {
+        <p>
+          Vous allez créditer <strong>{{ creditAmount }}</strong> pts à
+          <strong>{{ userLabel(creditUserId) }}</strong>.
+        </p>
+        <p>Son solde passera de <strong>{{ creditPreviewFrom }}</strong> à
+          <strong>{{ creditPreviewFrom + creditAmount }}</strong> pts.</p>
+      }
+      <div class="cw-modal-actions">
+        <button type="button" class="btn-cw" (click)="showCreditConfirm = false">Annuler</button>
+        <button type="button" class="btn-cw-primary" [disabled]="creditBusy || creditPreviewLoading" (click)="confirmCredit()">
+          {{ creditBusy ? '…' : 'Confirmer' }}
+        </button>
+      </div>
+    </div>
+  </div>
+}

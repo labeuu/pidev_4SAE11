@@ -70,7 +70,7 @@ The service runs on port **8086** by default.
 ```properties
 server.port=8086
 spring.application.name=PORTFOLIO
-spring.datasource.url=jdbc:mysql://localhost:3306/portfolio_db
+spring.datasource.url=jdbc:mysql://localhost:3307/portfolio_db
 ```
 
 ### **Running the Service**

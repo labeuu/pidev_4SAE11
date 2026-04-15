@@ -53,7 +53,7 @@ public class DeliverableController {
     public ResponseEntity<DeliverableResponse> submitDeliverable(
             @PathVariable Long subcontractId,
             @PathVariable Long deliverableId,
-            @RequestBody DeliverableSubmitRequest request) {
+            @Valid @RequestBody DeliverableSubmitRequest request) {
         return ResponseEntity.ok(service.submitDeliverable(deliverableId, request));
     }
 

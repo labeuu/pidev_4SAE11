@@ -1,7 +1,7 @@
 import { Component, OnInit, ChangeDetectorRef, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { Router } from '@angular/router';
-import { Subscription, TimeoutError } from 'rxjs';
+import { Subscription, TimeoutError, forkJoin } from 'rxjs';
 import { AuthService } from '../../../core/services/auth.service';
 import { PortfolioService, Skill, EvaluationTest, EvaluationResult, Domain, DOMAIN_LABELS } from '../../../core/services/portfolio.service';
 import { FormsModule } from '@angular/forms';
@@ -51,6 +51,9 @@ export class SkillManagement implements OnInit, OnDestroy {
 
   // Error State
   errorMessage: string | null = null;
+  /** Erreur API affichée dans la modale (les erreurs globales en haut de page sont masquées par la modale). */
+  addModalApiError: string | null = null;
+  isAddingSkills = false;
   skillFormErrors: Record<string, string> = {};
 
   // Subscription management
@@ -132,6 +135,7 @@ export class SkillManagement implements OnInit, OnDestroy {
 
   openAddModal() {
     this.errorMessage = null;
+    this.addModalApiError = null;
     this.newSkillName = '';
     this.selectedDomains = new Set();
     this.skillFormErrors = {};
@@ -139,18 +143,39 @@ export class SkillManagement implements OnInit, OnDestroy {
     this.showAddModal = true;
   }
 
+  /** Après découpe par , ou ; chaque partie est validée (pas de virgule dans une partie). */
+  private static readonly NAME_PART_PATTERN = /^[a-zA-Z0-9 .+#\-\/()_]+$/;
+
+  private parseSkillNames(raw: string): string[] {
+    return raw
+      .split(/[,;]+/)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0);
+  }
+
   private validateSkillForm(): boolean {
     this.skillFormErrors = {};
-    const name = this.newSkillName.trim();
+    const raw = this.newSkillName.trim();
+    const parts = this.parseSkillNames(raw);
 
-    if (!name) {
+    if (parts.length === 0) {
       this.skillFormErrors['name'] = 'Skill name is required.';
-    } else if (name.length < 2) {
-      this.skillFormErrors['name'] = 'Skill name must be at least 2 characters.';
-    } else if (name.length > 50) {
-      this.skillFormErrors['name'] = 'Skill name must be 50 characters or less.';
-    } else if (!/^[a-zA-Z0-9 .+#\-\/()]+$/.test(name)) {
-      this.skillFormErrors['name'] = 'Only letters, numbers, spaces and . + # - / ( ) are allowed.';
+    } else {
+      for (const name of parts) {
+        if (name.length < 2) {
+          this.skillFormErrors['name'] = `Each skill must be at least 2 characters (check: "${name}").`;
+          break;
+        }
+        if (name.length > 50) {
+          this.skillFormErrors['name'] = `Each skill must be 50 characters or less (check: "${name.slice(0, 20)}…").`;
+          break;
+        }
+        if (!SkillManagement.NAME_PART_PATTERN.test(name)) {
+          this.skillFormErrors['name'] =
+            'Use letters, numbers, spaces, comma between skills, and . + # - / ( ) _ only.';
+          break;
+        }
+      }
     }
 
     if (this.selectedDomains.size === 0) {
@@ -161,41 +186,65 @@ export class SkillManagement implements OnInit, OnDestroy {
   }
 
   addSkill() {
-    if (!this.validateSkillForm()) return;
+    this.addModalApiError = null;
+    this.showDomainDropdown = false;
 
-    const skillExists = this.skills.some(
-      s => s.name.toLowerCase() === this.newSkillName.trim().toLowerCase()
-    );
-    if (skillExists) {
-      this.skillFormErrors['name'] = `"${this.newSkillName.trim()}" is already in your profile.`;
+    if (!this.validateSkillForm()) {
+      this.cdr.detectChanges();
       return;
     }
 
-    const userId = this.auth.getUserId() || 1;
-    const skill: Skill = {
-      name: this.newSkillName.trim(),
-      domains: [...this.selectedDomains],
-      description: 'Added via Dashboard',
-      userId
-    };
+    const parts = this.parseSkillNames(this.newSkillName.trim());
+    for (const name of parts) {
+      const taken = this.skills.some((s) => s.name.toLowerCase() === name.toLowerCase());
+      if (taken) {
+        this.skillFormErrors['name'] = `"${name}" is already in your profile.`;
+        this.cdr.detectChanges();
+        return;
+      }
+    }
 
-    this.portfolioService.createSkill(skill).subscribe({
+    const userId = this.auth.getUserId() || 1;
+    const domains = [...this.selectedDomains];
+    const creations = parts.map((name) =>
+      this.portfolioService.createSkill({
+        name,
+        domains,
+        description: 'Added via Dashboard',
+        userId
+      })
+    );
+
+    this.isAddingSkills = true;
+    forkJoin(creations).subscribe({
       next: () => {
+        this.isAddingSkills = false;
         this.portfolioService.notifySkillsUpdated();
         this.showAddModal = false;
         this.newSkillName = '';
         this.selectedDomains = new Set();
         this.errorMessage = null;
+        this.addModalApiError = null;
         this.router.navigate(['/dashboard/my-portfolio']);
+        this.cdr.detectChanges();
       },
-      error: (err) => {
+      error: (err: { error?: unknown; message?: string; status?: number }) => {
+        this.isAddingSkills = false;
         console.error('Error adding skill:', err);
-        if (err.error?.message?.includes('Duplicate entry')) {
-          this.errorMessage = `The skill "${this.newSkillName}" already exists in your profile.`;
-        } else {
-          this.errorMessage = err.error?.message || err.message || 'Failed to add skill. Please try again.';
+        const e = err.error;
+        let apiMsg = 'Échec de l’ajout des compétences. Réessayez.';
+        if (typeof e === 'string') apiMsg = e;
+        else if (e && typeof e === 'object' && 'message' in e) apiMsg = String((e as { message: string }).message);
+        else if (err.message) apiMsg = err.message;
+        if (err.status === 401 || err.status === 403) {
+          apiMsg = 'Session expirée ou accès refusé. Reconnectez-vous et réessayez.';
         }
-        setTimeout(() => this.errorMessage = null, 5000);
+        this.addModalApiError = apiMsg;
+        this.errorMessage = apiMsg;
+        setTimeout(() => {
+          this.errorMessage = null;
+        }, 8000);
+        this.cdr.detectChanges();
       }
     });
   }

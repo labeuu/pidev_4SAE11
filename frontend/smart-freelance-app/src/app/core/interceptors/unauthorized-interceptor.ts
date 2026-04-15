@@ -7,7 +7,29 @@ import { AuthService } from '../services/auth.service';
 const AUTH_ENDPOINTS = ['/token', '/refresh'];
 
 /** Non-auth calls where 401 must not trigger logout (e.g. optional probe; gateway may differ from /task/). */
-const NO_LOGOUT_ON_401_SUBSTRINGS = ['aimodel/api/ai/status'];
+const NO_LOGOUT_ON_401_SUBSTRINGS = [
+  'aimodel/api/ai/status',
+  '/user/api/users',
+  '/subcontracting/api/subcontracts'
+];
+
+const TOKEN_KEY = 'access_token';
+
+function getStoredToken(): string | null {
+  return localStorage.getItem(TOKEN_KEY) || sessionStorage.getItem(TOKEN_KEY);
+}
+
+function isTokenExpired(token: string): boolean {
+  try {
+    const payload = JSON.parse(atob(token.split('.')[1] ?? ''));
+    const exp = Number(payload?.exp);
+    if (!Number.isFinite(exp) || exp <= 0) return false;
+    return Date.now() >= exp * 1000;
+  } catch {
+    // If token cannot be decoded, do not force logout from interceptor.
+    return false;
+  }
+}
 
 /**
  * When any API returns 401 (e.g. expired JWT), clear the token and redirect to login.
@@ -24,7 +46,11 @@ export const unauthorizedInterceptor: HttpInterceptorFn = (req, next) => {
   return next(req).pipe(
     catchError((err: HttpErrorResponse) => {
       if (err?.status === 401 && !isAuthRequest && !skipLogoutForUrl) {
-        injector.get(AuthService).logout();
+        const token = getStoredToken();
+        const shouldLogout = !token || isTokenExpired(token);
+        if (shouldLogout) {
+          injector.get(AuthService).logout();
+        }
       }
       return throwError(() => err);
     })

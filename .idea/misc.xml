@@ -16,25 +16,9 @@
         <option value="$PROJECT_DIR$/backEnd/Microservices/Vendor/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Configserver/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Contract/pom.xml" />
-<<<<<<< HEAD
         <option value="$PROJECT_DIR$/backEnd/Microservices/Subcontracting/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/ticket-service/pom.xml" />
         <option value="$PROJECT_DIR$/backEnd/Microservices/Portfolio/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/Notification/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/Meeting/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/gamification/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/FreelanciaJob/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/Chat/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/task/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/AImodel/pom.xml" />
-=======
-        <option value="$PROJECT_DIR$/backEnd/Microservices/gamification/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/FreelanciaJob/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/Chat/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/Meeting/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/Portfolio/pom.xml" />
-        <option value="$PROJECT_DIR$/backEnd/Microservices/task/pom.xml" />
->>>>>>> 6c816a8 (Docker compose/ images /)
       </list>
     </option>
   </component>

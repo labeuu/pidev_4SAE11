@@ -19,6 +19,22 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
     /** Projets du client pour lesquels le freelancer a au moins une candidature. */
     @Query("SELECT DISTINCT p FROM Project p JOIN p.applications a WHERE p.clientId = :clientId AND a.freelanceId = :freelancerId")
     List<Project> findJointProjects(@Param("clientId") Long clientId, @Param("freelancerId") Long freelancerId);
+
+    /** Projets pour lesquels ce freelancer a une candidature acceptée (missions qu'il exécute). */
+    @Query("SELECT DISTINCT p FROM Project p JOIN p.applications a WHERE a.freelanceId = :freelancerId AND a.status = :accepted")
+    List<Project> findProjectsWhereFreelancerAccepted(
+            @Param("freelancerId") Long freelancerId,
+            @Param("accepted") ApplicationStatus accepted);
+
+    /**
+     * Projets publiés par ce client où au moins une candidature a été acceptée
+     * (le client a choisi un freelancer sur l'annonce).
+     */
+    @Query("SELECT DISTINCT p FROM Project p JOIN p.applications a WHERE p.clientId = :clientId AND a.status = :accepted")
+    List<Project> findProjectsWhereClientAcceptedAFreelancer(
+            @Param("clientId") Long clientId,
+            @Param("accepted") ApplicationStatus accepted);
+
     List<Project> findByStatus(ProjectStatus status);
     long countByClientId(Long clientId);
 }

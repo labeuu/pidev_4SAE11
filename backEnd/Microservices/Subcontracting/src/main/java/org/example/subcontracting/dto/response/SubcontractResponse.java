@@ -22,6 +22,7 @@ public class SubcontractResponse {
     private Long subcontractorId;
     private String subcontractorName;
     private Long projectId;
+    private Long offerId;
     private String projectTitle;
     private Long contractId;
     private String title;
@@ -34,9 +35,16 @@ public class SubcontractResponse {
     private LocalDate deadline;
     private String rejectionReason;
     private String cancellationReason;
+    private Integer negotiationRoundCount;
+    private String negotiationStatus;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime statusChangedAt;
+
+    private List<String> requiredSkills;
+    private String mediaUrl;
+    private String mediaType;
+
     private int totalDeliverables;
     private int approvedDeliverables;
     private int pendingDeliverables;

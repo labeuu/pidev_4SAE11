@@ -8,4 +8,7 @@ public class UserRemoteDto {
     private String firstName;
     private String lastName;
     private String email;
+    /** Ex: FREELANCER, CLIENT */
+    private String role;
+    private Boolean isActive;
 }

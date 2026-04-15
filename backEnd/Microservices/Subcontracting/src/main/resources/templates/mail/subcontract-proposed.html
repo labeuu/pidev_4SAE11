@@ -1,0 +1,84 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="fr">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Proposition de sous-traitance</title>
+</head>
+<body style="margin:0;padding:0;background:#f4f6f9;font-family:Segoe UI,Roboto,Helvetica,Arial,sans-serif;">
+  <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="background:#f4f6f9;padding:24px 12px;">
+    <tr>
+      <td align="center">
+        <table role="presentation" width="600" cellspacing="0" cellpadding="0" style="max-width:600px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 8px 32px rgba(15,23,42,0.08);">
+          <tr>
+            <td style="background:linear-gradient(135deg,#2563eb,#1d4ed8);padding:28px 32px;">
+              <h1 style="margin:0;color:#ffffff;font-size:22px;font-weight:800;">Nouvelle proposition de sous-traitance</h1>
+              <p style="margin:10px 0 0;color:rgba(255,255,255,0.92);font-size:14px;">Un freelancer vous propose une mission.</p>
+            </td>
+          </tr>
+          <tr>
+            <td style="padding:28px 32px;color:#374151;font-size:15px;line-height:1.55;">
+              <p style="margin:0 0 16px;">Bonjour <strong th:text="${subcontractorName}">Freelancer</strong>,</p>
+              <p style="margin:0 0 16px;">
+                <strong th:text="${mainFreelancerName}">Principal</strong> vous propose la sous-traitance suivante.
+              </p>
+
+              <h2 style="margin:24px 0 12px;font-size:16px;color:#111827;border-bottom:2px solid #e5e7eb;padding-bottom:8px;">Titre</h2>
+              <p style="margin:0;font-weight:700;font-size:17px;color:#1e3a8a;" th:text="${title}">Titre</p>
+
+              <h2 style="margin:24px 0 12px;font-size:16px;color:#111827;border-bottom:2px solid #e5e7eb;padding-bottom:8px;">Périmètre (scope)</h2>
+              <div style="background:#f9fafb;border-radius:10px;padding:16px 18px;border:1px solid #e5e7eb;white-space:pre-wrap;" th:text="${scope}">Scope</div>
+
+              <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="margin-top:20px;">
+                <tr>
+                  <td style="padding:8px 0;width:40%;color:#6b7280;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Budget</td>
+                  <td style="padding:8px 0;font-weight:600;" th:text="${budgetFormatted}">—</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;color:#6b7280;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Début</td>
+                  <td style="padding:8px 0;font-weight:600;" th:text="${startDate}">—</td>
+                </tr>
+                <tr>
+                  <td style="padding:8px 0;color:#6b7280;font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:0.04em;">Fin</td>
+                  <td style="padding:8px 0;font-weight:600;" th:text="${deadline}">—</td>
+                </tr>
+              </table>
+
+              <div th:if="${hasSkills}" style="margin-top:22px;">
+                <h2 style="margin:0 0 12px;font-size:16px;color:#111827;border-bottom:2px solid #e5e7eb;padding-bottom:8px;">Compétences requises</h2>
+                <ul style="margin:0;padding-left:20px;color:#374151;">
+                  <li th:each="sk : ${skills}" th:text="${sk}">Skill</li>
+                </ul>
+              </div>
+
+              <div th:if="${hasMedia}" style="margin-top:28px;text-align:center;">
+                <a th:href="${mediaUrl}"
+                   style="display:inline-block;background:linear-gradient(135deg,#059669,#047857);color:#ffffff;text-decoration:none;
+                          padding:14px 28px;border-radius:10px;font-weight:800;font-size:15px;">
+                  Voir la présentation du projet
+                </a>
+                <p style="margin:12px 0 0;font-size:12px;color:#9ca3af;">
+                  <span th:if="${mediaIsVideo}">Média : vidéo (MP4)</span>
+                  <span th:if="${mediaIsAudio}">Média : audio (MP3)</span>
+                </p>
+              </div>
+
+              <div style="margin-top:28px;text-align:center;">
+                <a th:href="${subcontractorDashboardUrl}"
+                   style="display:inline-block;background:#2563eb;color:#ffffff;text-decoration:none;padding:12px 24px;border-radius:8px;font-weight:700;font-size:14px;">
+                  Ouvrir mon espace sous-traitant
+                </a>
+              </div>
+            </td>
+          </tr>
+          <tr>
+            <td style="background:#f9fafb;padding:18px 32px;text-align:center;border-top:1px solid #e5e7eb;">
+              <p style="margin:0;font-size:12px;color:#9ca3af;">Smart Freelance — Notification automatique</p>
+            </td>
+          </tr>
+        </table>
+      </td>
+    </tr>
+  </table>
+</body>
+</html>

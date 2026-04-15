@@ -48,9 +48,24 @@ public class ProjectController {
         return projectService.getAllProjectResponses();
     }
 
+    /**
+     * Projets publiés par ce client où au moins une candidature a été acceptée
+     * (sous-traitance : missions où vous avez retenu un freelancer sur votre annonce).
+     */
+    @GetMapping("/client/{clientId}/with-accepted-freelancer")
+    public List<Project> getProjectsAsClientWithAcceptedFreelancer(@PathVariable Long clientId) {
+        return projectService.getProjectsForClientWithAcceptedFreelancer(clientId);
+    }
+
     @GetMapping("/client/{clientId}")
     public List<Project> getProjectsByClientId(@PathVariable Long clientId) {
         return projectService.getProjectsByClientId(clientId);
+    }
+
+    /** Projets où ce freelancer a une candidature acceptée (pour sous-traitance depuis une mission réelle). */
+    @GetMapping("/freelancer/{freelancerId}")
+    public List<Project> getProjectsForFreelancer(@PathVariable Long freelancerId) {
+        return projectService.getProjectsForFreelancer(freelancerId);
     }
 
     /** Projets communs : offres du client pour lesquelles le freelancer a postulé. */

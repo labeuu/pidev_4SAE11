@@ -60,7 +60,7 @@ flowchart LR
 
 ## Startup order
 
-1. **MySQL** — ports vary by service config (commonly `3306` or `3307`; see [services-and-ports.md](services-and-ports.md)).
+1. **MySQL** — services use port `3307` (see [services-and-ports.md](services-and-ports.md)).
 2. **Eureka** — `backEnd/Eureka` (port **8420**).
 3. **Config Server** (optional for some services, **required** for OFFER, VENDOR, **task**, and **planning** bootstrap) — `backEnd/ConfigServer` (**8888**).
 4. **API Gateway** — `backEnd/apiGateway` (**8078**).

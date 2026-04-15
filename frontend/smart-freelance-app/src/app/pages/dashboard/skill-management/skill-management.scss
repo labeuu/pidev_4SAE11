@@ -454,11 +454,32 @@
       font-weight: $font-weight-bold;
       color: $neutral-900;
       border-bottom: 1px solid $neutral-100;
+      /* Au-dessus du .dropdown-backdrop (fixed z-10) pour rester cliquable */
+      position: relative;
+      z-index: 30;
+    }
+
+    .modal-inline-error {
+      margin: 0 $spacing-2xl $spacing-md;
+      padding: 10px 12px;
+      border-radius: $radius-md;
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      font-size: $font-size-sm;
+      position: relative;
+      z-index: 30;
     }
 
     // Form body padding
     .form-body {
       padding: $spacing-lg $spacing-2xl;
+
+      /* Champ « Skill name » au-dessus du voile plein écran du dropdown domaines */
+      > .form-group:first-of-type {
+        position: relative;
+        z-index: 30;
+      }
     }
 
     .form-group {
@@ -658,6 +679,9 @@
 
     // Modal action buttons row
     .modal-actions {
+      /* Au-dessus du .dropdown-backdrop fixed — sinon Add Skill ne reçoit pas les clics */
+      position: relative;
+      z-index: 30;
       display: flex;
       justify-content: flex-end;
       gap: $spacing-sm;

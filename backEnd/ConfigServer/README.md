@@ -3,7 +3,7 @@
 **Spring Cloud Config** — serves shared `*.properties` for microservices from `src/main/resources/config/`.
 
 - **Port**: `8888`
-- **Required for**: **Offer** and **Vendor** bootstrap (they import `configserver:http://localhost:8888`)
+- **Required for**: **Offer** bootstrap (imports `configserver:http://localhost:8888`)
 
 ## Documentation
 
@@ -20,4 +20,4 @@ mvn spring-boot:run
 
 ## Config files
 
-Examples: `config/OFFER.properties`, `config/VENDOR.properties`, `config/PORTFOLIO.properties`, etc.
+Examples: `config/OFFER.properties`, `config/PORTFOLIO.properties`, etc.
