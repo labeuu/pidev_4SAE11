@@ -37,6 +37,13 @@ public class Ticket {
     @Column(nullable = false, length = 10)
     private TicketPriority priority;
 
+    private Long assignedAdminId;
+
+    @Column(length = 200)
+    private String assignedAdminName;
+
+    private LocalDateTime assignedAt;
+
     @CreationTimestamp
     @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -8,6 +8,11 @@
           <span [ngClass]="badgeStatusClasses(t.status)">{{ t.status }}</span>
           <span [ngClass]="badgePriorityClasses(t.priority)">{{ t.priority }}</span>
           <span class="ticket-detail-activity">Last activity: {{ t.lastActivityAt | date : 'medium' }}</span>
+          <span class="ticket-detail-activity" *ngIf="lastUpdatedAt">Live updated: {{ lastUpdatedAt | date : 'shortTime' }}</span>
+        </div>
+        <div class="ticket-detail-meta">
+          <span class="ticket-detail-meta__label">Next action</span>
+          {{ userNextAction(t) }}
         </div>
       </div>
       <div class="ticket-detail-hero__actions">
@@ -75,6 +80,22 @@
           </div>
         </div>
         <p *ngIf="replies.length === 0" class="ticket-detail-chat__empty">No replies yet. Say hello below.</p>
+      </div>
+    </section>
+
+    <section class="ticket-detail-chat" aria-label="Ticket timeline">
+      <div class="ticket-detail-chat__head">
+        <span class="ticket-detail-chat__label">Timeline</span>
+      </div>
+      <div class="ticket-detail-chat__body">
+        <div *ngFor="let event of timeline(t)" class="ticket-bubble-row">
+          <div class="ticket-bubble">
+            <div class="ticket-bubble__meta">
+              <span class="ticket-bubble__sender">{{ event.label }}</span>
+              <span class="ticket-bubble__time">{{ event.date ? (event.date | date : 'short') : 'Not yet' }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 
