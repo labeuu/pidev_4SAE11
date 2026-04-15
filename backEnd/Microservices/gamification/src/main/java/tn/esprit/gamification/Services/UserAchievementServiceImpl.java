@@ -86,6 +86,17 @@ public class UserAchievementServiceImpl implements UserAchievementService {
             
             int percent = (target == 0) ? 100 : Math.min(100, (currentVal * 100) / target);
 
+            LocalDateTime unlockedAt = null;
+            if (isUnlocked) {
+                UserAchievement row = unlockedMap.get(a.getId());
+                if (row != null && row.getUnlockedAt() != null) {
+                    unlockedAt = row.getUnlockedAt();
+                } else {
+                    // Catch-up unlock: row was persisted in unlockAchievement() but not in unlockedMap
+                    unlockedAt = LocalDateTime.now();
+                }
+            }
+
             return AchievementProgressDTO.builder()
                     .achievementId(a.getId())
                     .title(a.getTitle())
@@ -98,7 +109,7 @@ public class UserAchievementServiceImpl implements UserAchievementService {
                     .progressPercent(percent)
                     .xpReward(a.getXpReward())
                     .unlocked(isUnlocked)
-                    .unlockedAt(isUnlocked ? unlockedMap.get(a.getId()).getUnlockedAt().toString() : null)
+                    .unlockedAt(unlockedAt != null ? unlockedAt.toString() : null)
                     .build();
         }).collect(Collectors.toList());
     }

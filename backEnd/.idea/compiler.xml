@@ -80,6 +80,7 @@
       <module name="Offer" options="-parameters" />
       <module name="Portfolio" options="-parameters" />
       <module name="Project" options="-parameters" />
+      <module name="Subcontracting" options="-parameters" />
       <module name="aimodel" options="-parameters" />
       <module name="apiGateway" options="-parameters" />
       <module name="chat" options="-parameters" />
