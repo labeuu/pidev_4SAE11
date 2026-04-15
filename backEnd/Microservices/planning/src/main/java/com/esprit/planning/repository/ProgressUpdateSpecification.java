@@ -11,6 +11,7 @@ import jakarta.persistence.criteria.Root;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -32,11 +33,13 @@ public final class ProgressUpdateSpecification {
             Optional<Integer> progressMax,
             Optional<LocalDate> dateFrom,
             Optional<LocalDate> dateTo,
-            Optional<String> search) {
+            Optional<String> search,
+            Optional<Collection<Long>> allowedProjectIds) {
         return (Root<ProgressUpdate> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             projectId.ifPresent(id -> predicates.add(cb.equal(root.get("projectId"), id)));
+            allowedProjectIds.ifPresent(ids -> predicates.add(root.get("projectId").in(ids)));
             freelancerId.ifPresent(id -> predicates.add(cb.equal(root.get("freelancerId"), id)));
             contractId.ifPresent(id -> predicates.add(cb.equal(root.get("contractId"), id)));
             progressMin.ifPresent(min -> predicates.add(cb.greaterThanOrEqualTo(root.get("progressPercentage"), min)));

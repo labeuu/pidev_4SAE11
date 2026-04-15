@@ -20,8 +20,8 @@ Naming in the first column matches the product/feature name; the **Doc** column 
 | Ticket service | [ticket-service.md](ticket-service.md) | 8094 | `/ticket` |
 | Subcontracting | [subcontracting.md](subcontracting.md) | 8099 | `/subcontracting` |
 | AImodel (Spring Boot + Ollama) | [AImodel.md](AImodel.md) | 8095 | `/aimodel` |
-| FreelanciaJob | [freelanciajob.md](freelanciajob.md) | 8092 | _No gateway route configured_ |
+| FreelanciaJob | [freelanciajob.md](freelanciajob.md) | 8097 | _No gateway route configured_ |
 | Chat | [chat.md](chat.md) | 8096 | _No gateway route configured_ |
-| Meeting | [meeting.md](meeting.md) | 8097 | _No gateway route configured_ |
+| Meeting | [meeting.md](meeting.md) | 8101 | _No gateway route configured_ |
 
 Consolidated ports and databases: [../services-and-ports.md](../services-and-ports.md).

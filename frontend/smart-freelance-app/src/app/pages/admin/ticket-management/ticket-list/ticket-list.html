@@ -15,31 +15,47 @@
           <span class="admin-ticket-badge">Admin</span>
           <h1 class="admin-ticket-title">Support queue</h1>
           <p class="admin-ticket-lead">Review and respond to user requests. Close or delete when resolved.</p>
-          <div class="admin-ticket-filters" role="group" aria-label="Filter by status">
+          <p class="admin-ticket-lead" *ngIf="lastUpdatedAt">Last updated: {{ lastUpdatedAt | date : 'shortTime' }}</p>
+          <div class="admin-ticket-filters" aria-label="Search tickets">
+            <input
+              class="admin-ticket-filter"
+              type="search"
+              placeholder="Search subject..."
+              [(ngModel)]="searchTerm"
+              (ngModelChange)="onSearchTermChange($event)"
+            />
+          </div>
+          <div class="admin-ticket-filters" aria-label="Filter by status">
             <button
               type="button"
               class="admin-ticket-filter"
-              [class.admin-ticket-filter--active]="statusFilter === 'ALL'"
-              (click)="setFilter('ALL')"
+              [class.admin-ticket-filter--active]="selectedStatus === 'ALL'"
+              (click)="setStatusFilter('ALL')"
             >
               All
             </button>
             <button
               type="button"
               class="admin-ticket-filter"
-              [class.admin-ticket-filter--active]="statusFilter === 'OPEN'"
-              (click)="setFilter('OPEN')"
+              [class.admin-ticket-filter--active]="selectedStatus === 'OPEN'"
+              (click)="setStatusFilter('OPEN')"
             >
               Open
             </button>
             <button
               type="button"
               class="admin-ticket-filter"
-              [class.admin-ticket-filter--active]="statusFilter === 'CLOSED'"
-              (click)="setFilter('CLOSED')"
+              [class.admin-ticket-filter--active]="selectedStatus === 'CLOSED'"
+              (click)="setStatusFilter('CLOSED')"
             >
               Closed
             </button>
+          </div>
+          <div class="admin-ticket-filters" aria-label="Filter by priority">
+            <button type="button" class="admin-ticket-filter" [class.admin-ticket-filter--active]="selectedPriority === 'ALL'" (click)="setPriorityFilter('ALL')">Any priority</button>
+            <button type="button" class="admin-ticket-filter" [class.admin-ticket-filter--active]="selectedPriority === 'HIGH'" (click)="setPriorityFilter('HIGH')">High</button>
+            <button type="button" class="admin-ticket-filter" [class.admin-ticket-filter--active]="selectedPriority === 'MEDIUM'" (click)="setPriorityFilter('MEDIUM')">Medium</button>
+            <button type="button" class="admin-ticket-filter" [class.admin-ticket-filter--active]="selectedPriority === 'LOW'" (click)="setPriorityFilter('LOW')">Low</button>
           </div>
         </div>
       </div>
@@ -58,13 +74,18 @@
       <span>Loading tickets…</span>
     </div>
 
-    <div *ngIf="!loading && filteredTickets.length === 0 && !errorMessage" class="admin-ticket-panel admin-ticket-panel--muted">
+    <div *ngIf="!loading && tickets.length === 0 && !errorMessage" class="admin-ticket-panel admin-ticket-panel--muted">
       <p class="admin-ticket-panel__title">No tickets in this view</p>
-      <p class="admin-ticket-panel__sub" *ngIf="statusFilter !== 'ALL'">Try another filter or refresh.</p>
-      <p class="admin-ticket-panel__sub" *ngIf="statusFilter === 'ALL'">New requests will appear here.</p>
+      <p class="admin-ticket-panel__sub" *ngIf="selectedStatus !== 'ALL' || selectedPriority !== 'ALL' || searchTerm">Try another filter or refresh.</p>
+      <p class="admin-ticket-panel__sub" *ngIf="selectedStatus === 'ALL' && selectedPriority === 'ALL' && !searchTerm">New requests will appear here.</p>
     </div>
 
-    <div *ngIf="!loading && filteredTickets.length > 0" class="admin-ticket-table-wrap">
+    <div *ngIf="!loading && tickets.length > 0" class="admin-ticket-table-wrap">
+      <div class="admin-ticket-filters" aria-label="Sort tickets">
+        <button type="button" class="admin-ticket-filter" (click)="setSort('lastActivityAt')">Sort: last activity</button>
+        <button type="button" class="admin-ticket-filter" (click)="setSort('createdAt')">Sort: created</button>
+        <button type="button" class="admin-ticket-filter" (click)="setSort('priority')">Sort: priority</button>
+      </div>
       <table class="admin-ticket-table">
         <thead>
           <tr>
@@ -77,7 +98,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr *ngFor="let t of filteredTickets">
+          <tr *ngFor="let t of tickets">
             <td class="admin-ticket-table__subject">
               <span class="admin-ticket-subject-text">{{ t.subject }}</span>
               <span *ngIf="unreadCount(t.id) > 0" class="admin-ticket-unread-badge" [attr.aria-label]="unreadCount(t.id) + ' unread user messages'">
@@ -90,10 +111,19 @@
             <td class="admin-ticket-table__hide-lg admin-ticket-table__muted">{{ t.lastActivityAt | date : 'medium' }}</td>
             <td class="admin-ticket-table__actions">
               <button type="button" class="admin-ticket-btn-outline" (click)="openTicket(t)">Open</button>
+              <button type="button" class="admin-ticket-btn-outline" *ngIf="!t.assignedAdminId" (click)="assignToMe(t)">Claim</button>
+              <button type="button" class="admin-ticket-btn-outline" *ngIf="t.assignedAdminId" (click)="unassign(t)">Unassign</button>
+              <button type="button" class="admin-ticket-btn-outline" *ngIf="t.status === 'OPEN'" (click)="closeTicket(t)">Close</button>
+              <button type="button" class="admin-ticket-btn-outline" *ngIf="t.status === 'CLOSED' && (t.canReopen ?? (t.reopenCount ?? 0) < 1)" (click)="reopenTicket(t)">Reopen</button>
             </td>
           </tr>
         </tbody>
       </table>
+      <div class="admin-ticket-filters" aria-label="Pagination">
+        <button type="button" class="admin-ticket-filter" [disabled]="page === 0" (click)="prevPage()">Previous</button>
+        <span class="admin-ticket-filter">Page {{ page + 1 }} / {{ totalPages || 1 }} ({{ totalElements }} total)</span>
+        <button type="button" class="admin-ticket-filter" [disabled]="page + 1 >= totalPages" (click)="nextPage()">Next</button>
+      </div>
     </div>
   </div>
 </div>

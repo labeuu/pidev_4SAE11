@@ -23,7 +23,7 @@ This service supports meeting scheduling and includes optional Google Calendar/M
 ## Local run
 
 1. Start Eureka (`8420`)
-2. Start Meeting service (`8097`)
+2. Start Meeting service (`8101`)
 3. Use direct local URL for now: `http://localhost:8097/...`
 
 To expose meeting endpoints through Gateway, add a route in `backEnd/apiGateway/src/main/resources/application.yml`.

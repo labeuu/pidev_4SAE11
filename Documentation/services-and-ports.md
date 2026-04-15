@@ -20,10 +20,10 @@ MySQL hosts vary in repo configs: many services use `localhost:3306`, some **330
 | Microservices/Notification | notification | 8098 | `notification` | Firebase / Firestore (credentials via env) |
 | Microservices/gamification | gamification | 8088 | `gamification` | MySQL `gamificationdb` |
 | Microservices/task | task | 8091 | `task` | MySQL `taskdb` (Config Server) |
-| Microservices/FreelanciaJob | FreelanciaJob | 8092 | — | MySQL `freelancia_job_db` |
+| Microservices/FreelanciaJob | FreelanciaJob | 8097 | — | MySQL `freelancia_job_db` |
 | Microservices/AImodel | AIMODEL (Eureka) | 8095 | `aimodel` | Spring AI → Ollama HTTP API (no app DB) |
 | Microservices/Chat | chat | 8096 | — | MySQL `chatdb` |
-| Microservices/Meeting | meeting | 8097 | — | MySQL `meetingdb` |
+| Microservices/Meeting | meeting | 8101 | — | MySQL `meetingdb` |
 | Microservices/Vendor | VENDOR | 8093 | `vendor` | MySQL `gestion_vendor_db` (Config Server) |
 | Microservices/ticket-service | ticket | 8094 | `ticket` | MySQL `ticketdb` |
 | Microservices/Subcontracting | SUBCONTRACTING | 8099 | `subcontracting` | MySQL `gestion_subcontracting_db` (Config Server) |

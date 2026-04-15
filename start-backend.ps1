@@ -227,10 +227,10 @@ $remaining = @(
     @{ Name = 'review'; Port = 8085 },
     @{ Name = 'Portfolio'; Port = 8086 },
     @{ Name = 'gamification'; Port = 8088 },
-    @{ Name = 'FreelanciaJob'; Port = 8092 },
+    @{ Name = 'FreelanciaJob'; Port = 8097 },
     @{ Name = 'ticket-service'; Port = 8094 },
     @{ Name = 'Chat'; Port = 8096 },
-    @{ Name = 'Meeting'; Port = 8097 },
+    @{ Name = 'Meeting'; Port = 8101 },
     @{ Name = 'Notification'; Port = 8098 }
 )
 

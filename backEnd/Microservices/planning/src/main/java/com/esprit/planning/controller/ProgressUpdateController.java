@@ -11,6 +11,7 @@ import com.esprit.planning.dto.StalledProjectDto;
 import com.esprit.planning.entity.ProgressComment;
 import com.esprit.planning.entity.ProgressUpdate;
 import com.esprit.planning.service.ProgressCommentService;
+import com.esprit.planning.service.FreelancerProjectAccessService;
 import com.esprit.planning.service.ProgressUpdateService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -19,6 +20,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -27,11 +29,13 @@ import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
 
 /**
  * REST API for progress updates: CRUD, filtering, export, stats, rankings, validation, and next-allowed percentage.
@@ -47,13 +51,16 @@ public class ProgressUpdateController {
 
     private final ProgressUpdateService progressUpdateService;
     private final ProgressCommentService progressCommentService;
+    private final ObjectProvider<FreelancerProjectAccessService> freelancerProjectAccessServiceProvider;
     private final String welcomeMessage;
 
     public ProgressUpdateController(ProgressUpdateService progressUpdateService,
                                     ProgressCommentService progressCommentService,
+                                    ObjectProvider<FreelancerProjectAccessService> freelancerProjectAccessServiceProvider,
                                     @Value("${welcome.message}") String welcomeMessage) {
         this.progressUpdateService = progressUpdateService;
         this.progressCommentService = progressCommentService;
+        this.freelancerProjectAccessServiceProvider = freelancerProjectAccessServiceProvider;
         this.welcomeMessage = welcomeMessage;
     }
 
@@ -82,7 +89,16 @@ public class ProgressUpdateController {
             @Parameter(description = "Maximum progress percentage (0-100)") @RequestParam(required = false) Integer progressMax,
             @Parameter(description = "From date (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dateFrom,
             @Parameter(description = "To date (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dateTo,
-            @Parameter(description = "Search in title and description (case-insensitive)") @RequestParam(required = false) String search) {
+            @Parameter(description = "Search in title and description (case-insensitive)") @RequestParam(required = false) String search,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (projectId != null) {
+            enforceProjectAccess(allowedProjectIds, projectId);
+        }
+        if (allowedProjectIds.isPresent()) {
+            freelancerId = viewerUserId;
+        }
         Sort sortObj = parseSort(sort);
         int cappedSize = Math.min(Math.max(1, size), 100);
         Pageable pageable = PageRequest.of(Math.max(0, page), cappedSize, sortObj);
@@ -95,6 +111,7 @@ public class ProgressUpdateController {
                 Optional.ofNullable(dateFrom),
                 Optional.ofNullable(dateTo),
                 Optional.ofNullable(search),
+                allowedProjectIds,
                 pageable);
         return ResponseEntity.ok(result);
     }
@@ -115,8 +132,17 @@ public class ProgressUpdateController {
             @Parameter(description = "From date (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dateFrom,
             @Parameter(description = "To date (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dateTo,
             @Parameter(description = "Search in title and description (case-insensitive)") @RequestParam(required = false) String search,
-            @Parameter(description = "Export format (currently only 'csv' is supported)") @RequestParam(required = false, defaultValue = "csv") String format
+            @Parameter(description = "Export format (currently only 'csv' is supported)") @RequestParam(required = false, defaultValue = "csv") String format,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole
     ) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (projectId != null) {
+            enforceProjectAccess(allowedProjectIds, projectId);
+        }
+        if (allowedProjectIds.isPresent()) {
+            freelancerId = viewerUserId;
+        }
         // For now we always return CSV regardless of the requested format to avoid 400s from clients.
 
         List<ProgressUpdate> result = progressUpdateService.findAllFilteredForExport(
@@ -127,7 +153,8 @@ public class ProgressUpdateController {
                 Optional.ofNullable(progressMax),
                 Optional.ofNullable(dateFrom),
                 Optional.ofNullable(dateTo),
-                Optional.ofNullable(search)
+                Optional.ofNullable(search),
+                allowedProjectIds
         );
 
         StringBuilder sb = new StringBuilder();
@@ -190,8 +217,10 @@ public class ProgressUpdateController {
             @ApiResponse(responseCode = "404", description = "Progress update not found", content = @Content)
     })
     public ResponseEntity<ProgressUpdate> getById(
-            @Parameter(description = "Progress update ID", example = "1", required = true) @PathVariable Long id) {
-        return ResponseEntity.ok(progressUpdateService.findById(id));
+            @Parameter(description = "Progress update ID", example = "1", required = true) @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        return ResponseEntity.ok(progressUpdateService.findById(id, resolveFreelancerScope(viewerUserId, viewerRole)));
     }
 
     /** Returns a single progress update with all its comments in one response. 404 if update not found. */
@@ -205,8 +234,10 @@ public class ProgressUpdateController {
             @ApiResponse(responseCode = "404", description = "Progress update not found", content = @Content)
     })
     public ResponseEntity<ProgressUpdateWithCommentsDto> getByIdWithComments(
-            @Parameter(description = "Progress update ID", example = "1", required = true) @PathVariable Long id) {
-        ProgressUpdate update = progressUpdateService.findById(id);
+            @Parameter(description = "Progress update ID", example = "1", required = true) @PathVariable Long id,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        ProgressUpdate update = progressUpdateService.findById(id, resolveFreelancerScope(viewerUserId, viewerRole));
         List<ProgressComment> comments = progressCommentService.findByProgressUpdateId(id);
         ProgressUpdateWithCommentsDto dto = ProgressUpdateWithCommentsDto.builder()
                 .progressUpdate(update)
@@ -220,8 +251,12 @@ public class ProgressUpdateController {
     @Operation(summary = "List by project", description = "Returns all progress updates for the given project.")
     @ApiResponse(responseCode = "200", description = "Success")
     public ResponseEntity<List<ProgressUpdate>> getByProjectId(
-            @Parameter(description = "Project ID", example = "1", required = true) @PathVariable Long projectId) {
-        return ResponseEntity.ok(progressUpdateService.findByProjectId(projectId));
+            @Parameter(description = "Project ID", example = "1", required = true) @PathVariable Long projectId,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        enforceProjectAccess(allowedProjectIds, projectId);
+        return ResponseEntity.ok(progressUpdateService.findByProjectId(projectId, allowedProjectIds));
     }
 
     /** Returns all progress updates for the given contract. */
@@ -229,8 +264,10 @@ public class ProgressUpdateController {
     @Operation(summary = "List by contract", description = "Returns all progress updates for the given contract.")
     @ApiResponse(responseCode = "200", description = "Success")
     public ResponseEntity<List<ProgressUpdate>> getByContractId(
-            @Parameter(description = "Contract ID", example = "1", required = true) @PathVariable Long contractId) {
-        return ResponseEntity.ok(progressUpdateService.findByContractId(contractId));
+            @Parameter(description = "Contract ID", example = "1", required = true) @PathVariable Long contractId,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        return ResponseEntity.ok(progressUpdateService.findByContractId(contractId, resolveFreelancerScope(viewerUserId, viewerRole)));
     }
 
     /** Returns all progress updates submitted by the given freelancer. */
@@ -238,7 +275,12 @@ public class ProgressUpdateController {
     @Operation(summary = "List by freelancer", description = "Returns all progress updates submitted by the given freelancer.")
     @ApiResponse(responseCode = "200", description = "Success")
     public ResponseEntity<List<ProgressUpdate>> getByFreelancerId(
-            @Parameter(description = "Freelancer ID", example = "10", required = true) @PathVariable Long freelancerId) {
+            @Parameter(description = "Freelancer ID", example = "10", required = true) @PathVariable Long freelancerId,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        if ("FREELANCER".equalsIgnoreCase(viewerRole) && viewerUserId != null && !viewerUserId.equals(freelancerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Freelancer cannot access another freelancer's updates");
+        }
         return ResponseEntity.ok(progressUpdateService.findByFreelancerId(freelancerId));
     }
 
@@ -251,15 +293,18 @@ public class ProgressUpdateController {
     @ApiResponse(responseCode = "200", description = "Success")
     public ResponseEntity<Object> getSummary(
             @Parameter(description = "Comma-separated project IDs (e.g. 1,2,3)") @RequestParam(value = "projectIds", required = false) String projectIdsParam,
-            @Parameter(description = "Comma-separated contract IDs (e.g. 1,2,3)") @RequestParam(value = "contractIds", required = false) String contractIdsParam
+            @Parameter(description = "Comma-separated contract IDs (e.g. 1,2,3)") @RequestParam(value = "contractIds", required = false) String contractIdsParam,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole
     ) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
         if (projectIdsParam != null && !projectIdsParam.isBlank()) {
             List<Long> ids = parseIds(projectIdsParam);
-            return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByProjectIds(ids));
+            return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByProjectIds(ids, allowedProjectIds));
         }
         if (contractIdsParam != null && !contractIdsParam.isBlank()) {
             List<Long> ids = parseIds(contractIdsParam);
-            return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByContractIds(ids));
+            return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByContractIds(ids, allowedProjectIds));
         }
         return ResponseEntity.badRequest()
                 .body((Object) Map.of(RESPONSE_MESSAGE_KEY, "Exactly one of projectIds or contractIds must be provided"));
@@ -273,7 +318,12 @@ public class ProgressUpdateController {
     )
     @ApiResponse(responseCode = "200", description = "Success")
     public ResponseEntity<List<ProgressSummaryItemDto>> getFreelancerProjectsSummary(
-            @Parameter(description = "Freelancer ID", example = "10", required = true) @PathVariable Long freelancerId) {
+            @Parameter(description = "Freelancer ID", example = "10", required = true) @PathVariable Long freelancerId,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        if ("FREELANCER".equalsIgnoreCase(viewerRole) && viewerUserId != null && !viewerUserId.equals(freelancerId)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Freelancer cannot access another freelancer's summary");
+        }
         return ResponseEntity.ok(progressUpdateService.getFreelancerProjectsSummary(freelancerId));
     }
 
@@ -304,8 +354,11 @@ public class ProgressUpdateController {
             @Parameter(description = "Freelancer ID")
             @RequestParam(value = "freelancerId", required = false) Long freelancerId,
             @Parameter(description = "Contract ID")
-            @RequestParam(value = "contractId", required = false) Long contractId
+            @RequestParam(value = "contractId", required = false) Long contractId,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole
     ) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
         int nonNullCount = (projectId != null ? 1 : 0)
                 + (freelancerId != null ? 1 : 0)
                 + (contractId != null ? 1 : 0);
@@ -317,13 +370,20 @@ public class ProgressUpdateController {
 
         Optional<ProgressUpdate> result;
         if (projectId != null) {
+            enforceProjectAccess(allowedProjectIds, projectId);
             result = progressUpdateService.findLatestByProjectId(projectId);
         } else if (freelancerId != null) {
+            if (allowedProjectIds.isPresent()) {
+                freelancerId = viewerUserId;
+            }
             result = progressUpdateService.findLatestByFreelancerId(freelancerId);
         } else {
             result = progressUpdateService.findLatestByContractId(contractId);
         }
 
+        if (allowedProjectIds.isPresent()) {
+            result = result.filter(update -> allowedProjectIds.get().contains(update.getProjectId()));
+        }
         return result
                 .map(u -> ResponseEntity.ok().body((Object) u))
                 .orElseGet(() -> ResponseEntity.status(HttpStatus.NOT_FOUND)
@@ -337,10 +397,13 @@ public class ProgressUpdateController {
     public ResponseEntity<List<ProgressTrendPointDto>> getProgressTrendByProject(
             @Parameter(description = "Project ID", example = "1", required = true) @PathVariable Long projectId,
             @Parameter(description = "Start date (yyyy-MM-dd)") @RequestParam(required = false) LocalDate from,
-            @Parameter(description = "End date (yyyy-MM-dd)") @RequestParam(required = false) LocalDate to) {
+            @Parameter(description = "End date (yyyy-MM-dd)") @RequestParam(required = false) LocalDate to,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
         LocalDate toDate = to != null ? to : LocalDate.now();
         LocalDate fromDate = from != null ? from : toDate.minusDays(30);
-        return ResponseEntity.ok(progressUpdateService.getProgressTrendByProject(projectId, fromDate, toDate));
+        return ResponseEntity.ok(progressUpdateService.getProgressTrendByProject(projectId, fromDate, toDate, allowedProjectIds));
     }
 
     /** Returns projects with no progress update in the last N days (default 7). */
@@ -348,8 +411,10 @@ public class ProgressUpdateController {
     @Operation(summary = "Stalled projects", description = "Returns projects with no progress update in the last N days (default 7).")
     @ApiResponse(responseCode = "200", description = "Success")
     public ResponseEntity<List<StalledProjectDto>> getStalledProjects(
-            @Parameter(description = "Number of days without update to consider stalled", example = "7") @RequestParam(defaultValue = "7") int daysWithoutUpdate) {
-        return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate));
+            @Parameter(description = "Number of days without update to consider stalled", example = "7") @RequestParam(defaultValue = "7") int daysWithoutUpdate,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate, resolveFreelancerScope(viewerUserId, viewerRole)));
     }
 
     /** Alias for stalled projects: returns projects due or overdue for an update (no update in N days). */
@@ -360,8 +425,10 @@ public class ProgressUpdateController {
     )
     @ApiResponse(responseCode = "200", description = "Success")
     public ResponseEntity<List<StalledProjectDto>> getDueOrOverdueProjects(
-            @Parameter(description = "Number of days without update to consider due/overdue", example = "7") @RequestParam(defaultValue = "7") int daysWithoutUpdate) {
-        return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate));
+            @Parameter(description = "Number of days without update to consider due/overdue", example = "7") @RequestParam(defaultValue = "7") int daysWithoutUpdate,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate, resolveFreelancerScope(viewerUserId, viewerRole)));
     }
 
     /** Returns freelancers ranked by progress update count, with comment count; limit caps the number returned. */
@@ -380,9 +447,14 @@ public class ProgressUpdateController {
     public ResponseEntity<List<ProjectActivityDto>> getMostActiveProjects(
             @Parameter(description = "Maximum number of projects to return", example = "10") @RequestParam(defaultValue = "10") int limit,
             @Parameter(description = "From date (yyyy-MM-dd), optional") @RequestParam(required = false) LocalDate from,
-            @Parameter(description = "To date (yyyy-MM-dd), optional") @RequestParam(required = false) LocalDate to) {
+            @Parameter(description = "To date (yyyy-MM-dd), optional") @RequestParam(required = false) LocalDate to,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
         return ResponseEntity.ok(progressUpdateService.getMostActiveProjects(
-                limit, Optional.ofNullable(from), Optional.ofNullable(to)));
+                limit, Optional.ofNullable(from), Optional.ofNullable(to)).stream()
+                .filter(item -> allowedProjectIds.isEmpty() || allowedProjectIds.get().contains(item.getProjectId()))
+                .toList());
     }
 
     /** Creates a new progress update. Validates and enforces cannot-decrease rule; returns 201 with created entity. */
@@ -480,6 +552,26 @@ public class ProgressUpdateController {
     public ResponseEntity<ProgressUpdateValidationResponse> validate(@RequestBody ProgressUpdateRequest request) {
         ProgressUpdateValidationResponse response = progressUpdateService.validate(request);
         return ResponseEntity.ok(response);
+    }
+
+    private Optional<Set<Long>> resolveFreelancerScope(Long userId, String role) {
+        if (!"FREELANCER".equalsIgnoreCase(role)) {
+            return Optional.empty();
+        }
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "X-User-Id is required for freelancer scope");
+        }
+        FreelancerProjectAccessService accessService = freelancerProjectAccessServiceProvider.getIfAvailable();
+        if (accessService == null) {
+            return Optional.empty();
+        }
+        return Optional.of(accessService.getAccessibleProjectIdsForFreelancer(userId));
+    }
+
+    private static void enforceProjectAccess(Optional<Set<Long>> allowedProjectIds, Long projectId) {
+        if (allowedProjectIds.isPresent() && (projectId == null || !allowedProjectIds.get().contains(projectId))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Project is not accessible for this freelancer");
+        }
     }
 
 }

@@ -69,6 +69,9 @@ public interface ProgressUpdateRepository extends JpaRepository<ProgressUpdate, 
     @Query("SELECT DISTINCT p.projectId FROM ProgressUpdate p WHERE p.freelancerId = :freelancerId")
     List<Long> findDistinctProjectIdsByFreelancerId(@Param("freelancerId") Long freelancerId);
 
+    @Query("SELECT DISTINCT p.projectId FROM ProgressUpdate p WHERE p.contractId IN :contractIds")
+    List<Long> findDistinctProjectIdsByContractIdIn(@Param("contractIds") Collection<Long> contractIds);
+
     /** Overdue next-update-due rows not yet notified (scheduler). */
     List<ProgressUpdate> findByNextUpdateDueIsNotNullAndNextUpdateDueBeforeAndNextDueOverdueNotifiedIsFalse(LocalDateTime now);
 

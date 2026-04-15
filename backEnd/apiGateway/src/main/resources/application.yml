@@ -161,9 +161,9 @@ spring:
           filters:
             - StripPrefix=1
 
-        # Meeting (port 8094)
+        # Meeting (port 8101)
         - id: meeting
-          uri: http://127.0.0.1:8094
+          uri: http://127.0.0.1:8101
           predicates:
             - Path=/meeting/**
           filters:

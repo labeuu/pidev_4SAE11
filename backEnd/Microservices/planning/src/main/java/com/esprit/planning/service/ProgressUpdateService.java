@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -72,8 +73,23 @@ public class ProgressUpdateService {
             Optional<LocalDate> dateTo,
             Optional<String> search,
             Pageable pageable) {
+        return findAllFiltered(projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search, Optional.empty(), pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProgressUpdate> findAllFiltered(
+            Optional<Long> projectId,
+            Optional<Long> freelancerId,
+            Optional<Long> contractId,
+            Optional<Integer> progressMin,
+            Optional<Integer> progressMax,
+            Optional<LocalDate> dateFrom,
+            Optional<LocalDate> dateTo,
+            Optional<String> search,
+            Optional<Set<Long>> allowedProjectIds,
+            Pageable pageable) {
         var spec = ProgressUpdateSpecification.filtered(
-                projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search);
+                projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search, normalizeAllowedProjectIds(allowedProjectIds));
         return progressUpdateRepository.findAll(spec, pageable);
     }
 
@@ -85,6 +101,13 @@ public class ProgressUpdateService {
                 .orElseThrow(() -> new EntityNotFoundException("ProgressUpdate", id));
     }
 
+    @Transactional(readOnly = true)
+    public ProgressUpdate findById(Long id, Optional<Set<Long>> allowedProjectIds) {
+        ProgressUpdate update = findById(id);
+        enforceProjectAccess(update.getProjectId(), allowedProjectIds);
+        return update;
+    }
+
     /** Returns all progress updates for the given project. */
     @Transactional(readOnly = true)
     // Finds by project id.
@@ -92,11 +115,26 @@ public class ProgressUpdateService {
         return progressUpdateRepository.findByProjectId(projectId);
     }
 
+    @Transactional(readOnly = true)
+    public List<ProgressUpdate> findByProjectId(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        if (isProjectDenied(projectId, allowedProjectIds)) {
+            return List.of();
+        }
+        return findByProjectId(projectId);
+    }
+
     /** Returns all progress updates for the given contract. */
     @Transactional(readOnly = true)
     // Finds by contract id.
     public List<ProgressUpdate> findByContractId(Long contractId) {
         return progressUpdateRepository.findByContractId(contractId);
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgressUpdate> findByContractId(Long contractId, Optional<Set<Long>> allowedProjectIds) {
+        return findByContractId(contractId).stream()
+                .filter(p -> isProjectAllowed(p.getProjectId(), allowedProjectIds))
+                .toList();
     }
 
     /** Returns all progress updates submitted by the given freelancer. */
@@ -379,6 +417,12 @@ public class ProgressUpdateService {
     @Transactional(readOnly = true)
     // Returns progress trend by project.
     public List<ProgressTrendPointDto> getProgressTrendByProject(Long projectId, LocalDate from, LocalDate to) {
+        return getProgressTrendByProject(projectId, from, to, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgressTrendPointDto> getProgressTrendByProject(Long projectId, LocalDate from, LocalDate to, Optional<Set<Long>> allowedProjectIds) {
+        enforceProjectAccess(projectId, allowedProjectIds);
         LocalDateTime fromDateTime = from.atStartOfDay();
         LocalDateTime toDateTime = to.plusDays(1).atStartOfDay(); // exclusive end
         List<ProgressUpdate> updates = progressUpdateRepository.findByProjectIdAndCreatedAtBetween(projectId, fromDateTime, toDateTime);
@@ -401,6 +445,12 @@ public class ProgressUpdateService {
     @Transactional(readOnly = true)
     // Returns progress report for project.
     public ProgressReportDto getProgressReportForProject(Long projectId, LocalDate from, LocalDate to) {
+        return getProgressReportForProject(projectId, from, to, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public ProgressReportDto getProgressReportForProject(Long projectId, LocalDate from, LocalDate to, Optional<Set<Long>> allowedProjectIds) {
+        enforceProjectAccess(projectId, allowedProjectIds);
         LocalDate fromEffective = from != null ? from : LocalDate.now().minusDays(30);
         LocalDate toEffective = to != null ? to : LocalDate.now();
 
@@ -477,6 +527,12 @@ public class ProgressUpdateService {
     @Transactional(readOnly = true)
     // Returns progress statistics by project.
     public ProjectProgressStatsDto getProgressStatisticsByProject(Long projectId) {
+        return getProgressStatisticsByProject(projectId, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public ProjectProgressStatsDto getProgressStatisticsByProject(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        enforceProjectAccess(projectId, allowedProjectIds);
         List<ProgressUpdate> updates = progressUpdateRepository.findByProjectId(projectId);
         List<Long> updateIds = updates.stream().map(ProgressUpdate::getId).toList();
         long commentCount = updateIds.isEmpty() ? 0 : progressCommentRepository.countByProgressUpdate_IdIn(updateIds);
@@ -509,7 +565,15 @@ public class ProgressUpdateService {
     @Transactional(readOnly = true)
     // Returns progress statistics by contract.
     public ContractProgressStatsDto getProgressStatisticsByContract(Long contractId) {
+        return getProgressStatisticsByContract(contractId, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public ContractProgressStatsDto getProgressStatisticsByContract(Long contractId, Optional<Set<Long>> allowedProjectIds) {
         List<ProgressUpdate> updates = progressUpdateRepository.findByContractId(contractId);
+        updates = updates.stream()
+                .filter(u -> isProjectAllowed(u.getProjectId(), allowedProjectIds))
+                .toList();
         List<Long> updateIds = updates.stream().map(ProgressUpdate::getId).toList();
         long commentCount = updateIds.isEmpty() ? 0 : progressCommentRepository.countByProgressUpdate_IdIn(updateIds);
 
@@ -566,12 +630,23 @@ public class ProgressUpdateService {
     @Transactional(readOnly = true)
     // Returns summary by project ids.
     public List<ProgressSummaryItemDto> getSummaryByProjectIds(List<Long> projectIds) {
+        return getSummaryByProjectIds(projectIds, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgressSummaryItemDto> getSummaryByProjectIds(List<Long> projectIds, Optional<Set<Long>> allowedProjectIds) {
         if (projectIds == null || projectIds.isEmpty()) {
             return List.of();
         }
-        List<ProgressUpdate> updates = progressUpdateRepository.findByProjectIdIn(projectIds);
+        List<Long> scopedIds = projectIds.stream()
+                .filter(pid -> isProjectAllowed(pid, allowedProjectIds))
+                .toList();
+        if (scopedIds.isEmpty()) {
+            return List.of();
+        }
+        List<ProgressUpdate> updates = progressUpdateRepository.findByProjectIdIn(scopedIds);
         Map<Long, List<ProgressUpdate>> byProject = updates.stream().collect(Collectors.groupingBy(ProgressUpdate::getProjectId));
-        return projectIds.stream()
+        return scopedIds.stream()
                 .map(pid -> {
                     List<ProgressUpdate> projectUpdates = byProject.get(pid);
                     if (projectUpdates == null || projectUpdates.isEmpty()) {
@@ -593,10 +668,18 @@ public class ProgressUpdateService {
     @Transactional(readOnly = true)
     // Returns summary by contract ids.
     public List<ProgressSummaryItemDto> getSummaryByContractIds(List<Long> contractIds) {
+        return getSummaryByContractIds(contractIds, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgressSummaryItemDto> getSummaryByContractIds(List<Long> contractIds, Optional<Set<Long>> allowedProjectIds) {
         if (contractIds == null || contractIds.isEmpty()) {
             return List.of();
         }
         List<ProgressUpdate> updates = progressUpdateRepository.findByContractIdIn(contractIds);
+        updates = updates.stream()
+                .filter(u -> isProjectAllowed(u.getProjectId(), allowedProjectIds))
+                .toList();
         Map<Long, List<ProgressUpdate>> byContract = updates.stream()
                 .filter(u -> u.getContractId() != null)
                 .collect(Collectors.groupingBy(ProgressUpdate::getContractId));
@@ -652,8 +735,22 @@ public class ProgressUpdateService {
             Optional<LocalDate> dateFrom,
             Optional<LocalDate> dateTo,
             Optional<String> search) {
+        return findAllFilteredForExport(projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgressUpdate> findAllFilteredForExport(
+            Optional<Long> projectId,
+            Optional<Long> freelancerId,
+            Optional<Long> contractId,
+            Optional<Integer> progressMin,
+            Optional<Integer> progressMax,
+            Optional<LocalDate> dateFrom,
+            Optional<LocalDate> dateTo,
+            Optional<String> search,
+            Optional<Set<Long>> allowedProjectIds) {
         var spec = ProgressUpdateSpecification.filtered(
-                projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search);
+                projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search, normalizeAllowedProjectIds(allowedProjectIds));
         return progressUpdateRepository.findAll(spec, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
     }
 
@@ -662,9 +759,15 @@ public class ProgressUpdateService {
     @Transactional(readOnly = true)
     /** Returns projects that have no progress update in the last N days (stalled or due/overdue). */
     public List<StalledProjectDto> getProjectIdsWithStalledProgress(int daysWithoutUpdate) {
+        return getProjectIdsWithStalledProgress(daysWithoutUpdate, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<StalledProjectDto> getProjectIdsWithStalledProgress(int daysWithoutUpdate, Optional<Set<Long>> allowedProjectIds) {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(daysWithoutUpdate);
         List<Object[]> projectIdAndMaxUpdatedAt = progressUpdateRepository.findProjectIdAndMaxUpdatedAt();
         return projectIdAndMaxUpdatedAt.stream()
+                .filter(row -> isProjectAllowed((Long) row[0], allowedProjectIds))
                 .filter(row -> {
                     LocalDateTime lastUpdateAt = (LocalDateTime) row[1];
                     return lastUpdateAt != null && lastUpdateAt.isBefore(cutoff);
@@ -679,6 +782,24 @@ public class ProgressUpdateService {
                     return new StalledProjectDto(projectId, lastUpdateAt, lastProgressPercentage);
                 })
                 .toList();
+    }
+
+    private static Optional<Collection<Long>> normalizeAllowedProjectIds(Optional<Set<Long>> allowedProjectIds) {
+        return allowedProjectIds.map(set -> (Collection<Long>) set);
+    }
+
+    private static boolean isProjectDenied(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        return allowedProjectIds.isPresent() && (projectId == null || !allowedProjectIds.get().contains(projectId));
+    }
+
+    private static boolean isProjectAllowed(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        return !isProjectDenied(projectId, allowedProjectIds);
+    }
+
+    private static void enforceProjectAccess(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        if (isProjectDenied(projectId, allowedProjectIds)) {
+            throw new EntityNotFoundException("Project", projectId);
+        }
     }
 
     // --- Rankings (section 5) ---

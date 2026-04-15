@@ -351,6 +351,7 @@ services:
     <<: [*java-svc, *java-depends]
     environment:
       SERVER_PORT: 8081
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888,optional:classpath:application-local.properties
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/planningdb
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
@@ -358,6 +359,13 @@ services:
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
       GITHUB_TOKEN: ${GITHUB_TOKEN:-}
       GOOGLE_APPLICATION_CREDENTIALS: /credentials/planning-service-account.json
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
     volumes:
       - ${PLANNING_CALENDAR_CREDENTIALS:-./credentials/calendar-service-account.json}:/credentials/planning-service-account.json:ro
     ports:
@@ -371,12 +379,20 @@ services:
     <<: [*java-svc, *java-depends]
     environment:
       SERVER_PORT: 8091
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888,optional:classpath:application-local.properties
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/taskdb
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
       AIMODEL_SERVICE_URL: http://aimodel:8095
+    depends_on:
+      mysql:
+        condition: service_healthy
+      eureka:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
     ports:
       - "8091:8091"
 
@@ -499,7 +515,7 @@ services:
     container_name: sf-meeting
     <<: [*java-svc, *java-depends]
     environment:
-      SERVER_PORT: 8094
+      SERVER_PORT: 8101
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/meetingdb
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
@@ -509,7 +525,7 @@ services:
     volumes:
       - ${MEETING_CALENDAR_CREDENTIALS:-./credentials/meeting-service-account.json}:/credentials/meeting-service-account.json:ro
     ports:
-      - "8094:8094"
+      - "8101:8101"
 
   aimodel:
     build:
@@ -541,14 +557,14 @@ services:
     container_name: sf-freelancia-job
     <<: [*java-svc, *java-depends]
     environment:
-      SERVER_PORT: 8095
+      SERVER_PORT: 8097
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/freelancia_job_db
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
     ports:
-      - "8095:8095"
+      - "8097:8097"
 
   vendor:
     build:

@@ -72,14 +72,18 @@ public class CalendarController {
             @Parameter(description = "Current user ID – when set, only events for this client/freelancer are returned")
             @RequestParam(required = false) Long userId,
             @Parameter(description = "Current user role (CLIENT, FREELANCER, ADMIN) – used with userId for filtering")
-            @RequestParam(required = false) String role) {
+            @RequestParam(required = false) String role,
+            @RequestHeader(value = "X-User-Id", required = false) Long authenticatedUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String authenticatedRole) {
+        Long effectiveUserId = authenticatedUserId != null ? authenticatedUserId : userId;
+        String effectiveRole = authenticatedRole != null ? authenticatedRole : role;
         LocalDateTime min = parseDateTime(timeMin, LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0));
         LocalDateTime max = parseDateTime(timeMax, min.plusMonths(2));
         List<CalendarEventDto> dtos;
-        boolean scopeToUser = userId != null && !"ADMIN".equalsIgnoreCase(role);
+        boolean scopeToUser = effectiveUserId != null && !"ADMIN".equalsIgnoreCase(effectiveRole);
         if (scopeToUser) {
-            dtos = calendarEventService.listEventsFromDb(min, max, userId, role);
-        } else if (userId == null && googleCalendarService.isAvailable()) {
+            dtos = calendarEventService.listEventsFromDb(min, max, effectiveUserId, effectiveRole);
+        } else if (effectiveUserId == null && googleCalendarService.isAvailable()) {
             List<Event> events = googleCalendarService.listEvents(calendarId, min, max);
             dtos = events.stream().map(this::toDto).collect(Collectors.toList());
         } else {

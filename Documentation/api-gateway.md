@@ -35,7 +35,7 @@ Paths are **prefixed** as shown. The gateway applies **StripPrefix=1**: the firs
 
 Service discovery locator is **disabled** (`discovery.locator.enabled: false`); every service must have an explicit route.
 
-Services currently **without** gateway routes in `application.yml`: `FreelanciaJob` (8092), `chat` (8096), `meeting` (8097).
+Services currently **without** gateway routes in `application.yml`: `FreelanciaJob` (8097), `chat` (8096), `meeting` (8101).
 
 ## Swagger via gateway
 

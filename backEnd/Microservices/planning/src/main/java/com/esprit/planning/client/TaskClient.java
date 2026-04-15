@@ -17,5 +17,6 @@ public interface TaskClient {
     List<CalendarEventDto> getCalendarEvents(
             @RequestParam(value = "timeMin", required = false) String timeMin,
             @RequestParam(value = "timeMax", required = false) String timeMax,
-            @RequestParam(value = "userId", required = false) Long userId);
+            @RequestParam(value = "userId", required = false) Long userId,
+            @RequestParam(value = "role", required = false) String role);
 }
