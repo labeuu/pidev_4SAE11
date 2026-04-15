@@ -5,7 +5,9 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
+import tn.esprit.freelanciajob.Client.NotificationClient;
 import tn.esprit.freelanciajob.Client.UserClient;
+import tn.esprit.freelanciajob.Dto.request.NotificationCreateRequest;
 import tn.esprit.freelanciajob.Dto.response.UserDto;
 import tn.esprit.freelanciajob.Entity.Job;
 import tn.esprit.freelanciajob.Entity.JobApplication;
@@ -19,11 +21,9 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Listens for domain events and triggers the corresponding emails.
+ * Listens for domain events: outbound HTML email (SMTP) and in-app notifications (Notification service).
  *
- * This component is the ONLY place that knows about both the email system
- * and the user service — keeping JobService and JobApplicationServiceImpl
- * completely free of email concerns.
+ * Keeps {@link tn.esprit.freelanciajob.Service.JobApplicationServiceImpl} free of integration details.
  */
 @Slf4j
 @Component
@@ -32,6 +32,7 @@ public class JobEventListener {
 
     private final EmailService emailService;
     private final UserClient userClient;
+    private final NotificationClient notificationClient;
 
     // ─── A. New job posted → notify all freelancers ───────────────────────────
 
@@ -110,6 +111,28 @@ public class JobEventListener {
                         "New Application Received for: " + jobTitle,
                         "email/client-application-received", vars);
                 log.info("[JobEventListener] Client-notification email sent to user {}", job.getClientId());
+            }
+        }
+
+        // B3 – in-app notification for the client (Notification microservice / Firestore)
+        if (job.getClientId() != null) {
+            String applicantLabel = freelancer != null && freelancer.getFirstName() != null
+                    ? freelancer.getFirstName()
+                    : "A freelancer";
+            try {
+                notificationClient.create(NotificationCreateRequest.builder()
+                        .userId(String.valueOf(job.getClientId()))
+                        .title("New application · " + jobTitle)
+                        .body(applicantLabel + " applied to your job \"" + jobTitle + "\".")
+                        .type("JOB_APPLICATION")
+                        .data(Map.of(
+                                "jobId", String.valueOf(job.getId()),
+                                "applicationId", String.valueOf(application.getId())
+                        ))
+                        .build());
+                log.info("[JobEventListener] In-app notification created for client user {}", job.getClientId());
+            } catch (Exception ex) {
+                log.warn("[JobEventListener] In-app notification failed (email was still sent): {}", ex.getMessage());
             }
         }
     }

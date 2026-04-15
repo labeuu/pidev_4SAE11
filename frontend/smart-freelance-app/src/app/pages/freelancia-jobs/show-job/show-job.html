@@ -220,7 +220,7 @@
         <div class="app-card" *ngFor="let app of applications">
 
           <div class="app-card__top">
-            <span class="app-card__freelancer">Freelancer #{{ app.freelancerId }}</span>
+            <span class="app-card__freelancer">{{ freelancerDisplayName(app) }}</span>
             <span class="badge" [ngClass]="{
               'badge--pending':     app.status === 'PENDING',
               'badge--shortlisted': app.status === 'SHORTLISTED',
@@ -244,6 +244,9 @@
           <div class="app-card__footer"></div>
 
           <div class="app-card__actions">
+            <a class="btn-profile" [routerLink]="['/dashboard/freelancer-portfolio', app.freelancerId]">
+              View profile
+            </a>
             <button class="btn-info" (click)="updateApplicationStatus(app.id!, 'SHORTLISTED')">Shortlist</button>
             <button class="btn-success" (click)="updateApplicationStatus(app.id!, 'ACCEPTED')">Accept</button>
             <button class="btn-danger" (click)="updateApplicationStatus(app.id!, 'REJECTED')">Reject</button>

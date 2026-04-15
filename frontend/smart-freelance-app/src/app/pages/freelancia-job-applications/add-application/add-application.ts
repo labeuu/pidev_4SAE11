@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { JobApplicationService } from '../../../core/services/job-application.service';
-import { JobService, Job } from '../../../core/services/job.service';
+import { JobService, Job, FitScoreResult } from '../../../core/services/job.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 
@@ -53,6 +53,11 @@ export class AddApplication implements OnInit {
   isDragging = false;
   uploadProgress = 0;
   fileError: string | null = null;
+
+  /** AI profile vs job skills (same API as job details page). */
+  fitScore: FitScoreResult | null = null;
+  isScoringLoading = false;
+  scoringError: string | null = null;
 
   constructor(
     private fb:          FormBuilder,
@@ -199,5 +204,30 @@ export class AddApplication implements OnInit {
     if (bytes < 1_024)        return `${bytes} B`;
     if (bytes < 1_048_576)    return `${(bytes / 1_024).toFixed(1)} KB`;
     return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  }
+
+  tierLabel(tier: string): string {
+    return tier?.replaceAll('_', ' ') ?? '';
+  }
+
+  analyzeMyFit(): void {
+    if (!this.job?.id || !this.userId || this.isScoringLoading) return;
+    this.isScoringLoading = true;
+    this.scoringError = null;
+    this.fitScore = null;
+
+    this.jobService.getFitScore(this.job.id, this.userId).subscribe({
+      next: result => {
+        this.fitScore = result;
+        this.isScoringLoading = false;
+        if (!result) {
+          this.scoringError = 'Could not analyse your profile. Please try again.';
+        }
+      },
+      error: () => {
+        this.isScoringLoading = false;
+        this.scoringError = 'Could not analyse your profile. Please try again.';
+      },
+    });
   }
 }

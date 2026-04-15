@@ -6,6 +6,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import tn.esprit.meeting.client.UserClient;
 import tn.esprit.meeting.dto.*;
+import tn.esprit.meeting.dto.MeetingStatsDTO;
 import tn.esprit.meeting.entity.Meeting;
 import tn.esprit.meeting.enums.MeetingStatus;
 import tn.esprit.meeting.enums.MeetingType;
@@ -154,6 +155,27 @@ public class MeetingService {
         return meetingRepository.findByUserIdAndStatus(userId, status).stream()
                 .map(this::toResponse)
                 .toList();
+    }
+
+    @Transactional(readOnly = true)
+    public MeetingStatsDTO getMeetingStats(Long userId) {
+        List<Object[]> rows = meetingRepository.countByStatusForUser(userId);
+        MeetingStatsDTO stats = new MeetingStatsDTO();
+        long total = 0;
+        for (Object[] row : rows) {
+            MeetingStatus status = (MeetingStatus) row[0];
+            long count = (Long) row[1];
+            total += count;
+            switch (status) {
+                case PENDING   -> stats.setPending(count);
+                case ACCEPTED  -> stats.setAccepted(count);
+                case DECLINED  -> stats.setDeclined(count);
+                case CANCELLED -> stats.setCancelled(count);
+                case COMPLETED -> stats.setCompleted(count);
+            }
+        }
+        stats.setTotal(total);
+        return stats;
     }
 
     // ── Delete (CLIENT only, PENDING only) ────────────────────────────────────

@@ -1,5 +1,6 @@
 package tn.esprit.freelanciajob.Service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
@@ -8,9 +9,11 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
+import org.springframework.web.server.ResponseStatusException;
 import tn.esprit.freelanciajob.Dto.response.GeneratedJobDraft;
 
 import java.math.BigDecimal;
@@ -54,6 +57,10 @@ public class AiJobGeneratorService {
     }
 
     public GeneratedJobDraft generateJobDraft(String userPrompt) {
+        if (apiKey == null || apiKey.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "AI job generation is not configured. Set API_KEY or ai.api.key (and optionally AI_API_URL).");
+        }
         String systemPrompt = """
                 You are an expert freelance platform assistant.
                 The user describes a project idea in one sentence.
@@ -91,22 +98,42 @@ public class AiJobGeneratorService {
         try {
             ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, entity, String.class);
             return parseDraft(response.getBody());
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("AI service unavailable: " + e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "AI service unavailable: " + e.getMessage(), e);
         }
     }
 
     private GeneratedJobDraft parseDraft(String jsonResponse) {
         try {
-            if (jsonResponse == null) throw new RuntimeException("Empty AI response");
+            if (jsonResponse == null || jsonResponse.isBlank()) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "Empty AI response");
+            }
 
             JsonNode root = objectMapper.readTree(jsonResponse);
-            String content = root.path("choices").get(0).path("message").path("content").asText();
+
+            // Never use get(0) — it returns null when choices is empty/missing; use path() instead.
+            JsonNode choices = root.path("choices");
+            if (!choices.isArray() || choices.size() == 0) {
+                JsonNode err = root.path("error");
+                String hint = err.isMissingNode()
+                        ? jsonResponse.substring(0, Math.min(400, jsonResponse.length()))
+                        : err.toString();
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                        "AI response has no choices[] (check API key / model / quota). Snippet: " + hint);
+            }
+
+            String content = choices.path(0).path("message").path("content").asText("").trim();
+            if (content.isEmpty()) {
+                throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI message content is empty");
+            }
 
             // Strip markdown fences if present
             content = content.replaceAll("(?s)```json\\s*", "").replaceAll("(?s)```\\s*", "").trim();
 
-            JsonNode draft = objectMapper.readTree(content);
+            JsonNode draft = parseDraftJson(content);
 
             List<String> skills = new ArrayList<>();
             JsonNode skillsNode = draft.path("requiredSkills");
@@ -129,8 +156,27 @@ public class AiJobGeneratorService {
                     .locationType(draft.path("locationType").asText("REMOTE"))
                     .build();
 
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
-            throw new RuntimeException("Failed to parse AI draft response: " + e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Failed to parse AI draft response: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Parse the model's text content into a JSON object; tolerate extra prose by extracting the first {...} block.
+     */
+    private JsonNode parseDraftJson(String content) throws JsonProcessingException {
+        try {
+            return objectMapper.readTree(content);
+        } catch (Exception first) {
+            int start = content.indexOf('{');
+            int end = content.lastIndexOf('}');
+            if (start >= 0 && end > start) {
+                return objectMapper.readTree(content.substring(start, end + 1));
+            }
+            throw first;
         }
     }
 }
