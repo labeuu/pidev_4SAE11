@@ -8,7 +8,7 @@
 
     @if (form.contractId) {
       <div class="alert-context">
-        📋 This meeting will be linked to <strong>Contract #{{ form.contractId }}</strong>
+        📋 This meeting will be linked to <strong>{{ linkedContractTitle }}</strong>
       </div>
     }
 
@@ -131,27 +131,33 @@
         </div>
       </div>
 
-      <!-- Optional IDs -->
+      <!-- Optional Project & Contract -->
       <div class="time-row optional-row">
         <div class="form-group">
-          <label class="form-label" for="projectId">Project ID (optional)</label>
-          <input
+          <label class="form-label" for="projectId">Project (optional)</label>
+          <select
             id="projectId"
-            type="number"
             class="form-input"
-            placeholder="Link to a project"
             [(ngModel)]="form.projectId"
-            name="projectId" />
+            name="projectId">
+            <option [ngValue]="null">— None —</option>
+            @for (p of projects(); track p.id) {
+              <option [ngValue]="p.id">{{ p.title }}</option>
+            }
+          </select>
         </div>
         <div class="form-group">
-          <label class="form-label" for="contractId">Contract ID (optional)</label>
-          <input
+          <label class="form-label" for="contractId">Contract (optional)</label>
+          <select
             id="contractId"
-            type="number"
             class="form-input"
-            placeholder="Link to a contract"
             [(ngModel)]="form.contractId"
-            name="contractId" />
+            name="contractId">
+            <option [ngValue]="null">— None —</option>
+            @for (c of contracts(); track c.id) {
+              <option [ngValue]="c.id">{{ c.title }}</option>
+            }
+          </select>
         </div>
       </div>
 

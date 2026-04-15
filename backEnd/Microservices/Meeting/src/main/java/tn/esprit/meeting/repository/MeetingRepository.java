@@ -38,4 +38,8 @@ public interface MeetingRepository extends JpaRepository<Meeting, Long> {
     /** Check for scheduling conflicts for a user */
     @Query("SELECT m FROM Meeting m WHERE (m.clientId = :userId OR m.freelancerId = :userId) AND m.status IN ('PENDING','ACCEPTED') AND m.startTime < :endTime AND m.endTime > :startTime")
     List<Meeting> findConflicts(@Param("userId") Long userId, @Param("startTime") LocalDateTime startTime, @Param("endTime") LocalDateTime endTime);
+
+    /** Count meetings per status for a user — returns [MeetingStatus, Long] pairs */
+    @Query("SELECT m.status, COUNT(m) FROM Meeting m WHERE (m.clientId = :userId OR m.freelancerId = :userId) GROUP BY m.status")
+    List<Object[]> countByStatusForUser(@Param("userId") Long userId);
 }

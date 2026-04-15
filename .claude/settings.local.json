@@ -21,7 +21,10 @@
       "Bash(docker-compose up:*)",
       "Bash(docker rm:*)",
       "Bash(docker restart:*)",
-      "Bash(git check-ignore:*)"
+      "Bash(git check-ignore:*)",
+      "Bash(jar -tf ~/.m2/repository/org/springframework/boot/spring-boot-test-autoconfigure/4.0.2/spring-boot-test-autoconfigure-4.0.2.jar)",
+      "Bash(grep -v \"/$\")",
+      "Bash(grep \"\\\\.class$\")"
     ]
   }
 }
