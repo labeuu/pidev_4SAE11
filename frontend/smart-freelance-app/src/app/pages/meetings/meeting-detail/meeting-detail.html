@@ -141,6 +141,176 @@
         }
       </div>
     </div>
+
+    <!-- ── Transcript & AI Summary ─────────────────────────────────────── -->
+    <div class="transcript-section">
+      <h2 class="section-title">🎙 Transcript & AI Summary</h2>
+      <p class="section-subtitle">Record your speech during the meeting. After saving, generate an AI summary.</p>
+
+      <!-- Live recording area -->
+      <div class="transcript-record-area">
+        <div class="transcript-controls">
+          @if (speechSupported) {
+            @if (isListening() && listeningFor() === 'transcript') {
+              <button class="btn-mic btn-mic-active" (click)="stopListening()">
+                ⏹ Stop Recording
+              </button>
+            } @else {
+              <button class="btn-mic" [disabled]="isListening()" (click)="startTranscriptListening()">
+                🎙 Start Recording
+              </button>
+            }
+          } @else {
+            <span class="speech-unsupported">Voice input not supported in this browser</span>
+          }
+          @if (isListening() && listeningFor() === 'transcript') {
+            <div class="listening-badge">
+              <span class="pulse-dot"></span> Recording...
+            </div>
+          }
+        </div>
+        <textarea
+          class="transcript-textarea"
+          [(ngModel)]="liveTranscript"
+          placeholder="Your speech will appear here as you speak, or type manually..."
+          rows="5"
+          [class.recording]="isListening() && listeningFor() === 'transcript'">
+        </textarea>
+        <div class="transcript-save-row">
+          @if (transcriptSaved()) {
+            <span class="save-success">✅ Transcript saved!</span>
+          }
+          <button
+            class="btn-save-transcript"
+            [disabled]="!liveTranscript.trim() || savingTranscript()"
+            (click)="saveTranscript()">
+            {{ savingTranscript() ? 'Saving...' : 'Save Transcript' }}
+          </button>
+        </div>
+      </div>
+
+      <!-- Saved transcripts -->
+      @if (transcripts().length > 0) {
+        <div class="saved-transcripts">
+          <h3 class="saved-transcripts-title">Saved Transcripts</h3>
+          @for (t of transcripts(); track t.id) {
+            <div class="transcript-entry">
+              <div class="transcript-meta">
+                <span class="transcript-author">{{ t.userName }}</span>
+                <span class="transcript-time">{{ formatCommentTime(t.savedAt) }}</span>
+              </div>
+              <p class="transcript-text">{{ t.content }}</p>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- AI Summary -->
+      <div class="summary-section">
+        <div class="summary-header">
+          <h3 class="summary-title">🤖 AI Meeting Summary</h3>
+          <button
+            class="btn-summarize"
+            [disabled]="generatingSummary() || transcripts().length === 0"
+            (click)="generateSummary()">
+            @if (generatingSummary()) {
+              <span class="spinner"></span> Generating...
+            } @else {
+              {{ summary() ? 'Regenerate Summary' : 'Generate Summary' }}
+            }
+          </button>
+        </div>
+
+        @if (summaryError()) {
+          <div class="summary-error">{{ summaryError() }}</div>
+        }
+
+        @if (transcripts().length === 0 && !summary()) {
+          <div class="summary-empty">Save at least one transcript to enable AI summarization.</div>
+        }
+
+        @if (summary(); as s) {
+          <div class="summary-card">
+            <div class="summary-generated-at">Generated {{ formatCommentTime(s.generatedAt) }}</div>
+            <div class="summary-text">{{ s.summaryText }}</div>
+          </div>
+        }
+      </div>
+    </div>
+
+    <!-- ── Comments section ─────────────────────────────────────────────── -->
+    <div class="comments-section">
+      <h2 class="comments-title">💬 Discussion</h2>
+      <p class="comments-subtitle">Discuss the meeting time or any changes with the other party.</p>
+
+      <!-- Comment list -->
+      @if (comments().length === 0) {
+        <div class="comments-empty">No comments yet. Be the first to leave a note.</div>
+      } @else {
+        <div class="comments-list">
+          @for (comment of comments(); track comment.id) {
+            <div class="comment-item" [class.comment-own]="isOwnComment(comment)">
+              <div class="comment-avatar">{{ (comment.userName || 'U')[0].toUpperCase() }}</div>
+              <div class="comment-body">
+                <div class="comment-meta">
+                  <span class="comment-author">{{ comment.userName || 'User ' + comment.userId }}</span>
+                  <span class="comment-time">{{ formatCommentTime(comment.createdAt) }}</span>
+                </div>
+
+                @if (editingCommentId() === comment.id) {
+                  <textarea class="comment-edit-input" [(ngModel)]="editingContent" rows="2"></textarea>
+                  <div class="comment-edit-actions">
+                    <button class="btn-save-edit" (click)="saveEdit(comment.id)">Save</button>
+                    <button class="btn-cancel-edit" (click)="cancelEdit()">Cancel</button>
+                  </div>
+                } @else {
+                  <p class="comment-content">{{ comment.content }}</p>
+                  @if (isOwnComment(comment)) {
+                    <div class="comment-actions">
+                      <button class="btn-comment-action" (click)="startEdit(comment)">Edit</button>
+                      <button class="btn-comment-action btn-comment-delete" (click)="deleteComment(comment.id)">Delete</button>
+                    </div>
+                  }
+                }
+              </div>
+            </div>
+          }
+        </div>
+      }
+
+      <!-- New comment input -->
+      <div class="comment-input-area">
+        <textarea
+          class="comment-textarea"
+          [(ngModel)]="newComment"
+          placeholder="Write a comment... or use voice input"
+          rows="3"
+          [class.listening]="isListening()">
+        </textarea>
+        <div class="comment-input-actions">
+          @if (speechSupported) {
+            <button
+              class="btn-mic"
+              [class.btn-mic-active]="isListening()"
+              (click)="toggleListening()"
+              [title]="isListening() ? 'Stop recording' : 'Start voice input'">
+              {{ isListening() ? '⏹ Stop' : '🎙 Speak' }}
+            </button>
+          }
+          <button
+            class="btn-post-comment"
+            [disabled]="!newComment.trim() || submittingComment()"
+            (click)="submitComment()">
+            {{ submittingComment() ? 'Posting...' : 'Post Comment' }}
+          </button>
+        </div>
+        @if (isListening()) {
+          <div class="listening-indicator">
+            <span class="pulse-dot"></span> Listening... speak now
+          </div>
+        }
+      </div>
+    </div>
   }
 
   <!-- Decline dialog -->

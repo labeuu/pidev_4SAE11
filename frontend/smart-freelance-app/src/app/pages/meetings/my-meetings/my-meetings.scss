@@ -44,6 +44,106 @@
   &:hover { opacity: 0.9; transform: translateY(-1px); }
 }
 
+// Stats section
+.stats-section {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.25rem;
+  margin-bottom: 1.75rem;
+  align-items: start;
+
+  @media (max-width: 640px) {
+    grid-template-columns: 1fr;
+  }
+}
+
+// Doughnut chart card
+.chart-card {
+  background: var(--bg-card, #fff);
+  border: 1.5px solid var(--border-light, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
+  box-shadow: var(--shadow-sm, 0 1px 4px rgba(0,0,0,.06));
+  padding: 1.25rem;
+}
+
+.chart-title {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-primary, #111);
+  margin: 0 0 1rem;
+}
+
+.chart-wrapper {
+  position: relative;
+  height: 220px;
+}
+
+.chart-center-label {
+  position: absolute;
+  top: 50%;
+  left: 35%;
+  transform: translate(-50%, -50%);
+  text-align: center;
+  pointer-events: none;
+}
+
+.chart-total-num {
+  display: block;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #374151;
+  line-height: 1;
+}
+
+.chart-total-text {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted, #9ca3af);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+// Stat cards grid
+.stats-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.65rem;
+}
+
+.stat-card {
+  background: var(--bg-card, #fff);
+  border: 1.5px solid var(--border-light, #e5e7eb);
+  border-radius: var(--radius-lg, 12px);
+  padding: 0.9rem 0.75rem;
+  text-align: center;
+  cursor: pointer;
+  transition: transform 0.15s, box-shadow 0.15s;
+
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md, 0 4px 16px rgba(0,0,0,.1));
+  }
+}
+
+.stat-value {
+  font-size: 1.65rem;
+  font-weight: 800;
+  line-height: 1;
+  margin-bottom: 0.3rem;
+}
+
+.stat-label {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--text-muted, #6b7280);
+}
+
+.stat-pending  { .stat-value { color: #92400e; } border-color: #fde68a; background: #fffbeb; }
+.stat-accepted { .stat-value { color: #065f46; } border-color: #6ee7b7; background: #ecfdf5; }
+.stat-completed{ .stat-value { color: #1e40af; } border-color: #93c5fd; background: #eff6ff; }
+.stat-cancelled{ .stat-value { color: #374151; } border-color: #d1d5db; background: #f9fafb; }
+.stat-declined { .stat-value { color: #991b1b; } border-color: #fca5a5; background: #fef2f2; }
+
 // Tabs
 .tab-bar {
   display: flex;

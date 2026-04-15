@@ -46,3 +46,51 @@ export interface StatusUpdateRequest {
   status: MeetingStatus;
   reason?: string;
 }
+
+export interface MeetingStats {
+  total: number;
+  pending: number;
+  accepted: number;
+  declined: number;
+  cancelled: number;
+  completed: number;
+}
+
+export interface MeetingTranscript {
+  id: number;
+  meetingId: number;
+  userId: number;
+  userName: string;
+  content: string;
+  savedAt: string;
+}
+
+export interface MeetingSummary {
+  id: number;
+  meetingId: number;
+  summaryText: string;
+  generatedAt: string;
+}
+
+export interface ProjectDto {
+  id: number;
+  title: string;
+  clientId: number;
+}
+
+export interface ContractDto {
+  id: number;
+  title: string;
+  clientId: number;
+  freelancerId: number;
+}
+
+export interface MeetingComment {
+  id: number;
+  meetingId: number;
+  userId: number;
+  userName: string;
+  content: string;
+  createdAt: string;
+  updatedAt?: string;
+}

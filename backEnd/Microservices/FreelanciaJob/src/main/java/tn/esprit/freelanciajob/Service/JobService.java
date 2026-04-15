@@ -150,7 +150,11 @@ public class JobService implements IJobService {
     @Override
     public List<JobResponse> searchJobs(String keyword, String category, BigDecimal budgetMin,
                                          BigDecimal budgetMax, String locationType, Long skillId) {
-        List<Job> results = jobRepository.searchJobs(keyword, category, locationType, budgetMin, budgetMax);
+        tn.esprit.freelanciajob.Entity.Enums.LocationType locEnum = null;
+        if (locationType != null && !locationType.trim().isEmpty()) {
+            locEnum = tn.esprit.freelanciajob.Entity.Enums.LocationType.valueOf(locationType.toUpperCase());
+        }
+        List<Job> results = jobRepository.searchJobs(keyword, category, locEnum, budgetMin, budgetMax);
 
         if (skillId != null) {
             results = results.stream()

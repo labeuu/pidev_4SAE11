@@ -4,7 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MeetingService } from '../../../core/services/meeting.service';
 import { UserService, User } from '../../../core/services/user.service';
-import { MeetingType } from '../../../core/models/meeting.models';
+import { MeetingType, ProjectDto, ContractDto } from '../../../core/models/meeting.models';
 
 @Component({
   selector: 'app-schedule-meeting',
@@ -15,6 +15,8 @@ import { MeetingType } from '../../../core/models/meeting.models';
 })
 export class ScheduleMeeting implements OnInit {
   freelancers = signal<User[]>([]);
+  projects = signal<ProjectDto[]>([]);
+  contracts = signal<ContractDto[]>([]);
   loading = signal(false);
   submitting = signal(false);
   error = signal<string | null>(null);
@@ -42,6 +44,11 @@ export class ScheduleMeeting implements OnInit {
     contractId: null as number | null,
   };
 
+  get linkedContractTitle(): string {
+    const c = this.contracts().find(c => c.id === this.form.contractId);
+    return c ? c.title : `Contract #${this.form.contractId}`;
+  }
+
   meetingTypes: { value: MeetingType; label: string; icon: string }[] = [
     { value: 'VIDEO_CALL', label: 'Video Call', icon: '📹' },
     { value: 'VOICE_CALL', label: 'Voice Call', icon: '📞' },
@@ -68,6 +75,8 @@ export class ScheduleMeeting implements OnInit {
       this.freelancers.set(users.filter(u => u.role === 'FREELANCER' && u.isActive));
       this.loading.set(false);
     });
+    this.meetingService.getMyProjects().subscribe(p => this.projects.set(p));
+    this.meetingService.getMyContracts().subscribe(c => this.contracts.set(c));
   }
 
   minStart(): string {
