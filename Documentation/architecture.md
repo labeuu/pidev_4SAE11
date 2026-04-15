@@ -30,6 +30,10 @@ flowchart LR
     Gam[Gamification]
     Vendor[Vendor]
     Ticket[Ticket]
+    Subcontracting[Subcontracting]
+    FreelanciaJob[FreelanciaJob]
+    Chat[Chat]
+    Meeting[Meeting]
     AI[AImodel Node]
   end
   Angular --> GW
@@ -58,7 +62,7 @@ flowchart LR
 
 1. **MySQL** — services use port `3307` (see [services-and-ports.md](services-and-ports.md)).
 2. **Eureka** — `backEnd/Eureka` (port **8420**).
-3. **Config Server** (optional for some services, **required** for OFFER/VENDOR bootstrap) — `backEnd/ConfigServer` (**8888**).
+3. **Config Server** (optional for some services, **required** for OFFER, VENDOR, **task**, and **planning** bootstrap) — `backEnd/ConfigServer` (**8888**).
 4. **API Gateway** — `backEnd/apiGateway` (**8078**).
 5. **Keycloak** (realm `smart-freelance`) — standalone; see [backEnd/KeyCloak/README.md](../backEnd/KeyCloak/README.md).
 6. **Keycloak auth microservice** — `backEnd/KeyCloak` Spring Boot app (**8079**).

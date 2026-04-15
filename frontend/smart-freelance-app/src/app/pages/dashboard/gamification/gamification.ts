@@ -6,12 +6,12 @@ import { catchError } from 'rxjs/operators';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
 import {
-  GamificationAchievement,
+  AchievementProgress,
   GamificationService,
-  GamificationUserAchievement,
-  GamificationUserLevel,
-  isTopFreelancerFlag,
-  xpProgressInCurrentTier,
+  UserLevelSummary,
+  LeaderboardEntry,
+  GamificationRecommendation, // 🆕
+  isTopFreelancerFlag
 } from '../../../core/services/gamification.service';
 import { Card } from '../../../shared/components/card/card';
 
@@ -31,16 +31,16 @@ export class GamificationPage implements OnInit {
   errorMessage: string | null = null;
   userId: number | null = null;
 
-  level: GamificationUserLevel | null = null;
-  catalog: GamificationAchievement[] = [];
-  unlocked: GamificationUserAchievement[] = [];
-  private unlockedIds = new Set<number>();
+  summary: UserLevelSummary | null = null;
+  progressList: AchievementProgress[] = [];
+  leaderboard: LeaderboardEntry[] = [];
+  recommendations: GamificationRecommendation[] = []; // 🆕
 
   ngOnInit(): void {
     const directId = this.auth.getUserId();
     if (directId != null) {
-      this.userId = directId;
-      this.loadAll(directId);
+      this.userId = Number(directId);
+      this.loadAll(this.userId);
       return;
     }
     const email = this.auth.getPreferredUsername();
@@ -70,17 +70,40 @@ export class GamificationPage implements OnInit {
     this.loading = true;
     this.errorMessage = null;
     forkJoin({
-      level: this.gamification.getUserLevel(uid).pipe(catchError(() => of(null))),
-      catalog: this.gamification.getAchievements().pipe(catchError(() => of([]))),
-      unlocked: this.gamification.getUserAchievements(uid).pipe(catchError(() => of([]))),
+      summary: this.gamification.getUserLevelSummary(uid).pipe(catchError(() => of(null))),
+      progress: this.gamification.getUserProgress(uid).pipe(catchError(() => of([]))),
+      leaderboard: this.gamification.getLeaderboard(10).pipe(catchError(() => of([]))),
+      recommendations: this.gamification.getRecommendations(uid).pipe(catchError(() => of([]))), // 🆕
     }).subscribe({
-      next: ({ level, catalog, unlocked }) => {
-        this.level = level;
-        this.catalog = [...(catalog ?? [])].sort((a, b) => (b.xpReward ?? 0) - (a.xpReward ?? 0));
-        this.unlocked = unlocked ?? [];
-        this.unlockedIds = new Set(
-          this.unlocked.map((u) => u.achievement?.id).filter((id): id is number => id != null)
-        );
+      next: ({ summary, progress, leaderboard, recommendations }) => {
+        this.summary = summary;
+        this.leaderboard = leaderboard;
+        this.recommendations = recommendations; // 🆕
+        const userRole = (this.auth.getUserRole() || '').toUpperCase();
+        console.log('🛡️ GAMIFICATION DEBUG: Detected User Role =', userRole);
+        
+        // Filter by role (Robust & Case-Insensitive)
+        const filtered = (progress ?? []).filter(p => {
+          const target = (p.targetRole || 'ALL').toUpperCase();
+          console.log(`🔍 Item [${p.title}] Target [${target}]`);
+          
+          if (userRole === 'CLIENT') {
+            return target === 'CLIENT' || target === 'ALL';
+          }
+          if (userRole === 'FREELANCER') {
+            return target === 'FREELANCER' || target === 'ALL';
+          }
+          // Admin or Unknown?
+          return target === 'ALL' || userRole === 'ADMIN'; 
+        });
+
+        console.log('✅ Final Count Visible =', filtered.length);
+
+        // Sort: unlocked first, then highest percent
+        this.progressList = filtered.sort((a, b) => {
+          if (a.unlocked !== b.unlocked) return a.unlocked ? -1 : 1;
+          return b.progressPercent - a.progressPercent;
+        });
         this.loading = false;
       },
       error: () => {
@@ -90,45 +113,59 @@ export class GamificationPage implements OnInit {
     });
   }
 
-  isUnlocked(achievementId: number): boolean {
-    return this.unlockedIds.has(achievementId);
-  }
-
-  unlockedEntry(achievementId: number): GamificationUserAchievement | undefined {
-    return this.unlocked.find((u) => u.achievement?.id === achievementId);
-  }
-
   xpInTier(): number {
-    return xpProgressInCurrentTier(this.level?.xp ?? 0);
+    return this.summary?.xpInCurrentTier ?? 0;
+  }
+
+  totalXpNeeded(): number {
+    return this.summary?.xpToNextLevel ?? 100;
+  }
+
+  progressPercent(): number {
+    return this.summary?.progressPercent ?? 0;
   }
 
   displayLevel(): number {
-    const l = this.level?.level;
-    if (l != null && l > 0) return l;
-    const xp = this.level?.xp ?? 0;
-    return Math.floor(xp / 100) + 1;
+    return this.summary?.level ?? 1;
   }
 
   totalXp(): number {
-    return this.level?.xp ?? 0;
+    return this.summary?.xp ?? 0;
   }
 
   streak(): number {
-    return this.level?.fastResponderStreak ?? 0;
+    return this.summary?.fastResponderStreak ?? 0;
   }
 
   topFreelancer(): boolean {
-    return isTopFreelancerFlag(this.level);
+    return isTopFreelancerFlag(this.summary);
+  }
+
+  // 🆕 Détermine si un badge doit être affiché selon le rôle de l'utilisateur
+  shouldShowAchievement(targetRole: string): boolean {
+    const userRole = (this.auth.getUserRole() || '').toUpperCase();
+    const target = (targetRole || 'ALL').toUpperCase();
+
+    if (userRole === 'CLIENT') {
+      return target === 'CLIENT' || target === 'ALL';
+    }
+    if (userRole === 'FREELANCER') {
+      return target === 'FREELANCER' || target === 'ALL';
+    }
+    return target === 'ALL' || userRole === 'ADMIN'; 
   }
 
   conditionLabel(t: string): string {
     const map: Record<string, string> = {
-      PROJECT_COMPLETED: 'Project completed',
-      PROJECT_CREATED: 'Project created',
-      FIRST_PROJECT: 'First project',
-      FAST_RESPONDER: 'Fast responder',
-      TOP_FREELANCER: 'Top freelancer',
+      PROJECT_COMPLETED: 'Projects completed',
+      PROJECT_CREATED: 'Projects posted',
+      FIRST_PROJECT: 'Initial project',
+      FAST_RESPONDER: 'Speed streak',
+      TOP_FREELANCER: 'Global elite',
+      REVIEW_GIVEN: 'Community reviews',
+      STREAK_DAYS: 'Consecutive activity',
+      XP_REACHED: 'Growth milestone'
     };
-    return map[t] ?? t;
+    return map[t] ?? t.replace('_', ' ').toLowerCase();
   }
 }

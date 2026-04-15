@@ -1,0 +1,286 @@
+// ─── Keyframes ──────────────────────────────────────────────────────────────
+
+@keyframes shimmer {
+  from { background-position: -200% 0; }
+  to   { background-position:  200% 0; }
+}
+
+// ─── Container ────────────────────────────────────────────────────────────────
+
+.conv-list {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  overflow: hidden;
+}
+
+// ─── Header ───────────────────────────────────────────────────────────────────
+
+.conv-list__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 20px 20px 12px;
+  flex-shrink: 0;
+}
+
+.conv-list__title {
+  font-family: var(--font-heading);
+  font-size: 1.375rem;
+  font-weight: 800;
+  color: var(--text-primary);
+  margin: 0;
+  letter-spacing: -0.02em;
+}
+
+.conv-list__badge {
+  min-width: 22px;
+  height: 22px;
+  padding: 0 6px;
+  border-radius: var(--radius-full);
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+// ─── Search ───────────────────────────────────────────────────────────────────
+
+.conv-search {
+  position: relative;
+  padding: 0 16px 12px;
+  flex-shrink: 0;
+
+  &__icon {
+    position: absolute;
+    left: 28px;
+    top: 50%;
+    transform: translateY(-60%);
+    width: 15px;
+    height: 15px;
+    color: var(--text-muted);
+    pointer-events: none;
+  }
+
+  &__input {
+    width: 100%;
+    padding: 9px 14px 9px 38px;
+    border-radius: var(--radius-full);
+    border: none;
+    background: var(--bg-base);
+    font-size: 0.875rem;
+    font-family: var(--font-body);
+    color: var(--text-primary);
+    outline: none;
+    transition: background 0.15s, box-shadow 0.15s;
+
+    &::placeholder { color: var(--text-muted); }
+
+    &:focus {
+      background: #eee;
+      box-shadow: 0 0 0 2px rgba(227, 126, 51, 0.2);
+    }
+  }
+}
+
+// ─── Scroll area ──────────────────────────────────────────────────────────────
+
+.conv-items {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-default) transparent;
+
+  &::-webkit-scrollbar { width: 3px; }
+  &::-webkit-scrollbar-thumb { background: var(--border-default); border-radius: 2px; }
+}
+
+// ─── Skeleton ─────────────────────────────────────────────────────────────────
+
+.conv-skeletons { padding: 8px 16px; }
+
+.conv-skel {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 10px 0;
+
+  &__avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    flex-shrink: 0;
+    background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+    background-size: 200%;
+    animation: shimmer 1.4s infinite;
+  }
+
+  &__lines { flex: 1; display: flex; flex-direction: column; gap: 7px; }
+
+  &__line {
+    height: 11px;
+    border-radius: 6px;
+    background: linear-gradient(90deg, #eee 25%, #f5f5f5 50%, #eee 75%);
+    background-size: 200%;
+    animation: shimmer 1.4s infinite;
+
+    &--name    { width: 55%; }
+    &--preview { width: 78%; opacity: 0.65; }
+  }
+}
+
+// ─── Empty ────────────────────────────────────────────────────────────────────
+
+.conv-empty {
+  padding: 48px 20px 24px;
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.875rem;
+
+  &__icon { font-size: 2.5rem; margin-bottom: 10px; }
+
+  p { margin: 0; line-height: 1.5; }
+}
+
+// ─── Conversation item ────────────────────────────────────────────────────────
+
+.conv-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: transparent;
+  cursor: pointer;
+  text-align: left;
+  transition: background 0.14s ease;
+  position: relative;
+
+  &:hover { background: var(--bg-base); }
+
+  &:focus-visible {
+    outline: 2px solid var(--primary);
+    outline-offset: 2px;
+  }
+
+  &--active {
+    background: rgba(227, 126, 51, 0.08);
+
+    .conv-name { color: var(--primary); }
+  }
+
+  &--unread .conv-name    { font-weight: 700; }
+  &--unread .conv-preview { font-weight: 600; color: var(--text-primary); }
+}
+
+// ─── Avatar ───────────────────────────────────────────────────────────────────
+
+.conv-avatar {
+  position: relative;
+  width: 48px;
+  height: 48px;
+  flex-shrink: 0;
+
+  &__img {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    object-fit: cover;
+  }
+
+  &__initials {
+    width: 48px;
+    height: 48px;
+    border-radius: var(--radius-full);
+    background: var(--accent-gradient);
+    color: #fff;
+    font-weight: 700;
+    font-size: 1rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    user-select: none;
+  }
+
+  &__dot {
+    position: absolute;
+    bottom: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: var(--radius-full);
+    border: 2.5px solid var(--bg-card);
+    background: var(--border-default);
+    transition: background 0.2s;
+
+    &--online { background: #4ade80; }
+  }
+}
+
+// ─── Body / Text ──────────────────────────────────────────────────────────────
+
+.conv-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.conv-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+
+  &--bottom { align-items: center; }
+}
+
+.conv-name {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+  transition: color 0.15s;
+}
+
+.conv-time {
+  font-size: 0.6875rem;
+  color: var(--text-muted);
+  flex-shrink: 0;
+}
+
+.conv-preview {
+  font-size: 0.8125rem;
+  color: var(--text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+  min-width: 0;
+}
+
+.conv-badge {
+  flex-shrink: 0;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  border-radius: var(--radius-full);
+  background: var(--accent-gradient);
+  color: #fff;
+  font-size: 0.625rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}

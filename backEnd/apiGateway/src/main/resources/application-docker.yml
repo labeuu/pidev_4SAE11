@@ -1,0 +1,117 @@
+# Docker profile — overrides localhost URLs in application.yml with Docker service names.
+# Activated via SPRING_PROFILES_ACTIVE=docker in docker-compose / K8s.
+
+eureka:
+  client:
+    service-url:
+      defaultZone: http://eureka:8420/eureka
+
+spring:
+  codec:
+    max-in-memory-size: 10MB
+  cloud:
+    gateway:
+      httpclient:
+        response-timeout: 4h
+        connect-timeout: 30000
+      globalcors:
+        add-to-simple-url-handler-mapping: true
+        cors-configurations:
+          '[/**]':
+            # In production replace * with your real frontend origin
+            allowedOrigins: "*"
+            allowedMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"]
+            allowedHeaders: ["Authorization", "Content-Type", "Accept", "Origin",
+                             "X-Requested-With", "X-User-Id"]
+            exposedHeaders: ["Content-Disposition", "Content-Type"]
+            allowCredentials: false   # must be false when allowedOrigins is *
+      routes:
+        - id: keycloak-auth
+          uri: http://keycloak-auth:8079
+          predicates: [Path=/keycloak-auth/**]
+          filters: [StripPrefix=1]
+
+        - id: user
+          uri: http://user:8090
+          predicates: [Path=/user/**]
+          filters: [StripPrefix=1]
+
+        - id: portfolio
+          uri: lb://PORTFOLIO
+          predicates: [Path=/portfolio/**]
+          filters: [StripPrefix=1]
+
+        - id: planning
+          uri: http://planning:8081
+          predicates: [Path=/planning/**]
+          filters: [StripPrefix=1]
+          metadata: {response-timeout: 30000, connect-timeout: 5000}
+
+        - id: review
+          uri: http://review:8085
+          predicates: [Path=/review/**]
+          filters: [StripPrefix=1]
+
+        - id: project
+          uri: http://project:8084
+          predicates: [Path=/project/**]
+          filters: [StripPrefix=1]
+
+        - id: gamification
+          uri: http://gamification:8088
+          predicates: [Path=/gamification/**]
+          filters: [StripPrefix=1]
+
+        - id: offer
+          uri: lb://OFFER
+          predicates: [Path=/offer/**]
+          filters: [StripPrefix=1]
+
+        - id: contract
+          uri: http://contract:8083
+          predicates: [Path=/contract/**]
+          filters: [StripPrefix=1]
+
+        - id: notification
+          uri: http://notification:8087
+          predicates: [Path=/notification/**]
+          filters: [StripPrefix=1]
+
+        - id: task-ai
+          uri: http://task:8091
+          order: -1
+          predicates: [Path=/task/api/tasks/ai/**]
+          filters: [StripPrefix=1]
+          metadata: {response-timeout: 14400000, connect-timeout: 30000}
+
+        - id: task
+          uri: http://task:8091
+          predicates: [Path=/task/**]
+          filters: [StripPrefix=1]
+
+        - id: meeting
+          uri: http://meeting:8101
+          predicates: [Path=/meeting/**]
+          filters: [StripPrefix=1]
+
+        - id: freelancia-job
+          uri: http://freelancia-job:8097
+          predicates: [Path=/freelancia-job/**]
+          filters: [StripPrefix=1]
+
+        - id: chat
+          uri: http://chat:8093
+          predicates: [Path=/chat/**]
+          filters: [StripPrefix=1]
+
+        - id: vendor
+          uri: http://vendor:8092
+          predicates: [Path=/vendor/**]
+          filters: [StripPrefix=1]
+          metadata: {response-timeout: 14400000, connect-timeout: 30000}
+
+        - id: aimodel
+          uri: lb://AIMODEL
+          predicates: [Path=/aimodel/**]
+          filters: [StripPrefix=1]
+          metadata: {response-timeout: 14400000, connect-timeout: 30000}

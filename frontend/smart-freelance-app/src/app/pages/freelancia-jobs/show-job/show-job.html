@@ -1,0 +1,260 @@
+<div class="show-job-page">
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading job...</p>
+  </div>
+
+  <!-- Error -->
+  <div *ngIf="errorMessage && !isLoading" class="error-state">{{ errorMessage }}</div>
+
+  <ng-container *ngIf="!isLoading && job">
+
+    <!-- Back -->
+    <button class="btn-back" (click)="back()">
+      <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+        <path d="M12 4L6 10l6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+      Back
+    </button>
+
+    <!-- Main job card -->
+    <div class="job-detail-card">
+
+      <!-- Header row -->
+      <div class="job-detail-card__header">
+        <div class="job-detail-card__title-group">
+          <span *ngIf="job.clientType === 'COMPANY'" class="badge badge--company">
+            🏢 {{ job.companyName || 'Company' }}
+          </span>
+          <span *ngIf="job.clientType !== 'COMPANY'" class="badge badge--individual">
+            👤 Individual
+          </span>
+          <h1 class="job-detail-card__title">{{ displayTitle }}</h1>
+        </div>
+        <span class="badge" [ngClass]="{
+          'badge--open':        job.status === 'OPEN',
+          'badge--in-progress': job.status === 'IN_PROGRESS',
+          'badge--filled':      job.status === 'FILLED',
+          'badge--cancelled':   job.status === 'CANCELLED'
+        }">{{ job.status }}</span>
+      </div>
+
+      <!-- Meta tags -->
+      <div class="job-detail-card__meta">
+        <span class="meta-tag">📂 {{ job.category }}</span>
+        <span class="meta-tag">📍 {{ job.locationType }}</span>
+        <span *ngIf="job.budgetMin || job.budgetMax" class="meta-tag meta-tag--budget">
+          💰 {{ job.budgetMin | number }} – {{ job.budgetMax | number }} {{ job.currency || 'USD' }}
+        </span>
+        <span *ngIf="job.deadline" class="meta-tag">
+          📅 Deadline {{ job.deadline | date:'mediumDate' }}
+        </span>
+        <span *ngIf="job.createdAt" class="meta-tag">
+          🕐 Posted {{ job.createdAt | date:'mediumDate' }}
+        </span>
+      </div>
+
+      <!-- Translation bar -->
+      <div class="translate-bar">
+        <div class="translate-bar__left">
+          <!-- Language picker -->
+          <div class="lang-picker">
+            <button class="lang-picker__btn" (click)="showLangPicker = !showLangPicker" [disabled]="isTranslating">
+              {{ currentLangFlag }} {{ currentLangName }}
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+                <polyline points="6 9 12 15 18 9"/>
+              </svg>
+            </button>
+            <div class="lang-picker__dropdown" *ngIf="showLangPicker">
+              <button
+                *ngFor="let lang of languages"
+                class="lang-picker__option"
+                [class.lang-picker__option--active]="lang.code === selectedLang"
+                (click)="selectLang(lang.code)">
+                <span>{{ lang.flag }}</span>
+                <span>{{ lang.name }}</span>
+              </button>
+            </div>
+          </div>
+
+          <!-- Translate / Show original -->
+          <button class="translate-btn" (click)="translate()" *ngIf="!isTranslated && !isTranslating" [disabled]="isTranslating">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <path d="M3 5h12M9 3v2M7 19l3-6 3 6M6.25 17h5.5M21 19l-5-10-5 10"/>
+            </svg>
+            Translate
+          </button>
+
+          <span class="translate-spinner" *ngIf="isTranslating">
+            <span class="translate-spinner__dot"></span>
+            Translating…
+          </span>
+
+          <button class="original-btn" (click)="showOriginal()" *ngIf="isTranslated">
+            Show original
+          </button>
+        </div>
+
+        <span class="translate-badge" *ngIf="isTranslated">
+          🌍 Translated to {{ currentLangName }}
+        </span>
+      </div>
+
+      <!-- Description -->
+      <section class="job-detail-section">
+        <h2 class="job-detail-section__title">Description</h2>
+        <p class="job-detail-section__body">{{ displayDescription }}</p>
+      </section>
+
+      <!-- Skills -->
+      <section *ngIf="job.skills && job.skills.length > 0" class="job-detail-section">
+        <h2 class="job-detail-section__title">Required Skills</h2>
+        <div class="skills-row">
+          <span *ngFor="let skill of job.skills" class="skill-tag">{{ skill.name }}</span>
+        </div>
+      </section>
+
+      <!-- Freelancer: apply -->
+      <div *ngIf="isFreelancer" class="job-detail-card__action-zone">
+        <div *ngIf="hasApplied" class="applied-notice">
+          <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+            <path d="M4 10l4 4 8-8" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+          </svg>
+          You have already applied to this job.
+        </div>
+        <div *ngIf="!hasApplied && job.status === 'OPEN'" class="action-row">
+          <button class="btn-primary" (click)="applyNow()">Apply Now</button>
+          <button class="btn-analyse" (click)="analyzeMyFit()" [disabled]="isScoringLoading">
+            <svg *ngIf="!isScoringLoading" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+              <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/>
+            </svg>
+            <span *ngIf="!isScoringLoading">Analyse My Fit</span>
+            <span *ngIf="isScoringLoading" class="score-spinner">Analysing…</span>
+          </button>
+        </div>
+        <div *ngIf="!hasApplied && job.status !== 'OPEN'" class="closed-notice">
+          🔒 This job is no longer accepting applications.
+        </div>
+
+        <!-- Scoring error -->
+        <p *ngIf="scoringError" class="scoring-error">{{ scoringError }}</p>
+
+        <!-- Inline fit score panel -->
+        <div *ngIf="fitScore" class="fit-score-panel">
+          <div class="fit-score-panel__header">
+            <span class="fit-score-panel__title">Your Profile Match</span>
+            <span class="fit-score-panel__tier"
+              [ngClass]="{
+                'fit-score-panel__tier--strong_match':  fitScore.tier === 'STRONG_MATCH',
+                'fit-score-panel__tier--good_match':    fitScore.tier === 'GOOD_MATCH',
+                'fit-score-panel__tier--partial_match': fitScore.tier === 'PARTIAL_MATCH',
+                'fit-score-panel__tier--low_match':     fitScore.tier === 'LOW_MATCH'
+              }">
+              {{ fitScore.tier.replace('_', ' ') }}
+            </span>
+          </div>
+
+          <div class="fit-score-panel__bar-wrap">
+            <div class="fit-score-panel__bar">
+              <div class="fit-score-panel__fill"
+                [style.width.%]="fitScore.score"
+                [ngClass]="{
+                  'fit-score-panel__fill--strong':  fitScore.tier === 'STRONG_MATCH',
+                  'fit-score-panel__fill--good':    fitScore.tier === 'GOOD_MATCH',
+                  'fit-score-panel__fill--partial': fitScore.tier === 'PARTIAL_MATCH',
+                  'fit-score-panel__fill--low':     fitScore.tier === 'LOW_MATCH'
+                }">
+              </div>
+            </div>
+            <span class="fit-score-panel__number">{{ fitScore.score }} / 100</span>
+          </div>
+
+          <p class="fit-score-panel__summary">{{ fitScore.summary }}</p>
+
+          <div *ngIf="fitScore.matchedSkills && fitScore.matchedSkills.length > 0" class="fit-score-panel__skills">
+            <span class="fit-score-panel__label">Matched</span>
+            <span *ngFor="let s of fitScore.matchedSkills" class="skill-tag skill-tag--matched">{{ s }}</span>
+          </div>
+
+          <div *ngIf="fitScore.missingSkills && fitScore.missingSkills.length > 0" class="fit-score-panel__skills">
+            <span class="fit-score-panel__label">Missing</span>
+            <span *ngFor="let s of fitScore.missingSkills" class="skill-tag skill-tag--missing">{{ s }}</span>
+          </div>
+
+          <ul *ngIf="fitScore.recommendations && fitScore.recommendations.length > 0" class="fit-score-panel__recs">
+            <li *ngFor="let r of fitScore.recommendations">{{ r }}</li>
+          </ul>
+        </div>
+      </div>
+
+      <!-- Client: edit -->
+      <div *ngIf="isClient && isOwner" class="job-detail-card__action-zone">
+        <div class="action-row">
+          <a class="btn-ghost" [routerLink]="['/dashboard/my-jobs', job.id, 'edit']">Edit Job</a>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- Applications panel (client + owner only) -->
+    <section *ngIf="isClient && isOwner" class="applications-section">
+
+      <div class="applications-section__header">
+        <h2 class="applications-section__title">Applications</h2>
+        <span class="count-badge">{{ applications.length }}</span>
+      </div>
+
+      <div *ngIf="statusUpdateError" class="error-state">{{ statusUpdateError }}</div>
+
+      <!-- Empty -->
+      <div *ngIf="applications.length === 0" class="empty-state">
+        <div class="empty-state__icon">📭</div>
+        <h5 class="empty-state__title">No applications yet</h5>
+        <p class="empty-state__subtitle">Check back once freelancers start applying.</p>
+      </div>
+
+      <!-- Application cards -->
+      <div class="applications-grid" *ngIf="applications.length > 0">
+        <div class="app-card" *ngFor="let app of applications">
+
+          <div class="app-card__top">
+            <span class="app-card__freelancer">Freelancer #{{ app.freelancerId }}</span>
+            <span class="badge" [ngClass]="{
+              'badge--pending':     app.status === 'PENDING',
+              'badge--shortlisted': app.status === 'SHORTLISTED',
+              'badge--accepted':    app.status === 'ACCEPTED',
+              'badge--rejected':    app.status === 'REJECTED',
+              'badge--withdrawn':   app.status === 'WITHDRAWN'
+            }">{{ app.status }}</span>
+          </div>
+
+          <div class="app-card__meta">
+            <span *ngIf="app.expectedRate" class="meta-tag meta-tag--budget">
+              💰 {{ app.expectedRate | number }} {{ job.currency || 'USD' }}
+            </span>
+            <span *ngIf="app.availabilityStart" class="meta-tag">
+              📅 From {{ app.availabilityStart | date:'mediumDate' }}
+            </span>
+          </div>
+
+          <p class="app-card__proposal">{{ app.proposalMessage }}</p>
+
+          <div class="app-card__footer"></div>
+
+          <div class="app-card__actions">
+            <button class="btn-info" (click)="updateApplicationStatus(app.id!, 'SHORTLISTED')">Shortlist</button>
+            <button class="btn-success" (click)="updateApplicationStatus(app.id!, 'ACCEPTED')">Accept</button>
+            <button class="btn-danger" (click)="updateApplicationStatus(app.id!, 'REJECTED')">Reject</button>
+            <button *ngIf="app.status === 'ACCEPTED'" class="btn-message" (click)="messageFreelancer(app.freelancerId)">
+              💬 Message
+            </button>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+  </ng-container>
+</div>

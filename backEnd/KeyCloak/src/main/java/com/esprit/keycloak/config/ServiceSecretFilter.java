@@ -12,8 +12,9 @@ import org.springframework.web.filter.OncePerRequestFilter;
 import java.io.IOException;
 
 /**
- * For /api/auth/admin/** requests, requires X-Service-Secret header to match
+ * For /api/auth/admin/users/by-email/** requests, requires X-Service-Secret header to match
  * keycloak.service-secret (used by User service for sync delete/update).
+ * Does NOT apply to POST /api/auth/admin/users which is protected by JWT ADMIN role instead.
  */
 @Component
 @Order(-100)
@@ -25,7 +26,7 @@ public class ServiceSecretFilter extends OncePerRequestFilter {
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,
                                     FilterChain filterChain) throws ServletException, IOException {
-        if (!request.getRequestURI().startsWith(request.getContextPath() + "/api/auth/admin/")) {
+        if (!request.getRequestURI().startsWith(request.getContextPath() + "/api/auth/admin/users/by-email/")) {
             filterChain.doFilter(request, response);
             return;
         }

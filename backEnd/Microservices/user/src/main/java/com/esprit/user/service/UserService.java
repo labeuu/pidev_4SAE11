@@ -3,6 +3,7 @@ package com.esprit.user.service;
 import com.esprit.user.client.KeycloakAuthClient;
 import com.esprit.user.dto.UserRequest;
 import com.esprit.user.dto.UserUpdateRequest;
+import com.esprit.user.entity.Role;
 import com.esprit.user.entity.User;
 import com.esprit.user.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -33,6 +34,11 @@ public class UserService {
     public User findById(Long id) {
         return userRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("User not found with id: " + id));
+    }
+
+    @Transactional(readOnly = true)
+    public List<User> findByRole(Role role) {
+        return userRepository.findByRole(role);
     }
 
     @Transactional(readOnly = true)

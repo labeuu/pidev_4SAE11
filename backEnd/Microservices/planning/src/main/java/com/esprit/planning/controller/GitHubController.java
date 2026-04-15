@@ -9,7 +9,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -22,12 +21,15 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/github")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Tag(name = "GitHub", description = "GitHub API integration: list branches, get latest commit, create issues")
 public class GitHubController {
 
     private final GitHubApiService githubApiService;
+
+    public GitHubController(GitHubApiService githubApiService) {
+        this.githubApiService = githubApiService;
+    }
 
     /** Returns the list of branches for the given repository. 503 if GitHub integration is disabled. */
     @GetMapping("/repos/{owner}/{repo}/branches")
@@ -102,6 +104,7 @@ public class GitHubController {
     @GetMapping("/enabled")
     @Operation(summary = "Check if GitHub integration is enabled")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Checks whether enabled.
     public ResponseEntity<Boolean> isEnabled() {
         return ResponseEntity.ok(githubApiService.isEnabled());
     }

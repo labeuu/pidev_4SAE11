@@ -1,0 +1,276 @@
+<div class="cw">
+
+  <!-- ── Header ── -->
+  <header class="cw-header">
+    <button
+      class="cw-header__back"
+      (click)="back.emit()"
+      aria-label="Back to conversations"
+    >
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+        <polyline points="15 18 9 12 15 6" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <!-- Avatar -->
+    <div class="cw-avatar">
+      <img
+        *ngIf="partnerAvatar"
+        [src]="partnerAvatar"
+        [alt]="partnerName"
+        class="cw-avatar__img"
+      />
+      <span *ngIf="!partnerAvatar" class="cw-avatar__initials">
+        {{ partnerName.charAt(0).toUpperCase() }}
+      </span>
+      <span
+        class="cw-avatar__dot"
+        [class.cw-avatar__dot--online]="isPartnerOnline"
+        [attr.aria-label]="isPartnerOnline ? 'Online' : 'Offline'"
+      ></span>
+    </div>
+
+    <!-- Name & status -->
+    <div class="cw-header__info">
+      <span class="cw-header__name">{{ partnerName }}</span>
+      <span
+        class="cw-header__status"
+        [class.cw-header__status--online]="isPartnerOnline"
+        [class.cw-header__status--typing]="isPartnerTyping"
+      >
+        <ng-container *ngIf="isPartnerTyping">Typing…</ng-container>
+        <ng-container *ngIf="!isPartnerTyping">
+          {{ isPartnerOnline ? 'Active now' : 'Offline' }}
+        </ng-container>
+      </span>
+    </div>
+
+    <!-- Header actions -->
+    <div class="cw-header__actions">
+
+      <!-- ── Translation controls ── -->
+      <div class="cw-translate" [class.cw-translate--active]="translateEnabled">
+
+        <!-- Language picker (only when translate is on) -->
+        <div class="cw-lang-picker" *ngIf="translateEnabled">
+          <button class="cw-lang-picker__btn" (click)="showLangPicker = !showLangPicker">
+            {{ currentLangFlag }} {{ currentLangName }}
+            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+          </button>
+          <div class="cw-lang-picker__dropdown" *ngIf="showLangPicker">
+            <button
+              *ngFor="let lang of languages"
+              class="cw-lang-picker__option"
+              [class.cw-lang-picker__option--active]="lang.code === selectedLang"
+              (click)="selectLang(lang.code)">
+              {{ lang.flag }} {{ lang.name }}
+            </button>
+          </div>
+        </div>
+
+        <!-- Globe toggle button -->
+        <button
+          class="cw-header__btn cw-translate__toggle"
+          [class.cw-translate__toggle--on]="translateEnabled"
+          (click)="toggleTranslate()"
+          [title]="translateEnabled ? 'Disable translation' : 'Translate messages'"
+          [attr.aria-pressed]="translateEnabled"
+          aria-label="Toggle translation">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 0 1 4 10 15.3 15.3 0 0 1-4 10 15.3 15.3 0 0 1-4-10 15.3 15.3 0 0 1 4-10z"/>
+          </svg>
+        </button>
+      </div>
+
+      <button class="cw-header__btn" aria-label="Start video call" title="Video call">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polygon points="23 7 16 12 23 17 23 7"/>
+          <rect x="1" y="5" width="15" height="14" rx="2" ry="2"/>
+        </svg>
+      </button>
+      <button class="cw-header__btn" aria-label="Start voice call" title="Voice call">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.38 2 2 0 0 1 3.6 1.18h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L7.91 8.8a16 16 0 0 0 6.29 6.29l.92-.92a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/>
+        </svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- ── Connection banner ── -->
+  <div class="cw-offline-banner" *ngIf="!isConnected">
+    <span class="cw-offline-banner__dot"></span>
+    Connecting to chat server…
+  </div>
+
+  <!-- ── Messages ── -->
+  <div class="cw-messages" #messagesContainer>
+
+    <!-- Load earlier -->
+    <div class="cw-loadmore" *ngIf="currentPage < totalPages - 1">
+      <button class="cw-loadmore__btn" (click)="loadMoreMessages()" [disabled]="isLoadingMore">
+        {{ isLoadingMore ? 'Loading…' : 'Load earlier messages' }}
+      </button>
+    </div>
+
+    <!-- Loading spinner -->
+    <div class="cw-spinner-wrap" *ngIf="isLoading">
+      <div class="cw-spinner"></div>
+    </div>
+
+    <!-- Bubbles -->
+    <ng-container *ngFor="let msg of messages; trackBy: trackById; let i = index">
+
+      <!-- Date divider -->
+      <div
+        class="cw-date-divider"
+        *ngIf="i === 0 || isDifferentDay(messages[i - 1].timestamp, msg.timestamp)"
+      >
+        <span>{{ msg.timestamp | date:'MMMM d, y' }}</span>
+      </div>
+
+      <div
+        class="cw-msg-group"
+        [class.cw-msg-group--mine]="isMine(msg)"
+        [class.cw-msg-group--theirs]="!isMine(msg)"
+      >
+        <!-- Received: avatar on left -->
+        <div class="cw-msg-avatar" *ngIf="!isMine(msg)">
+          <img *ngIf="partnerAvatar" [src]="partnerAvatar" [alt]="partnerName" class="cw-msg-avatar__img"/>
+          <span *ngIf="!partnerAvatar" class="cw-msg-avatar__initials">
+            {{ partnerName.charAt(0).toUpperCase() }}
+          </span>
+        </div>
+
+        <!-- Bubble -->
+        <div
+          class="cw-bubble"
+          [class.cw-bubble--mine]="isMine(msg)"
+          [class.cw-bubble--theirs]="!isMine(msg)"
+        >
+          <!-- Message text -->
+          <p class="cw-bubble__text">{{ getDisplayContent(msg) }}</p>
+
+          <!-- Translation loading indicator -->
+          <span class="cw-bubble__translating" *ngIf="isTranslatingMsg(msg)">
+            <span class="cw-bubble__translating-dot"></span>
+            Translating…
+          </span>
+
+          <!-- Show original / show translation toggle -->
+          <button
+            class="cw-bubble__original-btn"
+            *ngIf="isTranslatedMsg(msg) && !isTranslatingMsg(msg)"
+            (click)="toggleMsgOriginal(msg)">
+            {{ isShowingOriginal(msg) ? '🌍 Show translation' : 'Show original' }}
+          </button>
+
+          <div class="cw-bubble__meta">
+            <span class="cw-bubble__time">{{ msg.timestamp | date:'shortTime' }}</span>
+            <span
+              class="cw-bubble__ticks"
+              *ngIf="isMine(msg)"
+              [class.cw-bubble__ticks--seen]="msg.status === 'SEEN'"
+              [attr.aria-label]="msg.status === 'SEEN' ? 'Seen' : msg.status === 'DELIVERED' ? 'Delivered' : 'Sent'"
+            >
+              <svg viewBox="0 0 20 12" fill="none" aria-hidden="true">
+                <path d="M1 6l4.5 4.5L13 2" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path
+                  *ngIf="msg.status !== 'SENT'"
+                  d="M7 6l4.5 4.5L19 2"
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+                />
+              </svg>
+            </span>
+          </div>
+        </div>
+      </div>
+    </ng-container>
+
+    <!-- Typing indicator -->
+    <div class="cw-typing" *ngIf="isPartnerTyping" aria-live="polite" aria-label="Partner is typing">
+      <div class="cw-msg-avatar">
+        <img *ngIf="partnerAvatar" [src]="partnerAvatar" [alt]="partnerName" class="cw-msg-avatar__img"/>
+        <span *ngIf="!partnerAvatar" class="cw-msg-avatar__initials">
+          {{ partnerName.charAt(0).toUpperCase() }}
+        </span>
+      </div>
+      <div class="cw-typing__bubble">
+        <span class="cw-dot"></span>
+        <span class="cw-dot"></span>
+        <span class="cw-dot"></span>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ── Send error ── -->
+  <div class="cw-send-error" *ngIf="sendError">
+    <svg width="14" height="14" viewBox="0 0 20 20" fill="currentColor" aria-hidden="true">
+      <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7 4a1 1 0 11-2 0 1 1 0 012 0zm-1-9a1 1 0 00-1 1v4a1 1 0 102 0V6a1 1 0 00-1-1z" clip-rule="evenodd"/>
+    </svg>
+    {{ sendError }}
+  </div>
+
+  <!-- ── Input bar ── -->
+  <div class="cw-input-bar">
+
+    <button class="cw-action-btn" aria-label="Add emoji" title="Emoji">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="12" cy="12" r="10"/>
+        <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+        <line x1="9" y1="9" x2="9.01" y2="9" stroke-linecap="round" stroke-width="2.5"/>
+        <line x1="15" y1="9" x2="15.01" y2="9" stroke-linecap="round" stroke-width="2.5"/>
+      </svg>
+    </button>
+
+    <button class="cw-action-btn" aria-label="Attach file" title="Attach file">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/>
+      </svg>
+    </button>
+
+    <div class="cw-input-wrap">
+      <textarea
+        class="cw-input"
+        [(ngModel)]="newMessage"
+        (input)="onTyping(); autoResize($event)"
+        (keydown)="onKeydown($event)"
+        placeholder="Aa"
+        rows="1"
+        [disabled]="!currentUserId || !isConnected"
+        autocomplete="off"
+        aria-label="Type a message"
+      ></textarea>
+    </div>
+
+    <button
+      *ngIf="newMessage.trim()"
+      class="cw-send-btn"
+      (click)="sendMessage()"
+      aria-label="Send message"
+    >
+      <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M22 2L11 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+        <path d="M22 2L15 22 11 13 2 9l20-7z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+      </svg>
+    </button>
+
+    <button
+      *ngIf="!newMessage.trim()"
+      class="cw-action-btn cw-action-btn--like"
+      (click)="sendLike()"
+      aria-label="Send thumbs up"
+      title="👍"
+    >
+      <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+        <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+        <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+      </svg>
+    </button>
+  </div>
+
+</div>

@@ -20,12 +20,14 @@ import java.util.Map;
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(EntityNotFoundException.class)
+    // Handles entity not found.
     public ResponseEntity<Map<String, Object>> handleEntityNotFound(EntityNotFoundException ex) {
         return ResponseEntity.status(HttpStatus.NOT_FOUND)
                 .body(errorResponse("NOT_FOUND", ex.getMessage(), null));
     }
 
     @ExceptionHandler(ProgressCannotDecreaseException.class)
+    // Handles progress cannot decrease.
     public ResponseEntity<Map<String, Object>> handleProgressCannotDecrease(ProgressCannotDecreaseException ex) {
         Map<String, Object> error = new HashMap<>();
         error.put("code", "VALIDATION_ERROR");
@@ -39,6 +41,7 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
+    // Handles validation.
     public ResponseEntity<Map<String, Object>> handleValidation(MethodArgumentNotValidException ex) {
         List<String> details = ex.getBindingResult().getFieldErrors().stream()
                 .map(e -> e.getField() + ": " + e.getDefaultMessage())
@@ -48,11 +51,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(IllegalArgumentException.class)
+    // Handles illegal argument.
     public ResponseEntity<Map<String, Object>> handleIllegalArgument(IllegalArgumentException ex) {
         return ResponseEntity.status(HttpStatus.BAD_REQUEST)
                 .body(errorResponse("BAD_REQUEST", ex.getMessage(), null));
     }
 
+    // Performs error response.
     private static Map<String, Object> errorResponse(String code, String message, Object details) {
         return Map.of(
                 "error", Map.of(

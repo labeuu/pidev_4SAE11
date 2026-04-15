@@ -1,0 +1,91 @@
+<div class="meetings-page">
+  <!-- Header -->
+  <div class="meetings-header">
+    <div>
+      <h1 class="meetings-title">Meetings</h1>
+      <p class="meetings-subtitle">Manage your scheduled meetings</p>
+    </div>
+    @if (isClient()) {
+      <a routerLink="/dashboard/meetings/schedule" class="btn-schedule">
+        <span>+</span> Schedule Meeting
+      </a>
+    }
+  </div>
+
+  <!-- Tabs -->
+  <div class="tab-bar">
+    @for (tab of tabs; track tab.value) {
+      <button
+        class="tab-btn"
+        [class.active]="activeTab() === tab.value"
+        (click)="activeTab.set(tab.value)">
+        {{ tab.label }}
+      </button>
+    }
+  </div>
+
+  <!-- Loading -->
+  @if (loading()) {
+    <div class="skeleton-list">
+      @for (i of [1,2,3]; track i) {
+        <div class="skeleton-card"></div>
+      }
+    </div>
+  } @else if (filtered().length === 0) {
+    <div class="empty-state">
+      <div class="empty-icon">📅</div>
+      <h3>No meetings found</h3>
+      <p>
+        @if (isClient()) {
+          Schedule your first meeting with a freelancer.
+        } @else {
+          You have no meeting invitations yet.
+        }
+      </p>
+      @if (isClient()) {
+        <a routerLink="/dashboard/meetings/schedule" class="btn-schedule">Schedule Meeting</a>
+      }
+    </div>
+  } @else {
+    <div class="meeting-list">
+      @for (m of filtered(); track m.id) {
+        <a [routerLink]="['/dashboard/meetings', m.id]" class="meeting-card" [class.can-join]="m.canJoinNow">
+          <!-- Join now banner -->
+          @if (m.canJoinNow) {
+            <div class="join-banner">
+              <span class="pulse-dot"></span>
+              Meeting is live — <strong>Join now</strong>
+            </div>
+          }
+
+          <div class="card-body">
+            <div class="card-left">
+              <div class="type-icon">{{ typeIcon(m.meetingType) }}</div>
+              <div class="card-info">
+                <h3 class="meeting-title">{{ m.title }}</h3>
+                <p class="meeting-parties">
+                  {{ m.clientName }} &rarr; {{ m.freelancerName }}
+                </p>
+                <div class="meeting-time">
+                  <span>{{ formatDate(m.startTime) }}</span>
+                  <span class="time-sep">·</span>
+                  <span>{{ formatTime(m.startTime) }} – {{ formatTime(m.endTime) }}</span>
+                </div>
+              </div>
+            </div>
+            <span class="status-badge" [class]="statusClass(m.status)">
+              {{ statusIcon(m.status) }} {{ m.status }}
+            </span>
+          </div>
+
+          @if (m.meetLink && m.status === 'ACCEPTED') {
+            <div class="meet-link-row">
+              <span class="meet-icon">📹</span>
+              <span class="meet-url">{{ m.meetLink }}</span>
+            </div>
+          }
+        </a>
+      }
+    </div>
+  }
+</div>

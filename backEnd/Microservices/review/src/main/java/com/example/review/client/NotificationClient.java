@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
  * Feign client for the Notification microservice.
  * Sends notifications when a review response (message) is received.
  */
-@FeignClient(name = "notification", url = "${notification.service.url:http://localhost:8087}", path = "/api/notifications")
+@FeignClient(name = "notification", url = "${notification.service.url:http://localhost:8098}", path = "/api/notifications")
 public interface NotificationClient {
 
     @PostMapping

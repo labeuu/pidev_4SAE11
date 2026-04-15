@@ -103,6 +103,20 @@ public class UserController {
         return UserResponse.fromEntity(userService.update(id, request));
     }
 
+    @Operation(summary = "Get users by role", description = "Returns all users with the given role (e.g. FREELANCER, CLIENT, ADMIN).")
+    @GetMapping(value = "/by-role", produces = MediaType.APPLICATION_JSON_VALUE)
+    public List<UserResponse> getUsersByRole(
+            @Parameter(description = "Role name") @RequestParam String role) {
+        try {
+            com.esprit.user.entity.Role r = com.esprit.user.entity.Role.valueOf(role.toUpperCase());
+            return userService.findByRole(r).stream()
+                    .map(UserResponse::fromEntity)
+                    .collect(Collectors.toList());
+        } catch (IllegalArgumentException e) {
+            return List.of();
+        }
+    }
+
     @Operation(summary = "Delete user", description = "Deletes a user by ID.")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "User deleted"),

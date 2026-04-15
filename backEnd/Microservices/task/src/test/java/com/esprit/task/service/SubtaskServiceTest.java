@@ -40,6 +40,9 @@ class SubtaskServiceTest {
     @Mock
     private TaskNotificationService taskNotificationService;
 
+    @Mock
+    private TaskStatusProgressBridge taskStatusProgressBridge;
+
     @InjectMocks
     private SubtaskService subtaskService;
 
@@ -130,6 +133,7 @@ class SubtaskServiceTest {
                 .title("x")
                 .status(TaskStatus.TODO)
                 .priority(TaskPriority.MEDIUM)
+                .assigneeId(100L)
                 .orderIndex(0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -140,6 +144,7 @@ class SubtaskServiceTest {
         subtaskService.patchStatus(3L, TaskStatus.DONE);
 
         verify(taskNotificationService).notifySubtaskStatusUpdate(any(Subtask.class));
+        verify(taskStatusProgressBridge).afterSubtaskStatusChanged(any(Subtask.class));
     }
 
     @Test
@@ -191,6 +196,7 @@ class SubtaskServiceTest {
         subtaskService.update(3L, req);
 
         verify(taskNotificationService, never()).notifySubtaskStatusUpdate(any());
+        verify(taskStatusProgressBridge, never()).afterSubtaskStatusChanged(any());
     }
 
     @Test
@@ -202,6 +208,7 @@ class SubtaskServiceTest {
                 .title("x")
                 .status(TaskStatus.TODO)
                 .priority(TaskPriority.MEDIUM)
+                .assigneeId(101L)
                 .orderIndex(0)
                 .createdAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
@@ -213,6 +220,7 @@ class SubtaskServiceTest {
         subtaskService.update(3L, req);
 
         verify(taskNotificationService).notifySubtaskStatusUpdate(any(Subtask.class));
+        verify(taskStatusProgressBridge).afterSubtaskStatusChanged(any(Subtask.class));
     }
 
     @Test
@@ -284,5 +292,6 @@ class SubtaskServiceTest {
         subtaskService.patchStatus(3L, TaskStatus.TODO);
 
         verify(taskNotificationService, never()).notifySubtaskStatusUpdate(any());
+        verify(taskStatusProgressBridge, never()).afterSubtaskStatusChanged(any());
     }
 }

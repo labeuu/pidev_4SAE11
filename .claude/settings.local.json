@@ -3,7 +3,25 @@
     "allow": [
       "Bash(node:*)",
       "Bash(npm install)",
-      "Bash(mvn clean compile -q)"
+      "Bash(mvn clean compile -q)",
+      "Bash(ls:*)",
+      "Bash(while read:*)",
+      "Bash(do sed:*)",
+      "Bash(docker exec:*)",
+      "Bash(docker compose:*)",
+      "Bash(mvn spring-boot:run -q)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(pkill -f \"apiGateway\")",
+      "Bash(echo \"Gateway restarting, PID: $!\")",
+      "Bash(mvn compile:*)",
+      "Bash(grep -E \"\\\\.java$\")",
+      "Bash(xargs cat:*)",
+      "Bash(mvn spring-boot:run)",
+      "Bash(open -a Docker)",
+      "Bash(docker-compose up:*)",
+      "Bash(docker rm:*)",
+      "Bash(docker restart:*)",
+      "Bash(git check-ignore:*)"
     ]
   }
 }

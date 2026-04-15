@@ -4,6 +4,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.stereotype.Repository;
 import tn.esprit.project.Dto.ProjectApplicationStats;
+import tn.esprit.project.Entities.Enums.ApplicationStatus;
+import tn.esprit.project.Entities.Enums.ProjectStatus;
 import tn.esprit.project.Entities.ProjectApplication;
 
 import java.util.List;
@@ -11,7 +13,14 @@ import java.util.List;
 @Repository
 public interface ProjectApplicationRepository extends JpaRepository<ProjectApplication, Long> {
     List<ProjectApplication> findByProjectId(Long projectId);
+    
+    // 🛡️ Safe manual cleanup for deleteProject
+    @org.springframework.data.jpa.repository.Modifying
+    @org.springframework.transaction.annotation.Transactional
+    void deleteByProjectId(Long projectId);
+
     List<ProjectApplication> findByFreelanceId(Long freelanceId);
+    long countByFreelanceIdAndStatusAndProject_Status(Long freelanceId, ApplicationStatus status, ProjectStatus projectStatus);
     @Query("""
         SELECT new tn.esprit.project.Dto.ProjectApplicationStats(
             p.id,

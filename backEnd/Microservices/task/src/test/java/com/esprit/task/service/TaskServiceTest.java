@@ -39,12 +39,14 @@ import java.util.Optional;
 import java.util.stream.LongStream;
 
 import org.mockito.ArgumentCaptor;
+import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
@@ -71,11 +73,16 @@ class TaskServiceTest {
     @Mock
     private TaskNotificationService taskNotificationService;
 
+    @Mock
+    private TaskStatusProgressBridge taskStatusProgressBridge;
+
     @InjectMocks
     private TaskService taskService;
 
     @BeforeEach
     void lenientSubtaskStubs() {
+        lenient().when(taskRepository.findByStatusAndUpdatedAtBefore(any(), any())).thenReturn(List.of());
+        lenient().when(subtaskRepository.findByStatusAndUpdatedAtBefore(any(), any())).thenReturn(List.of());
         lenient().when(subtaskRepository.findDueSoonSubtasks(any(), any())).thenReturn(List.of());
         lenient().when(subtaskRepository.findDueSoonSubtasksByProject(any(), any(), anyLong())).thenReturn(List.of());
         lenient().when(subtaskRepository.findDueSoonSubtasksByAssignee(any(), any(), anyLong())).thenReturn(List.of());
@@ -221,11 +228,34 @@ class TaskServiceTest {
         taskService.update(1L, updated);
 
         verify(taskNotificationService).notifyTaskStatusUpdate(any());
+        verify(taskStatusProgressBridge).afterRootTaskStatusChanged(any());
+    }
+
+    @Test
+    void update_whenStatusChanged_withAssignee_triggersProgressBridge() {
+        Task existing = task(1L);
+        existing.setStatus(TaskStatus.TODO);
+        existing.setAssigneeId(42L);
+        Task updated = task(1L);
+        updated.setTitle("Updated");
+        updated.setStatus(TaskStatus.IN_PROGRESS);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(existing));
+        when(taskRepository.save(any())).thenAnswer(inv -> {
+            Task s = inv.getArgument(0);
+            s.setStatus(TaskStatus.IN_PROGRESS);
+            return s;
+        });
+
+        taskService.update(1L, updated);
+
+        verify(taskNotificationService).notifyTaskStatusUpdate(any());
+        verify(taskStatusProgressBridge).afterRootTaskStatusChanged(any());
     }
 
     @Test
     void patchStatus_updatesStatusAndNotifies() {
         Task t = task(1L);
+        t.setAssigneeId(7L);
         when(taskRepository.findById(1L)).thenReturn(Optional.of(t));
         when(taskRepository.save(any())).thenAnswer(inv -> {
             Task saved = inv.getArgument(0);
@@ -237,6 +267,20 @@ class TaskServiceTest {
 
         verify(taskRepository).save(any());
         verify(taskNotificationService).notifyTaskStatusUpdate(any());
+        verify(taskStatusProgressBridge).afterRootTaskStatusChanged(any());
+    }
+
+    @Test
+    void patchStatus_whenUnchanged_doesNotCallProgressBridge() {
+        Task t = task(1L);
+        t.setAssigneeId(7L);
+        t.setStatus(TaskStatus.IN_PROGRESS);
+        when(taskRepository.findById(1L)).thenReturn(Optional.of(t));
+        when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+
+        taskService.patchStatus(1L, TaskStatus.IN_PROGRESS);
+
+        verify(taskStatusProgressBridge, never()).afterRootTaskStatusChanged(any());
     }
 
     @Test
@@ -592,7 +636,7 @@ class TaskServiceTest {
 
         assertThat(n).isEqualTo(1);
         assertThat(overdue.getPriority()).isEqualTo(TaskPriority.HIGH);
-        verify(taskNotificationService).notifyTaskPriorityEscalated(overdue);
+        verify(taskNotificationService).notifyTaskPriorityEscalated(overdue, "HIGH");
     }
 
     @Test
@@ -606,8 +650,27 @@ class TaskServiceTest {
 
         taskService.escalateOverduePriorities();
 
-        verify(taskNotificationService, never()).notifyTaskPriorityEscalated(any());
+        verify(taskNotificationService, never()).notifyTaskPriorityEscalated(any(), anyString());
         assertThat(overdue.getPriority()).isEqualTo(TaskPriority.HIGH);
+    }
+
+    @Test
+    void escalateOverduePriorities_highToUrgentWhenConfigured() {
+        ReflectionTestUtils.setField(taskService, "escalationHighToUrgentOverdueDays", 3);
+        Task overdue = task(1L);
+        overdue.setPriority(TaskPriority.HIGH);
+        overdue.setDueDate(LocalDate.now().minusDays(5));
+        overdue.setAssigneeId(5L);
+        overdue.setStatus(TaskStatus.IN_PROGRESS);
+        when(taskRepository.findOverdueTasks(any(LocalDate.class))).thenReturn(List.of(overdue));
+        when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
+        when(subtaskRepository.findOverdueSubtasks(any(LocalDate.class))).thenReturn(List.of());
+
+        int n = taskService.escalateOverduePriorities();
+
+        assertThat(n).isEqualTo(1);
+        assertThat(overdue.getPriority()).isEqualTo(TaskPriority.URGENT);
+        verify(taskNotificationService).notifyTaskPriorityEscalated(overdue, "URGENT");
     }
 
     @Test
@@ -617,12 +680,13 @@ class TaskServiceTest {
         overdue.setDueDate(LocalDate.now().minusDays(1));
         overdue.setAssigneeId(5L);
         when(taskRepository.findOverdueTasks(any(LocalDate.class))).thenReturn(List.of(overdue));
+        when(subtaskRepository.findOverdueSubtasks(any(LocalDate.class))).thenReturn(List.of());
 
         int n = taskService.escalateOverduePriorities();
 
         assertThat(n).isZero();
         verify(taskRepository, never()).save(any());
-        verify(taskNotificationService, never()).notifyTaskPriorityEscalated(any());
+        verify(taskNotificationService, never()).notifyTaskPriorityEscalated(any(), anyString());
     }
 
     @Test
@@ -748,8 +812,10 @@ class TaskServiceTest {
     void bulkPatchStatus_notifiesPerChangedStatus() {
         Task a = task(1L);
         a.setStatus(TaskStatus.TODO);
+        a.setAssigneeId(10L);
         Task b = task(2L);
         b.setStatus(TaskStatus.TODO);
+        b.setAssigneeId(11L);
         when(taskRepository.findById(1L)).thenReturn(Optional.of(a));
         when(taskRepository.findById(2L)).thenReturn(Optional.of(b));
         when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
@@ -757,18 +823,21 @@ class TaskServiceTest {
         taskService.bulkPatchStatus(List.of(1L, 2L), TaskStatus.IN_PROGRESS);
 
         verify(taskNotificationService, times(2)).notifyTaskStatusUpdate(any());
+        verify(taskStatusProgressBridge, times(2)).afterRootTaskStatusChanged(any());
     }
 
     @Test
     void bulkPatchStatus_whenStatusUnchanged_skipsNotification() {
         Task a = task(1L);
         a.setStatus(TaskStatus.DONE);
+        a.setAssigneeId(9L);
         when(taskRepository.findById(1L)).thenReturn(Optional.of(a));
         when(taskRepository.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
         taskService.bulkPatchStatus(List.of(1L), TaskStatus.DONE);
 
         verify(taskNotificationService, never()).notifyTaskStatusUpdate(any());
+        verify(taskStatusProgressBridge, never()).afterRootTaskStatusChanged(any());
     }
 
     @Test

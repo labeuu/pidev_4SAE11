@@ -4,7 +4,6 @@ import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.*;
 import tn.esprit.project.Dto.Skills;
 
-
 import java.util.List;
 
 @FeignClient(name = "PORTFOLIO", fallback = SkillClientFallback.class)
@@ -14,4 +13,7 @@ public interface SkillClient {
 
     @GetMapping("/api/skills/user/{userId}")
     List<Skills> getSkillsByUserId(@PathVariable Long userId);
+
+    @PostMapping("/api/skills")
+    Skills createSkill(@RequestBody Skills skill); 
 }

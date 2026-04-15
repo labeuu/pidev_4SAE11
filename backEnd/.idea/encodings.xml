@@ -1,14 +1,21 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <project version="4">
   <component name="Encoding">
+    <file url="file://$PROJECT_DIR$/ConfigServer/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Eureka/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/KeyCloak/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Microservices/AImodel/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Microservices/Chat/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/Contract/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/Evaluation/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Microservices/FreelanciaJob/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Microservices/Meeting/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/Notification/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/Offer/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/Portfolio/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/Project/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Microservices/Subcontracting/src/main/java" charset="UTF-8" />
+    <file url="file://$PROJECT_DIR$/Microservices/Vendor/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/gamification/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/planning/src/main/java" charset="UTF-8" />
     <file url="file://$PROJECT_DIR$/Microservices/review/src/main/java" charset="UTF-8" />

@@ -1,0 +1,194 @@
+@use '../../../../../styles/variables' as *;
+@use '../../../../../styles/ticket-shell' as tk;
+
+:host {
+  display: block;
+}
+
+.ticket-stats-host {
+  @include tk.ticket-page-host;
+}
+
+.ticket-stats-page {
+  max-width: $container-xl;
+  margin: 0 auto;
+  padding: $spacing-xl $spacing-lg $spacing-3xl;
+}
+
+.ticket-stats-hero {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: $spacing-lg;
+  padding: $spacing-xl $spacing-lg;
+  margin-bottom: $spacing-lg;
+  @include tk.ticket-hero-surface;
+}
+
+.ticket-stats-hero__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: $spacing-sm;
+}
+
+.ticket-stats-badge {
+  display: inline-block;
+  padding: $spacing-xs $spacing-sm;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $primary-600;
+  background: rgba(227, 126, 51, 0.14);
+  border-radius: $radius-md;
+  margin-bottom: $spacing-sm;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+.ticket-stats-title {
+  margin: 0 0 $spacing-sm;
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  color: $neutral-900;
+}
+
+.ticket-stats-lead {
+  margin: 0;
+  max-width: 36rem;
+  font-size: $font-size-sm;
+  color: $neutral-600;
+  line-height: $line-height-relaxed;
+}
+
+.ticket-stats-btn-secondary,
+.ticket-stats-btn-primary,
+.ticket-stats-btn-pdf {
+  padding: $spacing-sm $spacing-lg;
+  font-family: $font-family;
+  font-size: $font-size-sm;
+  font-weight: $font-weight-semibold;
+  border-radius: $radius-lg;
+  cursor: pointer;
+  border: none;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ticket-stats-btn-secondary {
+  color: $neutral-700;
+  background: $white;
+  border: 1.5px solid $neutral-300;
+
+  &:hover {
+    border-color: $primary-100;
+    color: $primary-600;
+  }
+}
+
+.ticket-stats-btn-primary {
+  @include button-gradient;
+  color: $white;
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.ticket-stats-btn-pdf {
+  background: $neutral-800;
+  color: $white;
+
+  &:hover:not(:disabled) {
+    background: $neutral-900;
+  }
+
+  &:disabled {
+    opacity: 0.55;
+    cursor: not-allowed;
+  }
+}
+
+.ticket-stats-alert {
+  padding: $spacing-md;
+  border-radius: $radius-lg;
+  background: $error-50;
+  border: 1px solid $error-200;
+  color: $error-700;
+  font-size: $font-size-sm;
+  margin-bottom: $spacing-lg;
+}
+
+.ticket-stats-loading {
+  padding: $spacing-3xl;
+  text-align: center;
+  color: $neutral-600;
+  font-size: $font-size-sm;
+}
+
+.ticket-stats-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: $spacing-md;
+  margin-bottom: $spacing-xl;
+}
+
+.ticket-stats-card {
+  padding: $spacing-lg;
+  background: $white;
+  border: 1px solid $neutral-200;
+  border-radius: $radius-xl;
+  box-shadow: $shadow-sm;
+}
+
+.ticket-stats-card__label {
+  display: block;
+  font-size: $font-size-xs;
+  font-weight: $font-weight-semibold;
+  color: $neutral-500;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: $spacing-xs;
+}
+
+.ticket-stats-card__value {
+  font-size: $font-size-2xl;
+  font-weight: $font-weight-extrabold;
+  color: $neutral-900;
+}
+
+.ticket-stats-card--open .ticket-stats-card__value {
+  color: $success-600;
+}
+
+.ticket-stats-card--closed .ticket-stats-card__value {
+  color: $error-600;
+}
+
+.ticket-stats-chart-panel {
+  background: $white;
+  border: 1px solid $neutral-200;
+  border-radius: $radius-xl;
+  padding: $spacing-lg;
+  box-shadow: $shadow-sm;
+}
+
+.ticket-stats-chart-title {
+  margin: 0 0 $spacing-md;
+  font-size: $font-size-lg;
+  font-weight: $font-weight-bold;
+  color: $neutral-900;
+}
+
+.ticket-stats-chart-wrap {
+  height: 320px;
+  position: relative;
+}
+
+.ticket-stats-empty {
+  margin: 0;
+  color: $neutral-500;
+  font-size: $font-size-sm;
+}

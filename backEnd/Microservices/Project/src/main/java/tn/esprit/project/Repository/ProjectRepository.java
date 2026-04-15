@@ -36,4 +36,5 @@ public interface ProjectRepository extends JpaRepository<Project, Long> {
             @Param("accepted") ApplicationStatus accepted);
 
     List<Project> findByStatus(ProjectStatus status);
+    long countByClientId(Long clientId);
 }

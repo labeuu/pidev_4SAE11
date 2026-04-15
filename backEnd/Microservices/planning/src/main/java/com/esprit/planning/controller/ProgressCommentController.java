@@ -11,7 +11,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -25,12 +24,15 @@ import java.util.List;
  */
 @RestController
 @RequestMapping("/api/progress-comments")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Tag(name = "Progress Comments", description = "Add and manage comments on progress updates")
 public class ProgressCommentController {
 
     private final ProgressCommentService progressCommentService;
+
+    public ProgressCommentController(ProgressCommentService progressCommentService) {
+        this.progressCommentService = progressCommentService;
+    }
 
     /** Returns progress comments with pagination (page, size, sort). Default: page=0, size=20, max size=100. */
     @GetMapping
@@ -86,6 +88,7 @@ public class ProgressCommentController {
             @ApiResponse(responseCode = "201", description = "Created", content = @Content(schema = @Schema(implementation = ProgressComment.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request or progress update not found", content = @Content)
     })
+    // Creates this operation.
     public ResponseEntity<ProgressComment> create(@RequestBody ProgressCommentRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(progressCommentService.create(

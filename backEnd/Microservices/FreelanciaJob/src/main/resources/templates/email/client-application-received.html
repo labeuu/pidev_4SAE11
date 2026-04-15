@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>New Application Received</title>
+  <style>
+    body { margin:0; padding:0; background:#f4f4f4; font-family:'Segoe UI',Arial,sans-serif; }
+    .wrapper { max-width:600px; margin:32px auto; background:#fff; border-radius:8px; overflow:hidden; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+    .header  { background:#0f3460; padding:32px 40px; text-align:center; }
+    .header h1 { margin:0; color:#e94560; font-size:26px; }
+    .header p  { margin:4px 0 0; color:#a0b4c8; font-size:13px; }
+    .body { padding:36px 40px; color:#333; line-height:1.7; }
+    .info-box { background:#f8f8ff; border:1px solid #e0e0f0; border-radius:6px; padding:16px 20px; margin:20px 0; }
+    .info-box .label { font-size:11px; text-transform:uppercase; color:#888; letter-spacing:.5px; }
+    .info-box .value { font-size:17px; font-weight:bold; color:#1a1a2e; margin-top:4px; }
+    .cta { display:block; width:fit-content; margin:28px auto 0; padding:14px 36px;
+           background:#e94560; color:#fff; text-decoration:none; border-radius:6px;
+           font-weight:bold; font-size:15px; }
+    .footer { background:#f4f4f4; text-align:center; padding:20px; font-size:12px; color:#999; }
+  </style>
+</head>
+<body>
+<div class="wrapper">
+  <div class="header">
+    <h1>Freelancia</h1>
+    <p>Client dashboard notification</p>
+  </div>
+  <div class="body">
+    <p>Hi <strong th:text="${clientName}">Client</strong>,</p>
+    <p>Great news — a freelancer has applied to one of your jobs on Freelancia!</p>
+
+    <div class="info-box">
+      <div class="label">Job</div>
+      <div class="value" th:text="${jobTitle}">Job Title</div>
+    </div>
+
+    <div class="info-box">
+      <div class="label">Applicant</div>
+      <div class="value" th:text="${freelancerName}">Freelancer Name</div>
+    </div>
+
+    <p>
+      Log in to the platform to review the proposal, check the freelancer's profile,
+      and decide whether to accept or reject the application.
+    </p>
+
+    <a class="cta" href="#">Review Application</a>
+  </div>
+  <div class="footer">
+    <p>© 2025 Freelancia Platform. All rights reserved.</p>
+  </div>
+</div>
+</body>
+</html>

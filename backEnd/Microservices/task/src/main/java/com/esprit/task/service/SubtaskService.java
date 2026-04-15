@@ -23,8 +23,10 @@ public class SubtaskService {
     private final SubtaskRepository subtaskRepository;
     private final TaskRepository taskRepository;
     private final TaskNotificationService taskNotificationService;
+    private final TaskStatusProgressBridge taskStatusProgressBridge;
 
     @Transactional(readOnly = true)
+    // Lists by parent task id.
     public List<SubtaskResponse> listByParentTaskId(Long parentTaskId) {
         taskRepository.findById(parentTaskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task", parentTaskId));
@@ -34,6 +36,7 @@ public class SubtaskService {
     }
 
     @Transactional
+    // Creates this operation.
     public SubtaskResponse create(Long parentTaskId, SubtaskRequest request) {
         Task parent = taskRepository.findById(parentTaskId)
                 .orElseThrow(() -> new EntityNotFoundException("Task", parentTaskId));
@@ -52,6 +55,7 @@ public class SubtaskService {
         return SubtaskResponse.from(saved);
     }
 
+    // Performs resolve order index.
     private int resolveOrderIndex(Long parentTaskId, Integer requested) {
         if (requested != null) {
             return requested;
@@ -61,12 +65,14 @@ public class SubtaskService {
     }
 
     @Transactional(readOnly = true)
+    // Finds entity by id.
     public Subtask findEntityById(Long id) {
         return subtaskRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Subtask", id));
     }
 
     @Transactional
+    // Updates this operation.
     public SubtaskResponse update(Long id, SubtaskRequest request) {
         Subtask existing = findEntityById(id);
         TaskStatus oldStatus = existing.getStatus();
@@ -88,11 +94,13 @@ public class SubtaskService {
         Subtask saved = subtaskRepository.save(existing);
         if (request.getStatus() != null && !request.getStatus().equals(oldStatus)) {
             taskNotificationService.notifySubtaskStatusUpdate(saved);
+            taskStatusProgressBridge.afterSubtaskStatusChanged(saved);
         }
         return SubtaskResponse.from(saved);
     }
 
     @Transactional
+    // Partially updates status.
     public SubtaskResponse patchStatus(Long id, TaskStatus status) {
         Subtask s = findEntityById(id);
         TaskStatus old = s.getStatus();
@@ -100,11 +108,13 @@ public class SubtaskService {
         Subtask saved = subtaskRepository.save(s);
         if (status != null && !status.equals(old)) {
             taskNotificationService.notifySubtaskStatusUpdate(saved);
+            taskStatusProgressBridge.afterSubtaskStatusChanged(saved);
         }
         return SubtaskResponse.from(saved);
     }
 
     @Transactional
+    // Partially updates due date.
     public SubtaskResponse patchDueDate(Long id, LocalDate dueDate) {
         Subtask s = findEntityById(id);
         s.setDueDate(dueDate);
@@ -112,6 +122,7 @@ public class SubtaskService {
     }
 
     @Transactional
+    // Deletes by id.
     public void deleteById(Long id) {
         Subtask s = subtaskRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Subtask", id));

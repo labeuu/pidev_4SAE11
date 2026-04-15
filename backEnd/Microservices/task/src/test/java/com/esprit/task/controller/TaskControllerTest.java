@@ -8,6 +8,7 @@ import com.esprit.task.entity.TaskPriority;
 import com.esprit.task.entity.TaskStatus;
 import com.esprit.task.exception.EntityNotFoundException;
 import com.esprit.task.service.SubtaskService;
+import com.esprit.task.service.TaskFreelancerProjectAccessService;
 import com.esprit.task.service.TaskService;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.esprit.task.config.GlobalExceptionHandler;
@@ -59,6 +60,9 @@ class TaskControllerTest {
     @MockitoBean
     private SubtaskService subtaskService;
 
+    @MockitoBean
+    private TaskFreelancerProjectAccessService taskFreelancerProjectAccessService;
+
     private static Task task(Long id) {
         Task t = new Task();
         t.setId(id);
@@ -74,7 +78,7 @@ class TaskControllerTest {
     void getFiltered_returnsPaginatedResults() throws Exception {
         Task t = task(1L);
         Page<Task> page = new PageImpl<>(List.of(t), PageRequest.of(0, 20), 1);
-        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
         mockMvc.perform(get("/api/tasks").param("page", "0").param("size", "20"))
@@ -86,14 +90,14 @@ class TaskControllerTest {
 
     @Test
     void getFiltered_capsPageSizeAt100() throws Exception {
-        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), PageRequest.of(0, 100), 0));
 
         mockMvc.perform(get("/api/tasks").param("size", "500"))
                 .andExpect(status().isOk());
 
         ArgumentCaptor<Pageable> cap = ArgumentCaptor.forClass(Pageable.class);
-        verify(taskService).findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), cap.capture());
+        verify(taskService).findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), cap.capture());
         assertThat(cap.getValue().getPageSize()).isEqualTo(100);
     }
 
@@ -120,7 +124,7 @@ class TaskControllerTest {
     @Test
     void getByProjectId_returnsList() throws Exception {
         Task t = task(1L);
-        when(taskService.findByProjectId(1L)).thenReturn(List.of(t));
+        when(taskService.findByProjectId(eq(1L), any())).thenReturn(List.of(t));
 
         mockMvc.perform(get("/api/tasks/project/1"))
                 .andExpect(status().isOk())
@@ -129,7 +133,7 @@ class TaskControllerTest {
 
     @Test
     void getBoardByProject_returnsBoard() throws Exception {
-        when(taskService.getBoardByProject(1L)).thenReturn(
+        when(taskService.getBoardByProject(eq(1L), any())).thenReturn(
                 com.esprit.task.dto.TaskBoardDto.builder().projectId(1L).columns(Map.of()).build());
 
         mockMvc.perform(get("/api/tasks/board/project/1"))
@@ -139,7 +143,7 @@ class TaskControllerTest {
 
     @Test
     void getOverdue_returnsList() throws Exception {
-        when(taskService.getOverdueTasks(any(), any())).thenReturn(List.of());
+        when(taskService.getOverdueTasks(any(), any(), any())).thenReturn(List.of());
 
         mockMvc.perform(get("/api/tasks/overdue"))
                 .andExpect(status().isOk())
@@ -148,23 +152,23 @@ class TaskControllerTest {
 
     @Test
     void getDueSoon_invokesService() throws Exception {
-        when(taskService.findDueSoon(any(), any(), eq(14))).thenReturn(List.of(task(1L)));
+        when(taskService.findDueSoon(any(), any(), eq(14), any())).thenReturn(List.of(task(1L)));
 
         mockMvc.perform(get("/api/tasks/due-soon").param("withinDays", "14").param("projectId", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1));
 
-        verify(taskService).findDueSoon(eq(Optional.of(2L)), eq(Optional.empty()), eq(14));
+        verify(taskService).findDueSoon(eq(Optional.of(2L)), eq(Optional.empty()), eq(14), eq(Optional.empty()));
     }
 
     @Test
     void getRootTasksByProject_returnsList() throws Exception {
-        when(taskService.findRootTasksByProject(5L)).thenReturn(List.of(task(1L)));
+        when(taskService.findRootTasksByProject(eq(5L), any())).thenReturn(List.of(task(1L)));
 
         mockMvc.perform(get("/api/tasks/project/5/root-tasks"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].id").value(1));
-        verify(taskService).findRootTasksByProject(5L);
+        verify(taskService).findRootTasksByProject(eq(5L), eq(Optional.empty()));
     }
 
     @Test
@@ -175,7 +179,7 @@ class TaskControllerTest {
                 .start(LocalDateTime.now())
                 .end(LocalDateTime.now().plusHours(1))
                 .build();
-        when(taskService.getCalendarEvents(any(), any(), any())).thenReturn(List.of(evt));
+        when(taskService.getCalendarEvents(any(), any(), any(), any())).thenReturn(List.of(evt));
 
         mockMvc.perform(get("/api/tasks/calendar-events"))
                 .andExpect(status().isOk())
@@ -268,7 +272,7 @@ class TaskControllerTest {
     @Test
     void getByContractId_returnsList() throws Exception {
         Task t = task(1L);
-        when(taskService.findByContractId(1L)).thenReturn(List.of(t));
+        when(taskService.findByContractId(eq(1L), any())).thenReturn(List.of(t));
 
         mockMvc.perform(get("/api/tasks/contract/1"))
                 .andExpect(status().isOk())
@@ -278,7 +282,7 @@ class TaskControllerTest {
     @Test
     void getByAssigneeId_returnsList() throws Exception {
         Task t = task(1L);
-        when(taskService.findByAssigneeId(10L)).thenReturn(List.of(t));
+        when(taskService.findByAssigneeId(eq(10L), any())).thenReturn(List.of(t));
 
         mockMvc.perform(get("/api/tasks/assignee/10"))
                 .andExpect(status().isOk())
@@ -390,7 +394,7 @@ class TaskControllerTest {
     @Test
     void getFiltered_withSortParam_invokesService() throws Exception {
         Page<Task> page = new PageImpl<>(List.of(task(1L)), PageRequest.of(0, 20), 1);
-        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
         mockMvc.perform(get("/api/tasks")
@@ -403,7 +407,7 @@ class TaskControllerTest {
     @Test
     void getFiltered_withAllFilters_invokesService() throws Exception {
         Page<Task> page = new PageImpl<>(List.of(), PageRequest.of(0, 20), 0);
-        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
         mockMvc.perform(get("/api/tasks")
@@ -421,7 +425,7 @@ class TaskControllerTest {
     @Test
     void getFiltered_withOpenTasksOnly_passesOpenFilterToService() throws Exception {
         Page<Task> page = new PageImpl<>(List.of(task(1L)), PageRequest.of(0, 20), 1);
-        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
+        when(taskService.findAllFiltered(any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any()))
                 .thenReturn(page);
 
         mockMvc.perform(get("/api/tasks").param("assigneeId", "10").param("openTasksOnly", "true"))
@@ -430,7 +434,7 @@ class TaskControllerTest {
         @SuppressWarnings("unchecked")
         ArgumentCaptor<Optional<Boolean>> openCap = ArgumentCaptor.forClass(Optional.class);
         verify(taskService).findAllFiltered(
-                any(), any(), eq(Optional.of(10L)), any(), any(), any(), any(), any(), openCap.capture(), any());
+                any(), any(), eq(Optional.of(10L)), any(), any(), any(), any(), any(), openCap.capture(), eq(Optional.empty()), any());
         assertThat(openCap.getValue()).contains(true);
     }
 
@@ -442,7 +446,7 @@ class TaskControllerTest {
                 .start(LocalDateTime.now())
                 .end(LocalDateTime.now().plusHours(1))
                 .build();
-        when(taskService.getCalendarEvents(any(), any(), any())).thenReturn(List.of(evt));
+        when(taskService.getCalendarEvents(any(), any(), any(), any())).thenReturn(List.of(evt));
 
         mockMvc.perform(get("/api/tasks/calendar-events")
                         .param("timeMin", "2024-01-01T00:00:00Z")

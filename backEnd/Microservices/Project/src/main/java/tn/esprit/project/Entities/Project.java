@@ -47,7 +47,8 @@ public class Project {
     LocalDateTime updatedAt;
 
     @OneToMany(
-            mappedBy = "project"
+            mappedBy = "project",
+            cascade = {CascadeType.PERSIST, CascadeType.MERGE}
     )
     @JsonIgnore
     private List<ProjectApplication> applications = new ArrayList<>();

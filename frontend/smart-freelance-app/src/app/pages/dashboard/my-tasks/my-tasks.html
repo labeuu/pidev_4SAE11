@@ -17,6 +17,69 @@
       </div>
     }
 
+    <nav
+      class="my-tasks-tabs"
+      role="tablist"
+      aria-label="My Tasks dashboard sections"
+      (keydown)="onDashboardTabsKeydown($event)"
+    >
+      <div class="my-tasks-tabs__track">
+        <span
+          class="my-tasks-tabs__indicator"
+          aria-hidden="true"
+          [style.left.%]="dashboardTabIndicatorLeftPct"
+        ></span>
+        <button
+          type="button"
+          role="tab"
+          class="my-tasks-tabs__tab"
+          data-tab="statistics"
+          id="my-tasks-tab-statistics"
+          aria-controls="my-tasks-panel-statistics"
+          [attr.aria-selected]="dashboardTab === 'statistics'"
+          (click)="setDashboardTab('statistics')"
+        >
+          <span class="my-tasks-tabs__tab-label">Statistics</span>
+          <span class="my-tasks-tabs__tab-hint">Workload &amp; mix</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="my-tasks-tabs__tab"
+          data-tab="ai"
+          id="my-tasks-tab-ai"
+          aria-controls="my-tasks-panel-ai"
+          [attr.aria-selected]="dashboardTab === 'ai'"
+          (click)="setDashboardTab('ai')"
+        >
+          <span class="my-tasks-tabs__tab-label">AI</span>
+          <span class="my-tasks-tabs__tab-hint">Coach &amp; ask</span>
+        </button>
+        <button
+          type="button"
+          role="tab"
+          class="my-tasks-tabs__tab"
+          data-tab="tasks"
+          id="my-tasks-tab-tasks"
+          aria-controls="my-tasks-panel-tasks"
+          [attr.aria-selected]="dashboardTab === 'tasks'"
+          (click)="setDashboardTab('tasks')"
+        >
+          <span class="my-tasks-tabs__tab-label">Tasks</span>
+          <span class="my-tasks-tabs__tab-hint">List &amp; filters</span>
+        </button>
+      </div>
+    </nav>
+
+    <div class="my-tasks-tab-panels">
+      <div
+        class="my-tasks-panel my-tasks-panel--statistics"
+        [class.my-tasks-panel--active]="dashboardTab === 'statistics'"
+        id="my-tasks-panel-statistics"
+        role="tabpanel"
+        aria-labelledby="my-tasks-tab-statistics"
+        [attr.aria-hidden]="dashboardTab !== 'statistics'"
+      >
     <section class="task-stats-overview" aria-labelledby="task-stats-heading">
       <div class="task-stats-overview__head">
         <div class="task-stats-overview__intro">
@@ -240,7 +303,64 @@
         }
       }
     </section>
+      </div>
 
+      <div
+        class="my-tasks-panel my-tasks-panel--ai"
+        [class.my-tasks-panel--active]="dashboardTab === 'ai'"
+        id="my-tasks-panel-ai"
+        role="tabpanel"
+        aria-labelledby="my-tasks-tab-ai"
+        [attr.aria-hidden]="dashboardTab !== 'ai'"
+      >
+        <section class="my-tasks-ai-hub" aria-labelledby="my-tasks-ai-hub-heading">
+          <div class="my-tasks-ai-hub__header">
+            <h2 id="my-tasks-ai-hub-heading" class="my-tasks-ai-hub__title">AI workspace</h2>
+            <p class="my-tasks-ai-hub__intro">
+              Coaching, Q&amp;A on your assignments, and task suggestions use the same pipeline. Status updates below refresh while this tab is open.
+            </p>
+            <div
+              class="ai-live-status ai-live-status--hub"
+              [class.ai-live-status--ok]="aiPipelineOk"
+              [class.ai-live-status--warn]="aiPipelineWarn"
+              [class.ai-live-status--bad]="aiPipelineBad"
+              [class.ai-live-status--pulse]="aiStatusRefreshing"
+              role="status"
+            >
+              <span class="ai-live-status__dot" aria-hidden="true"></span>
+              <span class="ai-live-status__text">{{ aiPipelineStatusMessage }}</span>
+            </div>
+          </div>
+          <div class="my-tasks-ai-hub__cards" role="group" aria-label="AI actions">
+            <button type="button" class="my-tasks-ai-hub__card" (click)="openCoachPanel()">
+              <span class="my-tasks-ai-hub__card-icon" aria-hidden="true">📊</span>
+              <span class="my-tasks-ai-hub__card-title">Workload coach</span>
+              <span class="my-tasks-ai-hub__card-desc">Narrative snapshot of risk, overdue work, and suggested next moves.</span>
+            </button>
+            <button type="button" class="my-tasks-ai-hub__card" (click)="openAskDrawer()">
+              <span class="my-tasks-ai-hub__card-icon" aria-hidden="true">💬</span>
+              <span class="my-tasks-ai-hub__card-title">Ask my tasks</span>
+              <span class="my-tasks-ai-hub__card-desc">Questions about your open work, grounded in your task list.</span>
+            </button>
+            @if (projectsForAdd.length > 0) {
+              <button type="button" class="my-tasks-ai-hub__card" (click)="openAiProjectTasksWizard()">
+                <span class="my-tasks-ai-hub__card-icon" aria-hidden="true">✨</span>
+                <span class="my-tasks-ai-hub__card-title">Suggest tasks with AI</span>
+                <span class="my-tasks-ai-hub__card-desc">Generate draft root tasks for a project you’re on.</span>
+              </button>
+            }
+          </div>
+        </section>
+      </div>
+
+      <div
+        class="my-tasks-panel my-tasks-panel--tasks"
+        [class.my-tasks-panel--active]="dashboardTab === 'tasks'"
+        id="my-tasks-panel-tasks"
+        role="tabpanel"
+        aria-labelledby="my-tasks-tab-tasks"
+        [attr.aria-hidden]="dashboardTab !== 'tasks'"
+      >
     <section class="tasks-section" id="tasks-section" aria-labelledby="list-heading">
       <app-card class="card-list">
         <div class="tasks-layout">
@@ -250,6 +370,13 @@
                 <span class="section-title__icon" aria-hidden="true">✅</span>
                 Your tasks
               </h2>
+              @if (isFreelancer) {
+                <p class="section-title__ai-link">
+                  <button type="button" class="section-title__ai-link-btn" (click)="setDashboardTab('ai')">
+                    AI workspace →
+                  </button>
+                </p>
+              }
               <fieldset class="filter-panel" [formGroup]="filterForm">
                 <legend class="filter-panel__legend">Search &amp; filters</legend>
                 <p class="filter-panel__hint">Results update as you type (short delay).</p>
@@ -315,15 +442,6 @@
                     (click)="openAdd()"
                   >
                     Add task
-                  </button>
-                  <button
-                    type="button"
-                    class="btn-ai"
-                    (click)="openAiProjectTasksWizard()"
-                    aria-label="Open AI assistant to suggest new tasks for a project"
-                  >
-                    <span class="btn-ai__icon" aria-hidden="true">✨</span>
-                    Suggest tasks with AI
                   </button>
                 </div>
               }
@@ -477,11 +595,15 @@
                       </div>
                       <div class="task-item__quick-actions" role="group" [attr.aria-label]="'Actions for ' + t.title">
                         @if (taskRowLooksLikeSubtask(t) && t.parentTaskId != null) {
-                          <button type="button" class="btn-task btn-task--edit" (click)="openEditSubtask(parentTaskStubForOverdueSubtask(t), overdueRowToSubtask(t))">Edit</button>
-                          <button type="button" class="btn-task btn-task--delete" (click)="openDeleteSubtask(t.parentTaskId, overdueRowToSubtask(t))">Delete</button>
+                          @if (canEditOrDeleteListRow(t)) {
+                            <button type="button" class="btn-task btn-task--edit" (click)="openEditSubtask(parentTaskStubForOverdueSubtask(t), overdueRowToSubtask(t))">Edit</button>
+                            <button type="button" class="btn-task btn-task--delete" (click)="openDeleteSubtask(t.parentTaskId, overdueRowToSubtask(t))">Delete</button>
+                          }
                         } @else if (!taskRowLooksLikeSubtask(t)) {
-                          <button type="button" class="btn-task btn-task--edit" (click)="openEdit(t)">Edit</button>
-                          <button type="button" class="btn-task btn-task--delete" (click)="openDeleteModal(t)">Delete</button>
+                          @if (canEditOrDeleteTask(t)) {
+                            <button type="button" class="btn-task btn-task--edit" (click)="openEdit(t)">Edit</button>
+                            <button type="button" class="btn-task btn-task--delete" (click)="openDeleteModal(t)">Delete</button>
+                          }
                         } @else {
                           <span class="task-item__no-actions-hint">Update the task service to load parent links for subtasks.</span>
                         }
@@ -494,23 +616,25 @@
                         <p class="subtasks-region__loading">Loading subtasks…</p>
                       } @else {
                         <div class="subtasks-region__toolbar">
-                          <button
-                            type="button"
-                            class="btn-subtask-add"
-                            (click)="openAddSubtask(t)"
-                            [attr.aria-label]="'Add subtask under ' + t.title"
-                          >
-                            + Add subtask
-                          </button>
-                          <button
-                            type="button"
-                            class="btn-subtask-ai"
-                            (click)="openAiSubtasksWizard(t)"
-                            aria-label="Suggest subtasks with AI for this task"
-                          >
-                            <span class="btn-subtask-ai__icon" aria-hidden="true">✨</span>
-                            Suggest with AI
-                          </button>
+                          @if (canEditOrDeleteTask(t)) {
+                            <button
+                              type="button"
+                              class="btn-subtask-add"
+                              (click)="openAddSubtask(t)"
+                              [attr.aria-label]="'Add subtask under ' + t.title"
+                            >
+                              + Add subtask
+                            </button>
+                            <button
+                              type="button"
+                              class="btn-subtask-ai"
+                              (click)="openAiSubtasksWizard(t)"
+                              aria-label="Suggest subtasks with AI for this task"
+                            >
+                              <span class="btn-subtask-ai__icon" aria-hidden="true">✨</span>
+                              Suggest with AI
+                            </button>
+                          }
                         </div>
                         @if (subtasksFor(t.id).length === 0) {
                           <p class="subtasks-region__empty">
@@ -552,14 +676,16 @@
                                   } @else {
                                     <span class="badge badge--{{ st.status | lowercase }}">{{ st.status }}</span>
                                   }
-                                  <button
-                                    type="button"
-                                    class="btn-task btn-task--edit btn-task--sm"
-                                    (click)="openEditSubtask(t, st)"
-                                  >
-                                    Edit
-                                  </button>
-                                  <button type="button" class="btn-task btn-task--delete btn-task--sm" (click)="openDeleteSubtask(t.id!, st)">Delete</button>
+                                  @if (canEditOrDeleteSubtask(st)) {
+                                    <button
+                                      type="button"
+                                      class="btn-task btn-task--edit btn-task--sm"
+                                      (click)="openEditSubtask(t, st)"
+                                    >
+                                      Edit
+                                    </button>
+                                    <button type="button" class="btn-task btn-task--delete btn-task--sm" (click)="openDeleteSubtask(t.id!, st)">Delete</button>
+                                  }
                                 </div>
                               </li>
                             }
@@ -587,6 +713,8 @@
         </div>
       </app-card>
     </section>
+      </div>
+    </div>
 
     @if (addModalOpen) {
       <div class="modal-overlay" (click)="closeAdd()">
@@ -609,8 +737,8 @@
               <input id="add-title" formControlName="title" />
             </div>
             <div class="field">
-              <div class="field-label-row">
-                <label for="add-description">Description (optional)</label>
+              <label for="add-description">Description (optional)</label>
+              <div class="add-description-toolbar">
                 <button
                   type="button"
                   class="btn-ai-inline"
@@ -748,6 +876,61 @@
               <label for="edit-dueDate">Due date</label>
               <input id="edit-dueDate" type="date" formControlName="dueDate" />
             </div>
+            @if (showDodSection) {
+              <div class="edit-dod-panel" aria-labelledby="edit-dod-heading">
+                <h4 id="edit-dod-heading" class="edit-dod-panel__title">Definition of done (AI)</h4>
+                <p class="modal-hint">
+                  Generate a checklist before you move work to <strong>In review</strong>. Review and edit before sending to a client.
+                </p>
+                <div
+                  class="ai-live-status ai-live-status--compact"
+                  [class.ai-live-status--ok]="aiPipelineOk"
+                  [class.ai-live-status--warn]="aiPipelineWarn"
+                  [class.ai-live-status--bad]="aiPipelineBad"
+                  role="status"
+                >
+                  <span class="ai-live-status__dot" aria-hidden="true"></span>
+                  <span class="ai-live-status__text">{{ aiPipelineStatusMessage }}</span>
+                </div>
+                @if (dodError) {
+                  <div class="error-banner" role="alert">{{ dodError }}</div>
+                }
+                <div class="edit-dod-panel__actions">
+                  <button
+                    type="button"
+                    class="btn-secondary"
+                    (click)="generateDefinitionOfDone()"
+                    [disabled]="dodLoading || saving || aiPipelineBad"
+                  >
+                    {{ dodLoading ? 'Generating…' : 'Generate checklist' }}
+                  </button>
+                  @if (dodCriteria.length > 0) {
+                    <button type="button" class="btn-secondary" (click)="copyDefinitionOfDone()" [disabled]="saving">Copy</button>
+                    <button type="button" class="btn-secondary" (click)="appendDefinitionOfDoneToDescription()" [disabled]="saving">
+                      Append to description
+                    </button>
+                  }
+                </div>
+                @if (dodCriteria.length > 0) {
+                  <ul class="edit-dod-list">
+                    @for (c of dodCriteria; track $index) {
+                      <li>
+                        <span class="edit-dod-list__tag">{{ c.mustHave ? 'Must' : 'Should' }}</span>
+                        {{ c.text }}
+                      </li>
+                    }
+                  </ul>
+                }
+                @if (dodAssumptions.length > 0) {
+                  <p class="edit-dod-assumptions-title">Assumptions</p>
+                  <ul class="edit-dod-list edit-dod-list--assumptions">
+                    @for (a of dodAssumptions; track $index) {
+                      <li>{{ a }}</li>
+                    }
+                  </ul>
+                }
+              </div>
+            }
             <div class="modal-actions">
               <button type="button" class="btn-secondary" (click)="closeEdit()" [disabled]="saving">Cancel</button>
               <button type="submit" class="btn-primary" [disabled]="editForm.invalid || saving">{{ saving ? 'Saving…' : 'Save' }}</button>
@@ -755,6 +938,224 @@
           </form>
         </div>
       </div>
+    }
+
+    @if (coachPanelOpen) {
+      <div class="modal-overlay modal-overlay--ai coach-panel-overlay" (click)="closeCoachPanel()" role="presentation">
+        <div
+          class="modal modal--form modal--wide coach-panel"
+          (click)="$event.stopPropagation()"
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby="coach-heading"
+        >
+          <div class="coach-panel__header">
+            <div class="coach-panel__header-main">
+              <span class="coach-panel__icon" aria-hidden="true">📊</span>
+              <div class="coach-panel__titles">
+                <h3 id="coach-heading" class="coach-panel__title">Workload coach</h3>
+                <p class="coach-panel__subtitle">
+                  Narrative guidance from your assignments — not financial or legal advice.
+                </p>
+              </div>
+            </div>
+            <div
+              class="ai-live-status ai-live-status--coach"
+              [class.ai-live-status--ok]="aiPipelineOk"
+              [class.ai-live-status--warn]="aiPipelineWarn"
+              [class.ai-live-status--bad]="aiPipelineBad"
+              role="status"
+            >
+              <span class="ai-live-status__dot" aria-hidden="true"></span>
+              <span class="ai-live-status__text">{{ aiPipelineStatusMessage }}</span>
+            </div>
+          </div>
+
+          <div class="coach-panel__body">
+            <div class="coach-panel__controls">
+              <label class="coach-panel__control-label" for="coach-horizon">Due-soon window</label>
+              <div class="coach-panel__control-row">
+                <input
+                  id="coach-horizon"
+                  class="coach-panel__horizon-input"
+                  type="number"
+                  min="1"
+                  max="30"
+                  [(ngModel)]="coachHorizonDays"
+                />
+                <span class="coach-panel__control-suffix">days ahead</span>
+              </div>
+            </div>
+
+            @if (coachError) {
+              <div class="coach-panel__alert coach-panel__alert--error" role="alert">{{ coachError }}</div>
+            }
+
+            @if (coachLoading) {
+              <div class="coach-panel__loading-block" aria-busy="true">
+                <div class="coach-panel__loading-dots" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </div>
+                <p class="coach-panel__loading-text">Analyzing your workload snapshot…</p>
+              </div>
+            }
+
+            @if (coachHasFetched && !coachLoading && !coachError && !coachSummaryMarkdown && coachHighlights.length === 0) {
+              <div class="coach-panel__empty">
+                <p class="coach-panel__empty-title">No coaching text this time</p>
+                <p class="coach-panel__empty-hint">Try <strong>Refresh coach</strong> again, or widen the due-soon window.</p>
+              </div>
+            }
+
+            @if (!coachLoading && coachSummaryMarkdown) {
+              <section class="coach-panel__section" aria-label="Coaching summary">
+                <h4 class="coach-panel__section-title">Overview</h4>
+                <div class="coach-panel__summary coach-panel__summary--pre">{{ coachSummaryMarkdown }}</div>
+              </section>
+            }
+
+            @if (!coachLoading && coachHighlights.length > 0) {
+              <section class="coach-panel__section" aria-label="Suggested moves">
+                <h4 class="coach-panel__section-title">Suggested moves</h4>
+                <ul class="coach-panel__highlights">
+                  @for (h of coachHighlights; track $index) {
+                    <li class="coach-panel__highlight-item">{{ h }}</li>
+                  }
+                </ul>
+              </section>
+            }
+          </div>
+
+          <div class="coach-panel__footer">
+            <button type="button" class="coach-panel__btn coach-panel__btn--ghost" (click)="closeCoachPanel()">Close</button>
+            <button
+              type="button"
+              class="coach-panel__btn coach-panel__btn--primary"
+              (click)="refreshCoach()"
+              [disabled]="coachLoading || aiPipelineBad"
+            >
+              @if (coachLoading) {
+                <span class="coach-panel__btn-spinner" aria-hidden="true"></span>
+              }
+              {{ coachLoading ? 'Working…' : 'Refresh coach' }}
+            </button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (askDrawerOpen) {
+      <div class="ask-drawer-backdrop" (click)="closeAskDrawer()" role="presentation"></div>
+      <aside
+        class="ask-drawer"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="ask-drawer-title"
+        (click)="$event.stopPropagation()"
+      >
+        <div class="ask-drawer__accent" aria-hidden="true"></div>
+        <header class="ask-drawer__head">
+          <div class="ask-drawer__head-text">
+            <span class="ask-drawer__icon" aria-hidden="true">💬</span>
+            <div>
+              <h3 id="ask-drawer-title" class="ask-drawer__title">Ask my tasks</h3>
+              <p class="ask-drawer__tagline">Natural language over your open work</p>
+            </div>
+          </div>
+          <button type="button" class="ask-drawer__close" (click)="closeAskDrawer()" aria-label="Close panel">
+            <span aria-hidden="true">×</span>
+          </button>
+        </header>
+
+        <div class="ask-drawer__scroll">
+          <div class="ask-drawer__info">
+            <p>
+              Answers use a <strong>fresh snapshot</strong> of your open tasks (large backlogs may be truncated). Verify anything critical before acting.
+            </p>
+          </div>
+          <div
+            class="ai-live-status ai-live-status--ask"
+            [class.ai-live-status--ok]="aiPipelineOk"
+            [class.ai-live-status--warn]="aiPipelineWarn"
+            [class.ai-live-status--bad]="aiPipelineBad"
+            role="status"
+          >
+            <span class="ai-live-status__dot" aria-hidden="true"></span>
+            <span class="ai-live-status__text">{{ aiPipelineStatusMessage }}</span>
+          </div>
+
+          @if (askError) {
+            <div class="ask-drawer__alert" role="alert">{{ askError }}</div>
+          }
+
+          <div class="ask-drawer__messages">
+            @if (askMessages.length === 0 && !askLoading) {
+              <div class="ask-drawer__empty">
+                <p class="ask-drawer__empty-title">Try a question</p>
+                <p class="ask-drawer__empty-examples">
+                  e.g. “What’s overdue?” · “Which tasks have no due date?” · “What should I finish before Friday?”
+                </p>
+              </div>
+            }
+            @for (m of askMessages; track $index) {
+              <div
+                class="ask-bubble"
+                [class.ask-bubble--user]="m.role === 'user'"
+                [class.ask-bubble--assistant]="m.role === 'assistant'"
+              >
+                <span class="ask-bubble__role">{{ m.role === 'user' ? 'You' : 'Coach' }}</span>
+                <div class="ask-bubble__body ask-bubble__body--pre">{{ m.body }}</div>
+                @if (m.role === 'assistant' && m.citedTaskIds?.length) {
+                  <div class="ask-bubble__cites">
+                    <span class="ask-bubble__cites-label">Related tasks</span>
+                    <div class="ask-cite-row">
+                      @for (id of m.citedTaskIds!; track id) {
+                        <span class="ask-cite-chip" [title]="'Task #' + id">{{ taskTitleForCitedId(id) }}</span>
+                      }
+                    </div>
+                  </div>
+                }
+              </div>
+            }
+            @if (askLoading) {
+              <div class="ask-bubble ask-bubble--assistant ask-bubble--typing" aria-live="polite">
+                <span class="ask-bubble__role">Coach</span>
+                <div class="ask-drawer__typing" aria-hidden="true">
+                  <span></span><span></span><span></span>
+                </div>
+              </div>
+            }
+          </div>
+        </div>
+
+        <div class="ask-drawer__composer">
+          <label class="ask-drawer__composer-label" for="ask-input">Your question</label>
+          <textarea
+            id="ask-input"
+            class="ask-drawer__textarea"
+            [(ngModel)]="askInput"
+            rows="3"
+            placeholder="Ask anything about your open tasks…"
+            (keydown.control.enter)="sendAsk()"
+            (keydown.meta.enter)="sendAsk()"
+          ></textarea>
+          <p class="ask-drawer__shortcut-hint"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> to send</p>
+          <div class="ask-drawer__composer-actions">
+            <button type="button" class="ask-drawer__btn ask-drawer__btn--ghost" (click)="clearAskHistory()">Clear thread</button>
+            <button
+              type="button"
+              class="ask-drawer__btn ask-drawer__btn--send"
+              (click)="sendAsk()"
+              [disabled]="askLoading || !askInput.trim() || aiPipelineBad"
+            >
+              @if (askLoading) {
+                <span class="ask-drawer__btn-spinner" aria-hidden="true"></span>
+              }
+              {{ askLoading ? 'Thinking…' : 'Send' }}
+            </button>
+          </div>
+        </div>
+      </aside>
     }
 
     @if (aiWizardOpen) {
@@ -789,6 +1190,11 @@
                   }
                 </p>
               </div>
+            </div>
+            <div class="ai-engine-row">
+              <p class="ai-engine-row__hint">
+                Uses the Spring AImodel service with your local Ollama instance.
+              </p>
             </div>
             <div
               class="ai-live-status"

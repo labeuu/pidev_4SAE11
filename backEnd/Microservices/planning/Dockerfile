@@ -1,5 +1,5 @@
 # Build stage
-FROM eclipse-temurin:17-jdk-alpine AS build
+FROM eclipse-temurin:17-jdk AS build
 WORKDIR /app
 
 # Copy Maven wrapper and pom.xml
@@ -15,11 +15,11 @@ COPY src ./src
 RUN ./mvnw clean package -DskipTests -B
 
 # Runtime stage
-FROM eclipse-temurin:17-jre-alpine
+FROM eclipse-temurin:17-jre
 WORKDIR /app
 
 # Create non-root user for security
-RUN addgroup -g 1001 appgroup && adduser -u 1001 -G appgroup -D appuser
+RUN groupadd -g 1001 appgroup && useradd -u 1001 -g appgroup -m -s /bin/sh appuser
 USER appuser
 
 COPY --from=build /app/target/*.jar app.jar

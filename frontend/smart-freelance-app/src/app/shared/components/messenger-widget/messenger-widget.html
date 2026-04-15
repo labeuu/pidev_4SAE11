@@ -1,0 +1,279 @@
+<!-- ═══════════════════════════════════════════════════════════
+     MESSENGER WIDGET  –  floats over every dashboard page
+     ═══════════════════════════════════════════════════════════ -->
+
+<!-- ── FAB button ───────────────────────────────────────────────────────── -->
+<button
+  class="msng-fab"
+  (click)="toggle()"
+  [class.msng-fab--open]="panelOpen()"
+  [attr.aria-label]="panelOpen() ? 'Close messages' : 'Open messages'"
+  aria-haspopup="dialog"
+>
+  <!-- Chat icon -->
+  <svg class="msng-fab__icon msng-fab__icon--chat" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"
+          fill="currentColor" opacity=".2" stroke="currentColor" stroke-width="1.8"
+          stroke-linejoin="round"/>
+    <circle cx="9" cy="11" r="1" fill="currentColor"/>
+    <circle cx="12" cy="11" r="1" fill="currentColor"/>
+    <circle cx="15" cy="11" r="1" fill="currentColor"/>
+  </svg>
+
+  <!-- Close icon -->
+  <svg class="msng-fab__icon msng-fab__icon--close" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <line x1="18" y1="6" x2="6" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+    <line x1="6" y1="6" x2="18" y2="18" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"/>
+  </svg>
+
+  <!-- Unread badge -->
+  <span class="msng-fab__badge" *ngIf="unreadTotal > 0 && !panelOpen()" aria-label="{{ unreadTotal }} unread messages">
+    {{ unreadTotal > 99 ? '99+' : unreadTotal }}
+  </span>
+</button>
+
+<!-- ── Floating panel ────────────────────────────────────────────────────── -->
+<div
+  class="msng-panel"
+  [class.msng-panel--visible]="panelOpen()"
+  role="dialog"
+  aria-label="Messages"
+>
+
+  <!-- ════ CONVERSATION LIST ════ -->
+  <div class="msng-list" [class.msng-list--hidden]="view() === 'chat'">
+
+    <!-- List header -->
+    <div class="msng-list__header">
+      <h2 class="msng-list__title">Messages</h2>
+      <a routerLink="/dashboard/messages" class="msng-list__expand" title="Open full messenger" (click)="toggle()">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <polyline points="15 3 21 3 21 9"/>
+          <polyline points="9 21 3 21 3 15"/>
+          <line x1="21" y1="3" x2="14" y2="10"/>
+          <line x1="3" y1="21" x2="10" y2="14"/>
+        </svg>
+      </a>
+    </div>
+
+    <!-- Search -->
+    <div class="msng-search">
+      <svg class="msng-search__icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+        <circle cx="11" cy="11" r="8"/>
+        <line x1="21" y1="21" x2="16.65" y2="16.65"/>
+      </svg>
+      <input
+        class="msng-search__input"
+        type="search"
+        placeholder="Search conversations…"
+        [(ngModel)]="searchQuery"
+        aria-label="Search conversations"
+        autocomplete="off"
+      />
+    </div>
+
+    <!-- Conversations -->
+    <div class="msng-convs">
+      <!-- Loading skeleton -->
+      <div *ngIf="loadingConvs" class="msng-skeleton">
+        <div class="msng-skeleton__item" *ngFor="let _ of [1,2,3]">
+          <div class="msng-skeleton__avatar"></div>
+          <div class="msng-skeleton__lines">
+            <div class="msng-skeleton__line msng-skeleton__line--name"></div>
+            <div class="msng-skeleton__line msng-skeleton__line--preview"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div *ngIf="!loadingConvs && filteredConvs.length === 0" class="msng-empty">
+        <div class="msng-empty__icon">💬</div>
+        <p>{{ searchQuery ? 'No results found' : 'No conversations yet' }}</p>
+      </div>
+
+      <!-- Conversation rows -->
+      <button
+        class="msng-conv"
+        *ngFor="let c of filteredConvs; trackBy: trackByPartnerId"
+        (click)="openChat(c.partnerId)"
+        [class.msng-conv--unread]="c.unreadCount > 0"
+        [attr.aria-label]="'Chat with ' + getName(c.partnerId)"
+      >
+        <!-- Avatar -->
+        <div class="msng-avatar">
+          <img
+            *ngIf="userAvatars[c.partnerId]"
+            [src]="userAvatars[c.partnerId]"
+            [alt]="getName(c.partnerId)"
+            class="msng-avatar__img"
+          />
+          <span *ngIf="!userAvatars[c.partnerId]" class="msng-avatar__initials">
+            {{ getInitial(c.partnerId) }}
+          </span>
+          <span class="msng-avatar__dot" [class.msng-avatar__dot--online]="c.isOnline"></span>
+        </div>
+
+        <!-- Info -->
+        <div class="msng-conv__body">
+          <div class="msng-conv__row">
+            <span class="msng-conv__name">{{ getName(c.partnerId) }}</span>
+            <span class="msng-conv__time">{{ c.lastMessageTime | date:'shortTime' }}</span>
+          </div>
+          <div class="msng-conv__row">
+            <span class="msng-conv__preview">
+              {{ (c.lastMessage || '') | slice:0:42 }}{{ (c.lastMessage?.length ?? 0) > 42 ? '…' : '' }}
+            </span>
+            <span class="msng-conv__badge" *ngIf="c.unreadCount > 0">{{ c.unreadCount }}</span>
+          </div>
+        </div>
+      </button>
+    </div>
+  </div>
+
+  <!-- ════ CHAT WINDOW ════ -->
+  <div class="msng-chat" [class.msng-chat--visible]="view() === 'chat'">
+
+    <!-- Chat header -->
+    <div class="msng-chat__header">
+      <button class="msng-chat__back" (click)="backToList()" aria-label="Back to conversations">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+          <polyline points="15 18 9 12 15 6" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <div class="msng-avatar msng-avatar--sm">
+        <img
+          *ngIf="selectedPartnerId && userAvatars[selectedPartnerId]"
+          [src]="userAvatars[selectedPartnerId]"
+          [alt]="partnerName"
+          class="msng-avatar__img"
+        />
+        <span *ngIf="!selectedPartnerId || !userAvatars[selectedPartnerId]" class="msng-avatar__initials">
+          {{ partnerName.charAt(0).toUpperCase() }}
+        </span>
+        <span class="msng-avatar__dot" [class.msng-avatar__dot--online]="isPartnerOnline"></span>
+      </div>
+
+      <div class="msng-chat__info">
+        <span class="msng-chat__name">{{ partnerName }}</span>
+        <span class="msng-chat__status" [class.msng-chat__status--online]="isPartnerOnline">
+          {{ isPartnerOnline ? 'Active now' : 'Offline' }}
+        </span>
+      </div>
+    </div>
+
+    <!-- Messages area -->
+    <div class="msng-messages" #messagesEl>
+
+      <!-- Load more -->
+      <div class="msng-loadmore" *ngIf="currentPage < totalPages - 1">
+        <button class="msng-loadmore__btn" (click)="loadMore()" [disabled]="loadingMore">
+          {{ loadingMore ? 'Loading…' : 'Load earlier messages' }}
+        </button>
+      </div>
+
+      <!-- Spinner -->
+      <div class="msng-spinner-wrap" *ngIf="loadingMsgs">
+        <div class="msng-spinner"></div>
+      </div>
+
+      <!-- Bubbles -->
+      <ng-container *ngFor="let msg of messages; trackBy: trackById">
+        <div
+          class="msng-bubble-wrap"
+          [class.msng-bubble-wrap--mine]="isMine(msg)"
+          [class.msng-bubble-wrap--theirs]="!isMine(msg)"
+        >
+          <!-- Avatar for received messages -->
+          <div class="msng-avatar msng-avatar--xs" *ngIf="!isMine(msg)">
+            <img
+              *ngIf="selectedPartnerId && userAvatars[selectedPartnerId]"
+              [src]="userAvatars[selectedPartnerId]"
+              [alt]="partnerName"
+              class="msng-avatar__img"
+            />
+            <span *ngIf="!selectedPartnerId || !userAvatars[selectedPartnerId]" class="msng-avatar__initials">
+              {{ partnerName.charAt(0).toUpperCase() }}
+            </span>
+          </div>
+
+          <div class="msng-bubble" [class.msng-bubble--mine]="isMine(msg)" [class.msng-bubble--theirs]="!isMine(msg)">
+            <p class="msng-bubble__text">{{ msg.content }}</p>
+            <div class="msng-bubble__meta">
+              <span class="msng-bubble__time">{{ msg.timestamp | date:'shortTime' }}</span>
+              <span class="msng-bubble__tick" *ngIf="isMine(msg)" [class.msng-bubble__tick--seen]="msg.status === 'SEEN'">
+                <svg viewBox="0 0 16 10" fill="none" aria-hidden="true">
+                  <path d="M1 5l3.5 3.5L11 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                  <path *ngIf="msg.status !== 'SENT'" d="M5 5l3.5 3.5L15 1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+                </svg>
+              </span>
+            </div>
+          </div>
+        </div>
+      </ng-container>
+
+      <!-- Typing indicator -->
+      <div class="msng-typing" *ngIf="isPartnerTyping">
+        <div class="msng-avatar msng-avatar--xs">
+          <span class="msng-avatar__initials">{{ partnerName.charAt(0).toUpperCase() }}</span>
+        </div>
+        <div class="msng-typing__bubble">
+          <span class="msng-typing__dot"></span>
+          <span class="msng-typing__dot"></span>
+          <span class="msng-typing__dot"></span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Input bar -->
+    <div class="msng-input-bar">
+      <button class="msng-input-bar__action" aria-label="Add emoji" title="Emoji">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="12" cy="12" r="10"/>
+          <path d="M8 14s1.5 2 4 2 4-2 4-2"/>
+          <line x1="9" y1="9" x2="9.01" y2="9" stroke-linecap="round" stroke-width="2.5"/>
+          <line x1="15" y1="9" x2="15.01" y2="9" stroke-linecap="round" stroke-width="2.5"/>
+        </svg>
+      </button>
+
+      <input
+        #inputEl
+        class="msng-input"
+        type="text"
+        [(ngModel)]="newMessage"
+        (input)="onTyping()"
+        (keydown)="onKeydown($event)"
+        placeholder="Aa"
+        autocomplete="off"
+        aria-label="Type a message"
+      />
+
+      <!-- Send / thumbs-up -->
+      <button
+        *ngIf="newMessage.trim()"
+        class="msng-input-bar__send"
+        (click)="send()"
+        aria-label="Send message"
+      >
+        <svg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+          <path d="M22 2L11 13" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+          <path d="M22 2L15 22 11 13 2 9l20-7z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+        </svg>
+      </button>
+
+      <button
+        *ngIf="!newMessage.trim()"
+        class="msng-input-bar__action msng-input-bar__action--like"
+        (click)="sendThumbsUp()"
+        aria-label="Send thumbs up"
+        title="👍"
+      >
+        <svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true">
+          <path d="M14 9V5a3 3 0 0 0-3-3l-4 9v11h11.28a2 2 0 0 0 2-1.7l1.38-9a2 2 0 0 0-2-2.3H14z"/>
+          <path d="M7 22H4a2 2 0 0 1-2-2v-7a2 2 0 0 1 2-2h3"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+
+</div>

@@ -1,74 +1,199 @@
-<div class="gamification-page">
-  <header class="page-head">
-    <div>
-      <h1 class="page-title">Growth & achievements</h1>
-      <p class="page-sub">Level, XP, and badges synced from your activity on the platform.</p>
+<div class="gamification-container">
+
+  @if (loading) {
+    <div class="empty-state">
+      <span class="icon">🌀</span>
+      <h2>Analyzing your progress...</h2>
+      <p>Gathering your latest achievements and XP points.</p>
     </div>
-    <a routerLink="/dashboard" class="back-link">← Dashboard</a>
-  </header>
+  } @else if (errorMessage) {
+    <div class="empty-state">
+      <span class="icon">🔒</span>
+      <h2>Access Denied</h2>
+      <p>{{ errorMessage }}</p>
+    </div>
+  } @else {
+    
+    <!-- 1. Header & Quick Summary -->
+    <header class="header">
+      <h1>Gamification Center</h1>
+      <p>Unlock achievements, earn XP, and climb the global leaderboards!</p>
+    </header>
 
-  <div class="state state--error" *ngIf="errorMessage && !loading">
-    <p>{{ errorMessage }}</p>
-  </div>
-
-  <div class="state state--loading" *ngIf="loading">
-    <p>Loading your progress…</p>
-  </div>
-
-  <ng-container *ngIf="!loading && !errorMessage && userId != null">
-    <section class="level-section">
-      <app-card class="level-card">
-        <div class="level-card__inner">
-          <div class="level-badge" aria-hidden="true">
-            <span class="level-badge__num">{{ displayLevel() }}</span>
-            <span class="level-badge__label">Level</span>
-          </div>
-          <div class="level-details">
-            <h2 class="level-details__title">Your progress</h2>
-            <p class="level-details__xp">
-              <strong>{{ totalXp() }}</strong> total XP
-            </p>
-            <div class="xp-bar" role="progressbar" [attr.aria-valuenow]="xpInTier()" aria-valuemin="0" aria-valuemax="100">
-              <div class="xp-bar__fill" [style.width.%]="xpInTier()"></div>
-            </div>
-            <p class="level-details__hint">{{ xpInTier() }} / 100 XP toward the next level</p>
-            <ul class="meta-chips">
-              <li class="meta-chip" *ngIf="streak() > 0">⚡ Fast responder streak: <strong>{{ streak() }}</strong></li>
-              <li class="meta-chip meta-chip--highlight" *ngIf="topFreelancer()">🏆 Top freelancer</li>
-            </ul>
-          </div>
+    <div class="stats-grid">
+      <div class="stat-card xp">
+        <div class="icon-box">✨</div>
+        <div class="info">
+          <span class="label">Total Experience</span>
+          <span class="value">{{ totalXp() | number }} XP</span>
+          <span class="sub">Life-time aggregate</span>
         </div>
-      </app-card>
-    </section>
-
-    <section class="achievements-section">
-      <h2 class="section-title">Achievements</h2>
-      <p class="section-sub">{{ unlocked.length }} unlocked of {{ catalog.length }}</p>
-
-      <div class="achievement-grid" *ngIf="catalog.length > 0">
-        <app-card
-          *ngFor="let a of catalog"
-          class="achievement-card"
-          [class.achievement-card--locked]="!isUnlocked(a.id)"
-        >
-          <div class="achievement-card__inner">
-            <div class="achievement-card__icon" [class.achievement-card__icon--locked]="!isUnlocked(a.id)">
-              {{ isUnlocked(a.id) ? '✓' : '○' }}
-            </div>
-            <h3 class="achievement-card__title">{{ a.title }}</h3>
-            <p class="achievement-card__desc">{{ a.description }}</p>
-            <div class="achievement-card__footer">
-              <span class="tag">{{ conditionLabel(a.conditionType) }}</span>
-              <span class="xp-pill">+{{ a.xpReward }} XP</span>
-            </div>
-            <p class="achievement-card__date" *ngIf="unlockedEntry(a.id) as row">
-              Unlocked {{ row.unlockedAt | date: 'mediumDate' }}
-            </p>
-          </div>
-        </app-card>
       </div>
 
-      <p class="empty-catalog" *ngIf="catalog.length === 0">No achievements are defined yet.</p>
+      <div class="stat-card level">
+        <div class="icon-box">🏆</div>
+        <div class="info">
+          <span class="label">Current Tier</span>
+          <span class="value">Level {{ displayLevel() }}</span>
+          <span class="sub">Advanced Proficiency</span>
+        </div>
+      </div>
+
+      <div class="stat-card streak">
+        <div class="icon-box">🔥</div>
+        <div class="info">
+          <span class="label">Active Streak</span>
+          <span class="value">{{ streak() }} Days</span>
+          <span class="sub">Consistency Bonus</span>
+        </div>
+      </div>
+    </div>
+    
+    <!-- 1b. Smart Recommendations Section -->
+    @if (recommendations.length > 0) {
+      <section class="recommendations-section">
+        <div class="section-title">
+          <div class="title-with-icon">
+            <span class="sparkle-icon">💡</span>
+            <h3>Smart Tips for You</h3>
+          </div>
+          <span class="count-label">Tailored Advice</span>
+        </div>
+
+        <div class="recommendations-grid">
+          @for (rec of recommendations; track rec.message) {
+            <div class="recommendation-card" 
+                 [class.priority-high]="rec.priority === 1"
+                 [class.priority-medium]="rec.priority === 2"
+                 [class.priority-low]="rec.priority === 3">
+              <div class="rec-content">
+                <span class="rec-icon">
+                  {{ rec.priority === 1 ? '🎯' : (rec.priority === 2 ? '🔥' : '📈') }}
+                </span>
+                <p class="rec-message">{{ rec.message }}</p>
+              </div>
+              <div class="priority-tag">
+                {{ rec.priority === 1 ? 'Urgent' : (rec.priority === 2 ? 'Next' : 'Tip') }}
+              </div>
+            </div>
+          }
+        </div>
+      </section>
+    }
+
+    <!-- 2. Main Level Progress -->
+    <section class="level-progress-section">
+      <div class="progress-header">
+        <div class="current-level">
+          <h2>Level {{ displayLevel() }}</h2>
+          <span>Experience Mastery</span>
+        </div>
+        <div class="next-milestone">
+          <span>NEXT TARGET: Level {{ displayLevel() + 1 }}</span>
+          {{ totalXpNeeded() - xpInTier() | number }} XP to go
+        </div>
+      </div>
+      
+      <div class="progress-track" title="Current Level Progress">
+        <div class="progress-fill" [style.width.%]="progressPercent()"></div>
+      </div>
+
+      <div class="progress-footer">
+        <span><strong>{{ xpInTier() | number }}</strong> XP collected</span>
+        <span>/</span>
+        <span>Goal: <strong>{{ totalXpNeeded() | number }}</strong> XP</span>
+      </div>
     </section>
-  </ng-container>
+
+    <!-- 2b. Global Leaderboard (Only for Freelancers or if visible to all) -->
+    <section class="leaderboard-section">
+      <div class="section-title">
+        <h3>Global Leaderboard</h3>
+        <span class="count-label">Top 10 Rankings</span>
+      </div>
+
+      <div class="leaderboard-card">
+        <table class="leaderboard-table">
+          <thead>
+            <tr>
+              <th>Rank</th>
+              <th>User ID</th>
+              <th>Level</th>
+              <th>XP Score</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            @for (entry of leaderboard; track entry.userId; let i = $index) {
+              <tr [class.highlight]="entry.userId === userId">
+                <td class="rank-cell">
+                  <span class="rank-badge" [class.gold]="i === 0" [class.silver]="i === 1" [class.bronze]="i === 2">
+                    {{ i + 1 }}
+                  </span>
+                </td>
+                <td class="user-cell">
+                  <strong>{{ entry.fullName || 'User #' + entry.userId }}</strong>
+                  @if (entry.userId === userId) { <span class="you-tag">YOU</span> }
+                </td>
+                <td class="level-cell">Lvl {{ entry.level }}</td>
+                <td class="xp-cell">{{ entry.xp | number }} XP</td>
+                <td>
+                  @if (entry.isTopFreelancer) {
+                    <span class="top-tag">👑 Elite</span>
+                  } @else {
+                    <span class="rising-tag">Rising</span>
+                  }
+                </td>
+              </tr>
+            }
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <!-- 3. Milestones (Badges) -->
+    <div class="section-title">
+      <h3>Active Milestones</h3>
+      <span class="count-label">{{ progressList.length }} badges defined</span>
+    </div>
+
+    <div class="milestones-grid">
+      @for (p of progressList; track p.achievementId) {
+        @if (shouldShowAchievement(p.targetRole)) {
+          <div class="milestone-card" [class.locked]="!p.unlocked">
+            <span class="status-badge" [class.earned]="p.unlocked">
+              {{ p.unlocked ? 'Earned' : 'Locked' }}
+            </span>
+
+            <div class="card-top">
+              <div class="badge-icon" [title]="p.title">
+                {{ p.iconEmoji || '🏅' }}
+              </div>
+              <div class="milestone-info">
+                <h4>{{ p.title }}</h4>
+                <p>{{ p.description }}</p>
+              </div>
+            </div>
+
+            <div class="card-reward">
+              <span class="reward-pill">+{{ p.xpReward }} XP</span>
+              <span class="type-label">{{ conditionLabel(p.conditionType) }}</span>
+            </div>
+
+            <div class="card-progress">
+               <div class="progress-labels">
+                 <span class="current">{{ p.currentValue }} / {{ p.targetValue }} units</span>
+                 <span class="percent">{{ p.progressPercent }}%</span>
+               </div>
+               <div class="mini-track">
+                 <div class="mini-fill" [style.width.%]="p.progressPercent"></div>
+               </div>
+            </div>
+          </div>
+        }
+      }
+    </div>
+
+  }
+
 </div>

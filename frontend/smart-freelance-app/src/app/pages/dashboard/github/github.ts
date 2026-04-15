@@ -1,4 +1,4 @@
-import { ChangeDetectorRef, Component, OnDestroy } from '@angular/core';
+import { ChangeDetectorRef, Component, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute } from '@angular/router';
@@ -20,7 +20,7 @@ import {
   templateUrl: './github.html',
   styleUrl: './github.scss',
 })
-export class Github implements OnDestroy {
+export class Github implements OnInit, OnDestroy {
   owner = '';
   repo = '';
   branch: string | null = null;
@@ -44,9 +44,9 @@ export class Github implements OnDestroy {
   errorMessage: string | null = null;
 
   constructor(
-    private planning: PlanningService,
-    private route: ActivatedRoute,
-    private cdr: ChangeDetectorRef
+    private readonly planning: PlanningService,
+    private readonly route: ActivatedRoute,
+    private readonly cdr: ChangeDetectorRef
   ) {}
 
   ngOnInit(): void {
@@ -98,6 +98,21 @@ export class Github implements OnDestroy {
 
   get repoFilled(): boolean {
     return this.owner.trim().length > 0 && this.repo.trim().length > 0;
+  }
+
+  onRepoInputChange(): void {
+    this.branch = null;
+    this.branches = [];
+    this.latestCommit = null;
+    this.commits = [];
+    this.createdIssue = null;
+    this.errorMessage = null;
+  }
+
+  formatGitHubDate(s: string | null | undefined): string {
+    if (!s) return '—';
+    const d = new Date(s);
+    return Number.isNaN(d.getTime()) ? s : d.toLocaleString();
   }
 
   loadBranches(): void {

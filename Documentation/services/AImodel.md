@@ -1,39 +1,38 @@
-# AImodel service (Node.js)
+# AImodel service (Spring AI + Ollama)
 
 - **Code**: [backEnd/Microservices/AImodel](../../backEnd/Microservices/AImodel)
-- **Eureka app name**: `AIMODEL` (default; overridable via `EUREKA_APP_NAME`)
-- **Port**: **8092** (default; overridable via `PORT`)
-- **Gateway**: `http://localhost:8078/aimodel/**` → `lb://AIMODEL`
+- **Eureka app name**: `AIMODEL`
+- **Port**: **8095**
+- **Gateway**: `http://localhost:8078/aimodel/**` → `http://localhost:8095` (direct URL in gateway config)
 
 ## Responsibilities
 
-HTTP API that proxies **LLM** requests to **Ollama** (default model `qwen3:8b` in config). Used by other services (e.g. **Task** AI endpoints) and optionally by Offer UI flows.
+HTTP API that proxies **LLM** requests to **Ollama** (default model `gemma3:4b` in config). Used by other services (e.g. **Task** AI endpoints) and optionally by Offer UI flows.
 
 Main files:
 
-- [server.js](../../backEnd/Microservices/AImodel/src/server.js) — listens and registers with Eureka
-- [routes/aiRoutes.js](../../backEnd/Microservices/AImodel/src/routes/aiRoutes.js), **controllers**, **services**, **ollamaClient**
+- [AImodelApplication.java](../../backEnd/Microservices/AImodel/src/main/java/com/esprit/aimodel/AImodelApplication.java)
+- [AiController.java](../../backEnd/Microservices/AImodel/src/main/java/com/esprit/aimodel/controller/AiController.java)
+- [LlmGenerationService.java](../../backEnd/Microservices/AImodel/src/main/java/com/esprit/aimodel/service/LlmGenerationService.java)
 
 ## Configuration
 
-Environment variables (see [config/index.js](../../backEnd/Microservices/AImodel/src/config/index.js)):
+Environment variables:
 
-- `PORT` (default 8092)
 - `OLLAMA_BASE_URL` (default `http://localhost:11434`)
-- `OLLAMA_MODEL`, `OLLAMA_TIMEOUT_MS`, etc.
-- `EUREKA_ENABLED`, `EUREKA_SERVER_URL`, instance hostname/IP
+- `OLLAMA_MODEL` (e.g. `gemma3:4b`)
+- optional `SERVER_PORT`
 
 ## Run
 
-Requires **Node 18+** and (for full functionality) **Ollama** running locally.
+Requires **Java 17+** and **Ollama** running locally.
 
 ```bash
 cd backEnd/Microservices/AImodel
-npm install
-npm start
+mvn spring-boot:run
 ```
 
-Start **Eureka** before the service if `EUREKA_ENABLED` is true (default), so the gateway can use `lb://AIMODEL`.
+The service still registers with **Eureka** by default (`AIMODEL`), but the **API Gateway** uses a direct URL to port **8095** so status and AI calls work even if discovery is slow.
 
 ## Data
 

@@ -180,15 +180,51 @@ export const routes: Routes = [
         ]
       },
       { path: 'my-portfolio', loadComponent: () => import('./pages/dashboard/portfolio-overview/portfolio-overview').then(m => m.PortfolioOverview) },
-      { path: 'messages', redirectTo: '', pathMatch: 'full' },
+      { path: 'messages', loadComponent: () => import('./pages/chat/chat-page/chat-page.component').then(m => m.ChatPageComponent), title: 'Messages' },
       { path: 'gamification', loadComponent: () => import('./pages/dashboard/gamification/gamification').then(m => m.GamificationPage), title: 'Growth & achievements' },
+      { path: 'leaderboard', loadComponent: () => import('./pages/dashboard/leaderboard/leaderboard').then(m => m.LeaderboardPage), title: 'Global Leaderboard' },
       { path: 'notifications', loadComponent: () => import('./pages/dashboard/notifications/notifications').then(m => m.Notifications) },
       { path: 'profile', loadComponent: () => import('./pages/dashboard/profile/profile').then(m => m.Profile) },
       { path: 'settings', redirectTo: 'profile', pathMatch: 'full' },
       { path: 'my-subcontracts', loadComponent: () => import('./pages/dashboard/my-subcontracts/my-subcontracts').then(m => m.MySubcontracts), title: 'Mes Sous-Traitances' },
       { path: 'subcontractor-work', loadComponent: () => import('./pages/dashboard/subcontractor-work/subcontractor-work').then(m => m.SubcontractorWork), title: 'Travaux sous-traités' },
+      // Freelancia Jobs (CLIENT: manage own jobs; FREELANCER: browse open jobs)
+      {
+        path: 'my-jobs',
+        children: [
+          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/freelancia-jobs/list-jobs/list-jobs').then(m => m.ListJobs), title: 'My Jobs' },
+          { path: 'add', loadComponent: () => import('./pages/freelancia-jobs/add-job/add-job').then(m => m.AddJob), title: 'Post a Job' },
+          { path: ':id/show', loadComponent: () => import('./pages/freelancia-jobs/show-job/show-job').then(m => m.ShowJob), title: 'Job Details' },
+          { path: ':id/edit', loadComponent: () => import('./pages/freelancia-jobs/update-job/update-job').then(m => m.UpdateJob), title: 'Edit Job' },
+        ]
+      },
+      {
+        path: 'browse-freelancia-jobs',
+        children: [
+          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/freelancia-jobs/list-jobs/list-jobs').then(m => m.ListJobs), title: 'Browse Jobs' },
+          { path: ':id/show', loadComponent: () => import('./pages/freelancia-jobs/show-job/show-job').then(m => m.ShowJob), title: 'Job Details' },
+        ]
+      },
+      // Freelancia Job Applications
+      {
+        path: 'my-job-applications',
+        children: [
+          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/freelancia-job-applications/list-application/list-application').then(m => m.ListApplication), title: 'My Job Applications' },
+          { path: 'add/:id', loadComponent: () => import('./pages/freelancia-job-applications/add-application/add-application').then(m => m.AddApplication), title: 'Apply for Job' },
+          { path: ':id/show', loadComponent: () => import('./pages/freelancia-job-applications/show-application/show-application').then(m => m.ShowApplication), title: 'Application Details' },
+          { path: ':id/edit', loadComponent: () => import('./pages/freelancia-job-applications/update-application/update-application').then(m => m.UpdateApplication), title: 'Edit Application' },
+        ]
+      },
       { path: 'my-contracts', loadComponent: () => import('./pages/dashboard/my-contracts/my-contracts').then(m => m.MyContracts) },
       { path: 'my-contracts/:id', loadComponent: () => import('./pages/dashboard/my-contracts/contract-detail/contract-detail').then(m => m.ContractDetail) },
+      {
+        path: 'meetings',
+        children: [
+          { path: '', pathMatch: 'full', loadComponent: () => import('./pages/meetings/my-meetings/my-meetings').then(m => m.MyMeetings), title: 'My Meetings' },
+          { path: 'schedule', loadComponent: () => import('./pages/meetings/schedule-meeting/schedule-meeting').then(m => m.ScheduleMeeting), title: 'Schedule a Meeting' },
+          { path: ':meetingId', loadComponent: () => import('./pages/meetings/meeting-detail/meeting-detail').then(m => m.MeetingDetail), title: 'Meeting Details' },
+        ]
+      },
       { path: 'freelancer-search', loadComponent: () => import('./pages/dashboard/freelancer-search/freelancer-search').then(m => m.FreelancerSearch), title: 'Find Freelancers' },
       { path: 'freelancer-portfolio/:id', loadComponent: () => import('./pages/dashboard/freelancer-portfolio/freelancer-portfolio').then(m => m.DashboardFreelancerPortfolio), title: 'Freelancer Profile' },
     ]
@@ -240,6 +276,12 @@ export const routes: Routes = [
         path: 'tickets',
         children: [
           { path: '', pathMatch: 'full', loadComponent: () => import('./pages/admin/ticket-management/ticket-list/ticket-list').then(m => m.AdminTicketList) },
+          {
+            path: 'stats',
+            loadComponent: () =>
+              import('./pages/admin/ticket-management/ticket-stats/ticket-stats').then(m => m.TicketStatsDashboard),
+            title: 'Ticket statistics',
+          },
           { path: ':id', loadComponent: () => import('./pages/admin/ticket-management/ticket-detail/ticket-detail').then(m => m.AdminTicketDetail) },
         ]
       },
@@ -248,6 +290,7 @@ export const routes: Routes = [
       { path: 'evaluations', loadComponent: () => import('./pages/admin/admin-dashboard/admin-dashboard').then(m => m.AdminDashboard) },
       { path: 'skill-stats', loadComponent: () => import('./pages/admin/skill-stats/skill-stats').then(m => m.SkillStats) },
       { path: 'contract-stats', loadComponent: () => import('./pages/admin/contract-stats/contract-stats').then(m => m.ContractStats) },
+      { path: 'job-stats', loadComponent: () => import('./pages/admin/freelancia-job-stats/freelancia-job-stats').then(m => m.FreelanciaJobStats), title: 'Job Board Stats' },
       { path: 'skills', loadComponent: () => import('./pages/admin/skill-management/skill-management').then(m => m.AdminSkillManagement) },
       { path: 'reviews', loadComponent: () => import('./pages/admin/review-management/review-management').then(m => m.ReviewManagement) },
       { path: 'achievements', loadComponent: () => import('./pages/admin/achievement-management/achievement-management').then(m => m.AdminAchievementManagement), title: 'Achievements' },

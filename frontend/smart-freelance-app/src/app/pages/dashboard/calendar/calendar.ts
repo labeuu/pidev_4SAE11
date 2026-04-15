@@ -1,6 +1,8 @@
 import { Component, OnInit, ChangeDetectorRef } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { forkJoin } from 'rxjs';
 import { PlanningService, CalendarEventDto } from '../../../core/services/planning.service';
+import { MeetingService } from '../../../core/services/meeting.service';
 import { AuthService } from '../../../core/services/auth.service';
 
 export interface CalendarDay {
@@ -28,13 +30,15 @@ export class Calendar implements OnInit {
   currentMonth: Date;
   events: CalendarEventDto[] = [];
   loading = false;
+  errorMessage = '';
   selectedDay: Date | null = null;
   readonly weekdayLabels = WEEKDAY_LABELS;
 
   constructor(
-    private planning: PlanningService,
-    private auth: AuthService,
-    private cdr: ChangeDetectorRef
+    private readonly planning: PlanningService,
+    private meetingService: MeetingService,
+    private readonly auth: AuthService,
+    private readonly cdr: ChangeDetectorRef
   ) {
     const now = new Date();
     this.currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -122,20 +126,36 @@ export class Calendar implements OnInit {
 
   loadEvents(): void {
     this.loading = true;
+    this.errorMessage = '';
     const start = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth(), 1);
     const end = new Date(this.currentMonth.getFullYear(), this.currentMonth.getMonth() + 2, 0);
     const timeMin = start.toISOString();
     const timeMax = end.toISOString();
     const userId = this.auth.getUserId();
     const role = this.auth.getUserRole();
-    this.planning.getCalendarEvents({ timeMin, timeMax, userId: userId ?? undefined, role: role ?? undefined }).subscribe({
-      next: (list) => {
-        this.events = list ?? [];
+
+    forkJoin({
+      planning: this.planning.getCalendarEvents({ timeMin, timeMax, userId: userId ?? undefined, role: role ?? undefined }),
+      meetings: this.meetingService.getMyMeetings(),
+    }).subscribe({
+      next: ({ planning, meetings }) => {
+        const planningEvents: CalendarEventDto[] = planning ?? [];
+        const meetingEvents: CalendarEventDto[] = (meetings ?? [])
+          .filter(m => m.status === 'ACCEPTED' || m.status === 'PENDING')
+          .map(m => ({
+            id: 'meeting-' + m.id,
+            summary: (m.status === 'PENDING' ? '⏳ ' : '📹 ') + m.title,
+            start: m.startTime,
+            end: m.endTime,
+            description: m.agenda ?? null,
+          }));
+        this.events = [...planningEvents, ...meetingEvents];
         this.loading = false;
         this.cdr.detectChanges();
       },
       error: () => {
         this.events = [];
+        this.errorMessage = 'Could not load calendar events right now. Please try again.';
         this.loading = false;
         this.cdr.detectChanges();
       },
@@ -180,15 +200,19 @@ export class Calendar implements OnInit {
     });
   }
 
+  get hasEventsInCurrentRange(): boolean {
+    return this.events.length > 0;
+  }
+
   formatDate(s: string | null): string {
     if (!s) return '—';
     const d = new Date(s);
-    return isNaN(d.getTime()) ? s : d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
+    return Number.isNaN(d.getTime()) ? s : d.toLocaleString(undefined, { dateStyle: 'short', timeStyle: 'short' });
   }
 
   formatTime(s: string | null): string {
     if (!s) return '';
     const d = new Date(s);
-    return isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+    return Number.isNaN(d.getTime()) ? '' : d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
   }
 }

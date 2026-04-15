@@ -13,4 +13,8 @@ public interface UserLevelService {
     List<UserLevel> getAllUserLevels();
     List<UserLevel> getCurrentTopFreelancers();
     void setTopFreelancer(Long userId, boolean status);
+
+    // 🆕 Nouveaux endpoints pour gamification avancée
+    tn.esprit.gamification.Dto.UserLevelSummaryDTO getUserLevelSummary(Long userId);
+    List<tn.esprit.gamification.Dto.LeaderboardEntryDTO> getLeaderboard(int topN);
 }

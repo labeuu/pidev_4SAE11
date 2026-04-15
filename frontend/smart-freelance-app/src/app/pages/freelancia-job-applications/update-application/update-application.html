@@ -1,0 +1,98 @@
+<div class="form-page">
+
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading application...</p>
+  </div>
+
+  <!-- Load error -->
+  <div *ngIf="loadError && !isLoading" class="error-state">{{ loadError }}</div>
+
+  <ng-container *ngIf="!isLoading && !loadError">
+
+    <!-- Page header -->
+    <div class="page-header">
+      <div>
+        <h2 class="page-title">Edit Application</h2>
+        <p class="page-subtitle">Update your proposal before the client reviews it.</p>
+      </div>
+    </div>
+
+    <!-- Feedback banners -->
+    <div *ngIf="submitSuccess" class="success-banner">
+      Application updated! Redirecting…
+    </div>
+    <div *ngIf="submitError" class="error-banner">{{ submitError }}</div>
+
+    <!-- Form card -->
+    <div class="form-card">
+      <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
+
+        <!-- Proposal Message -->
+        <div class="field">
+          <label class="field-label" for="proposalMessage">
+            Proposal Message <span class="required">*</span>
+          </label>
+          <textarea
+            id="proposalMessage"
+            class="field-textarea"
+            rows="7"
+            formControlName="proposalMessage"
+            placeholder="Describe why you're a great fit, your approach, relevant experience…"
+            [class.field-textarea--error]="f('proposalMessage')?.invalid && f('proposalMessage')?.touched"
+          ></textarea>
+          <span class="field-hint">{{ (f('proposalMessage')?.value || '').length }} / 20 min</span>
+          <span class="field-error" *ngIf="f('proposalMessage')?.invalid && f('proposalMessage')?.touched">
+            Minimum 20 characters required.
+          </span>
+        </div>
+
+        <!-- Rate + Availability row -->
+        <div class="fields-row">
+          <div class="field">
+            <label class="field-label" for="expectedRate">Expected Rate</label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">💰</span>
+              <input
+                id="expectedRate"
+                type="number"
+                class="field-input field-input--prefixed"
+                formControlName="expectedRate"
+                placeholder="e.g. 500"
+                min="0"
+              />
+            </div>
+            <span class="field-hint">Per hour or fixed — as agreed with client</span>
+          </div>
+
+          <div class="field">
+            <label class="field-label" for="availabilityStart">Available From</label>
+            <div class="input-prefix-wrap">
+              <span class="input-prefix">📅</span>
+              <input
+                id="availabilityStart"
+                type="date"
+                class="field-input field-input--prefixed"
+                formControlName="availabilityStart"
+              />
+            </div>
+          </div>
+        </div>
+
+        <!-- Actions -->
+        <div class="form-actions">
+          <button type="button" class="btn-ghost" routerLink="/dashboard/my-job-applications">
+            Cancel
+          </button>
+          <button type="submit" class="btn-primary" [disabled]="isSubmitting">
+            <span *ngIf="isSubmitting" class="btn-spinner"></span>
+            {{ isSubmitting ? 'Saving…' : 'Save Changes' }}
+          </button>
+        </div>
+
+      </form>
+    </div>
+
+  </ng-container>
+</div>

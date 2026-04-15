@@ -27,7 +27,7 @@ class ProgressUpdateSpecificationTest {
     void filtered_withAllEmpty_returnsPredicate() {
         Specification<ProgressUpdate> spec = ProgressUpdateSpecification.filtered(
                 Optional.empty(), Optional.empty(), Optional.empty(),
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
 
         CriteriaBuilder cb = mock(CriteriaBuilder.class);
         CriteriaQuery<?> query = mock(CriteriaQuery.class);
@@ -55,7 +55,7 @@ class ProgressUpdateSpecificationTest {
 
         Specification<ProgressUpdate> spec = ProgressUpdateSpecification.filtered(
                 Optional.of(1L), Optional.empty(), Optional.empty(),
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty());
 
         Predicate result = spec.toPredicate(root, query, cb);
 
@@ -83,7 +83,7 @@ class ProgressUpdateSpecificationTest {
 
         Specification<ProgressUpdate> spec = ProgressUpdateSpecification.filtered(
                 Optional.empty(), Optional.empty(), Optional.empty(),
-                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.of("test"));
+                Optional.empty(), Optional.empty(), Optional.empty(), Optional.empty(), Optional.of("test"), Optional.empty());
 
         Predicate result = spec.toPredicate(root, query, cb);
 

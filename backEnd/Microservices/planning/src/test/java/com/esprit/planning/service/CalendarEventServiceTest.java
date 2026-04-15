@@ -12,6 +12,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.beans.factory.ObjectProvider;
 
 import java.time.LocalDateTime;
 import java.util.List;
@@ -38,12 +39,16 @@ class CalendarEventServiceTest {
     @Mock
     private TaskClient taskClient;
 
+    @Mock
+    private ObjectProvider<FreelancerProjectAccessService> freelancerProjectAccessServiceProvider;
+
     @InjectMocks
     private CalendarEventService calendarEventService;
 
     @BeforeEach
     void setUp() {
-        when(taskClient.getCalendarEvents(any(), any(), any())).thenReturn(List.of());
+        when(taskClient.getCalendarEvents(any(), any(), any(), any())).thenReturn(List.of());
+        when(freelancerProjectAccessServiceProvider.getIfAvailable()).thenReturn(null);
     }
 
     @Test
@@ -290,7 +295,7 @@ class CalendarEventServiceTest {
         LocalDateTime max = min.plusDays(7);
         calendarEventService.listEventsFromDb(min, max);
 
-        verify(taskClient).getCalendarEvents(any(), any(), isNull());
+        verify(taskClient).getCalendarEvents(any(), any(), isNull(), isNull());
     }
 
     @Test
@@ -321,7 +326,7 @@ class CalendarEventServiceTest {
                 .start(LocalDateTime.now().plusDays(2))
                 .end(LocalDateTime.now().plusDays(2).plusHours(1))
                 .build();
-        when(taskClient.getCalendarEvents(any(), any(), isNull())).thenReturn(List.of(taskEv));
+        when(taskClient.getCalendarEvents(any(), any(), isNull(), isNull())).thenReturn(List.of(taskEv));
 
         LocalDateTime now = LocalDateTime.now();
         List<CalendarEventDto> result = calendarEventService.listEventsFromDb(now, now.plusMonths(1));
@@ -355,7 +360,7 @@ class CalendarEventServiceTest {
         pu.setTitle("U");
         when(progressUpdateRepository.findByNextUpdateDueBetween(any(), any())).thenReturn(List.of(pu));
         when(projectClient.getProjects()).thenReturn(List.of());
-        when(taskClient.getCalendarEvents(any(), any(), isNull())).thenThrow(new RuntimeException("task down"));
+        when(taskClient.getCalendarEvents(any(), any(), isNull(), isNull())).thenThrow(new RuntimeException("task down"));
 
         LocalDateTime now = LocalDateTime.now();
         List<CalendarEventDto> result = calendarEventService.listEventsFromDb(now, now.plusMonths(1));

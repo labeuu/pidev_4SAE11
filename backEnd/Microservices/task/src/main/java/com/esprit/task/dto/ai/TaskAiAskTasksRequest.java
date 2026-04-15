@@ -1,0 +1,25 @@
+package com.esprit.task.dto.ai;
+
+import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+@Schema(description = "Natural-language question over assignee task snapshot")
+public class TaskAiAskTasksRequest {
+
+    @NotNull
+    @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+    private Long freelancerId;
+
+    @NotBlank
+    @Schema(description = "User question in natural language", requiredMode = Schema.RequiredMode.REQUIRED)
+    private String question;
+}

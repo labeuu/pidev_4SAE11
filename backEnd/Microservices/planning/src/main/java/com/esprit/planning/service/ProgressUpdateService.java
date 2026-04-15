@@ -13,7 +13,6 @@ import com.esprit.planning.repository.ProgressCommentRepository;
 import com.esprit.planning.repository.ProgressUpdateRepository;
 import com.esprit.planning.repository.ProgressUpdateSpecification;
 import com.esprit.planning.repository.ProjectDeadlineSyncRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
+import java.util.Collection;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -31,7 +31,6 @@ import java.util.stream.Collectors;
  * calendar sync, and notifications. Enforces the rule that progress percentage cannot decrease per project.
  */
 @Service
-@RequiredArgsConstructor
 public class ProgressUpdateService {
 
     private final ProgressUpdateRepository progressUpdateRepository;
@@ -41,8 +40,23 @@ public class ProgressUpdateService {
     private final GoogleCalendarService googleCalendarService;
     private final ProjectDeadlineSyncRepository projectDeadlineSyncRepository;
 
+    public ProgressUpdateService(ProgressUpdateRepository progressUpdateRepository,
+                                 ProgressCommentRepository progressCommentRepository,
+                                 PlanningNotificationService planningNotificationService,
+                                 ProjectClient projectClient,
+                                 GoogleCalendarService googleCalendarService,
+                                 ProjectDeadlineSyncRepository projectDeadlineSyncRepository) {
+        this.progressUpdateRepository = progressUpdateRepository;
+        this.progressCommentRepository = progressCommentRepository;
+        this.planningNotificationService = planningNotificationService;
+        this.projectClient = projectClient;
+        this.googleCalendarService = googleCalendarService;
+        this.projectDeadlineSyncRepository = projectDeadlineSyncRepository;
+    }
+
     /** Returns all progress updates (no filter). */
     @Transactional(readOnly = true)
+    // Finds all.
     public List<ProgressUpdate> findAll() {
         return progressUpdateRepository.findAll();
     }
@@ -59,50 +73,94 @@ public class ProgressUpdateService {
             Optional<LocalDate> dateTo,
             Optional<String> search,
             Pageable pageable) {
+        return findAllFiltered(projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search, Optional.empty(), pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public Page<ProgressUpdate> findAllFiltered(
+            Optional<Long> projectId,
+            Optional<Long> freelancerId,
+            Optional<Long> contractId,
+            Optional<Integer> progressMin,
+            Optional<Integer> progressMax,
+            Optional<LocalDate> dateFrom,
+            Optional<LocalDate> dateTo,
+            Optional<String> search,
+            Optional<Set<Long>> allowedProjectIds,
+            Pageable pageable) {
         var spec = ProgressUpdateSpecification.filtered(
-                projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search);
+                projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search, normalizeAllowedProjectIds(allowedProjectIds));
         return progressUpdateRepository.findAll(spec, pageable);
     }
 
     /** Returns a progress update by id; throws if not found. */
     @Transactional(readOnly = true)
+    // Finds by id.
     public ProgressUpdate findById(Long id) {
         return progressUpdateRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("ProgressUpdate", id));
     }
 
+    @Transactional(readOnly = true)
+    public ProgressUpdate findById(Long id, Optional<Set<Long>> allowedProjectIds) {
+        ProgressUpdate update = findById(id);
+        enforceProjectAccess(update.getProjectId(), allowedProjectIds);
+        return update;
+    }
+
     /** Returns all progress updates for the given project. */
     @Transactional(readOnly = true)
+    // Finds by project id.
     public List<ProgressUpdate> findByProjectId(Long projectId) {
         return progressUpdateRepository.findByProjectId(projectId);
     }
 
+    @Transactional(readOnly = true)
+    public List<ProgressUpdate> findByProjectId(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        if (isProjectDenied(projectId, allowedProjectIds)) {
+            return List.of();
+        }
+        return findByProjectId(projectId);
+    }
+
     /** Returns all progress updates for the given contract. */
     @Transactional(readOnly = true)
+    // Finds by contract id.
     public List<ProgressUpdate> findByContractId(Long contractId) {
         return progressUpdateRepository.findByContractId(contractId);
     }
 
+    @Transactional(readOnly = true)
+    public List<ProgressUpdate> findByContractId(Long contractId, Optional<Set<Long>> allowedProjectIds) {
+        return findByContractId(contractId).stream()
+                .filter(p -> isProjectAllowed(p.getProjectId(), allowedProjectIds))
+                .toList();
+    }
+
     /** Returns all progress updates submitted by the given freelancer. */
     @Transactional(readOnly = true)
+    // Finds by freelancer id.
     public List<ProgressUpdate> findByFreelancerId(Long freelancerId) {
         return progressUpdateRepository.findByFreelancerId(freelancerId);
     }
 
     /** Returns the latest progress update for the project (by createdAt desc). */
     @Transactional(readOnly = true)
+    // Finds latest by project id.
     public Optional<ProgressUpdate> findLatestByProjectId(Long projectId) {
         return progressUpdateRepository.findFirstByProjectIdOrderByCreatedAtDesc(projectId);
     }
 
     /** Returns the latest progress update for the freelancer (by createdAt desc). */
     @Transactional(readOnly = true)
+    // Finds latest by freelancer id.
     public Optional<ProgressUpdate> findLatestByFreelancerId(Long freelancerId) {
         return progressUpdateRepository.findFirstByFreelancerIdOrderByCreatedAtDesc(freelancerId);
     }
 
     /** Returns the latest progress update for the contract (by createdAt desc). */
     @Transactional(readOnly = true)
+    // Finds latest by contract id.
     public Optional<ProgressUpdate> findLatestByContractId(Long contractId) {
         return progressUpdateRepository.findFirstByContractIdOrderByCreatedAtDesc(contractId);
     }
@@ -112,6 +170,7 @@ public class ProgressUpdateService {
      * that are not the one with excludeUpdateId (pass null to include all).
      */
     @Transactional(readOnly = true)
+    // Returns max progress percentage for project.
     public int getMaxProgressPercentageForProject(Long projectId, Long excludeUpdateId) {
         List<ProgressUpdate> updates = progressUpdateRepository.findByProjectId(projectId);
         return updates.stream()
@@ -123,6 +182,7 @@ public class ProgressUpdateService {
 
     /** Creates a progress update; enforces cannot-decrease rule, notifies client, syncs calendar, and ensures project deadline in calendar. */
     @Transactional
+    // Creates this operation.
     public ProgressUpdate create(ProgressUpdate progressUpdate) {
         int minAllowed = getMaxProgressPercentageForProject(progressUpdate.getProjectId(), null);
         if (progressUpdate.getProgressPercentage() < minAllowed) {
@@ -146,6 +206,7 @@ public class ProgressUpdateService {
 
     /** Updates an existing progress update; enforces cannot-decrease rule, notifies client, and syncs next-due calendar event. */
     @Transactional
+    // Updates this operation.
     public ProgressUpdate update(Long id, ProgressUpdate updated) {
         ProgressUpdate existing = findById(id);
         int minAllowed = getMaxProgressPercentageForProject(updated.getProjectId(), id);
@@ -182,6 +243,7 @@ public class ProgressUpdateService {
 
     /** Deletes a progress update, removes its next-due calendar event if any, and notifies the client. */
     @Transactional
+    // Deletes by id.
     public void deleteById(Long id) {
         ProgressUpdate existing = findById(id);
         Long projectId = existing.getProjectId();
@@ -251,6 +313,7 @@ public class ProgressUpdateService {
      * Idempotent: no duplicate events created.
      */
     @Transactional
+    // Performs ensure project deadline in calendar for user.
     public void ensureProjectDeadlineInCalendarForUser(Long projectId, Long freelancerId) {
         ensureProjectDeadlineInCalendar(projectId, freelancerId);
     }
@@ -309,12 +372,14 @@ public class ProgressUpdateService {
 
     /** Returns the minimum allowed progress percentage for the next update of this project (max of existing updates). */
     @Transactional(readOnly = true)
+    // Returns next allowed percentage for project.
     public Integer getNextAllowedPercentageForProject(Long projectId) {
         return getMaxProgressPercentageForProject(projectId, null);
     }
 
     /** Validates a progress update request without saving: required fields, percentage range, and cannot-decrease rule. */
     @Transactional(readOnly = true)
+    // Validates this operation.
     public ProgressUpdateValidationResponse validate(ProgressUpdateRequest request) {
         List<String> errors = new ArrayList<>();
 
@@ -350,7 +415,14 @@ public class ProgressUpdateService {
 
     /** Returns progress trend points (date, max progress %) per day for the project in the given date range. */
     @Transactional(readOnly = true)
+    // Returns progress trend by project.
     public List<ProgressTrendPointDto> getProgressTrendByProject(Long projectId, LocalDate from, LocalDate to) {
+        return getProgressTrendByProject(projectId, from, to, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgressTrendPointDto> getProgressTrendByProject(Long projectId, LocalDate from, LocalDate to, Optional<Set<Long>> allowedProjectIds) {
+        enforceProjectAccess(projectId, allowedProjectIds);
         LocalDateTime fromDateTime = from.atStartOfDay();
         LocalDateTime toDateTime = to.plusDays(1).atStartOfDay(); // exclusive end
         List<ProgressUpdate> updates = progressUpdateRepository.findByProjectIdAndCreatedAtBetween(projectId, fromDateTime, toDateTime);
@@ -371,7 +443,14 @@ public class ProgressUpdateService {
 
     /** Returns a time-bounded report for the project (update count, comments, average %, first/last update). Defaults to last 30 days if from/to null. */
     @Transactional(readOnly = true)
+    // Returns progress report for project.
     public ProgressReportDto getProgressReportForProject(Long projectId, LocalDate from, LocalDate to) {
+        return getProgressReportForProject(projectId, from, to, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public ProgressReportDto getProgressReportForProject(Long projectId, LocalDate from, LocalDate to, Optional<Set<Long>> allowedProjectIds) {
+        enforceProjectAccess(projectId, allowedProjectIds);
         LocalDate fromEffective = from != null ? from : LocalDate.now().minusDays(30);
         LocalDate toEffective = to != null ? to : LocalDate.now();
 
@@ -413,6 +492,7 @@ public class ProgressUpdateService {
 
     /** Returns progress statistics for the freelancer (total updates, comments, average %, last update, updates in last 30 days). */
     @Transactional(readOnly = true)
+    // Returns progress statistics by freelancer.
     public FreelancerProgressStatsDto getProgressStatisticsByFreelancer(Long freelancerId) {
         List<ProgressUpdate> updates = progressUpdateRepository.findByFreelancerId(freelancerId);
         List<Long> updateIds = updates.stream().map(ProgressUpdate::getId).toList();
@@ -445,7 +525,14 @@ public class ProgressUpdateService {
 
     /** Returns progress statistics for the project (update count, comments, current %, first/last update). */
     @Transactional(readOnly = true)
+    // Returns progress statistics by project.
     public ProjectProgressStatsDto getProgressStatisticsByProject(Long projectId) {
+        return getProgressStatisticsByProject(projectId, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public ProjectProgressStatsDto getProgressStatisticsByProject(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        enforceProjectAccess(projectId, allowedProjectIds);
         List<ProgressUpdate> updates = progressUpdateRepository.findByProjectId(projectId);
         List<Long> updateIds = updates.stream().map(ProgressUpdate::getId).toList();
         long commentCount = updateIds.isEmpty() ? 0 : progressCommentRepository.countByProgressUpdate_IdIn(updateIds);
@@ -476,8 +563,17 @@ public class ProgressUpdateService {
 
     /** Returns progress statistics for the contract (update count, comments, current %, first/last update). */
     @Transactional(readOnly = true)
+    // Returns progress statistics by contract.
     public ContractProgressStatsDto getProgressStatisticsByContract(Long contractId) {
+        return getProgressStatisticsByContract(contractId, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public ContractProgressStatsDto getProgressStatisticsByContract(Long contractId, Optional<Set<Long>> allowedProjectIds) {
         List<ProgressUpdate> updates = progressUpdateRepository.findByContractId(contractId);
+        updates = updates.stream()
+                .filter(u -> isProjectAllowed(u.getProjectId(), allowedProjectIds))
+                .toList();
         List<Long> updateIds = updates.stream().map(ProgressUpdate::getId).toList();
         long commentCount = updateIds.isEmpty() ? 0 : progressCommentRepository.countByProgressUpdate_IdIn(updateIds);
 
@@ -507,6 +603,7 @@ public class ProgressUpdateService {
 
     /** Returns global dashboard statistics (total updates, comments, average %, distinct projects/freelancers). */
     @Transactional(readOnly = true)
+    // Returns dashboard statistics.
     public DashboardStatsDto getDashboardStatistics() {
         List<ProgressUpdate> all = progressUpdateRepository.findAll();
         List<Long> updateIds = all.stream().map(ProgressUpdate::getId).toList();
@@ -531,13 +628,25 @@ public class ProgressUpdateService {
 
     /** Returns lightweight summary for multiple projects. Each project gets currentProgress%, lastUpdateAt. */
     @Transactional(readOnly = true)
+    // Returns summary by project ids.
     public List<ProgressSummaryItemDto> getSummaryByProjectIds(List<Long> projectIds) {
+        return getSummaryByProjectIds(projectIds, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgressSummaryItemDto> getSummaryByProjectIds(List<Long> projectIds, Optional<Set<Long>> allowedProjectIds) {
         if (projectIds == null || projectIds.isEmpty()) {
             return List.of();
         }
-        List<ProgressUpdate> updates = progressUpdateRepository.findByProjectIdIn(projectIds);
+        List<Long> scopedIds = projectIds.stream()
+                .filter(pid -> isProjectAllowed(pid, allowedProjectIds))
+                .toList();
+        if (scopedIds.isEmpty()) {
+            return List.of();
+        }
+        List<ProgressUpdate> updates = progressUpdateRepository.findByProjectIdIn(scopedIds);
         Map<Long, List<ProgressUpdate>> byProject = updates.stream().collect(Collectors.groupingBy(ProgressUpdate::getProjectId));
-        return projectIds.stream()
+        return scopedIds.stream()
                 .map(pid -> {
                     List<ProgressUpdate> projectUpdates = byProject.get(pid);
                     if (projectUpdates == null || projectUpdates.isEmpty()) {
@@ -557,11 +666,20 @@ public class ProgressUpdateService {
 
     /** Returns lightweight summary for multiple contracts. Each contract gets currentProgress%, lastUpdateAt. */
     @Transactional(readOnly = true)
+    // Returns summary by contract ids.
     public List<ProgressSummaryItemDto> getSummaryByContractIds(List<Long> contractIds) {
+        return getSummaryByContractIds(contractIds, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgressSummaryItemDto> getSummaryByContractIds(List<Long> contractIds, Optional<Set<Long>> allowedProjectIds) {
         if (contractIds == null || contractIds.isEmpty()) {
             return List.of();
         }
         List<ProgressUpdate> updates = progressUpdateRepository.findByContractIdIn(contractIds);
+        updates = updates.stream()
+                .filter(u -> isProjectAllowed(u.getProjectId(), allowedProjectIds))
+                .toList();
         Map<Long, List<ProgressUpdate>> byContract = updates.stream()
                 .filter(u -> u.getContractId() != null)
                 .collect(Collectors.groupingBy(ProgressUpdate::getContractId));
@@ -586,6 +704,7 @@ public class ProgressUpdateService {
 
     /** Returns per-freelancer projects summary: projects they have updates on, with latest % and date. */
     @Transactional(readOnly = true)
+    // Returns freelancer projects summary.
     public List<ProgressSummaryItemDto> getFreelancerProjectsSummary(Long freelancerId) {
         List<ProgressUpdate> updates = progressUpdateRepository.findByFreelancerId(freelancerId);
         return updates.stream()
@@ -616,8 +735,22 @@ public class ProgressUpdateService {
             Optional<LocalDate> dateFrom,
             Optional<LocalDate> dateTo,
             Optional<String> search) {
+        return findAllFilteredForExport(projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<ProgressUpdate> findAllFilteredForExport(
+            Optional<Long> projectId,
+            Optional<Long> freelancerId,
+            Optional<Long> contractId,
+            Optional<Integer> progressMin,
+            Optional<Integer> progressMax,
+            Optional<LocalDate> dateFrom,
+            Optional<LocalDate> dateTo,
+            Optional<String> search,
+            Optional<Set<Long>> allowedProjectIds) {
         var spec = ProgressUpdateSpecification.filtered(
-                projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search);
+                projectId, freelancerId, contractId, progressMin, progressMax, dateFrom, dateTo, search, normalizeAllowedProjectIds(allowedProjectIds));
         return progressUpdateRepository.findAll(spec, org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
     }
 
@@ -626,9 +759,15 @@ public class ProgressUpdateService {
     @Transactional(readOnly = true)
     /** Returns projects that have no progress update in the last N days (stalled or due/overdue). */
     public List<StalledProjectDto> getProjectIdsWithStalledProgress(int daysWithoutUpdate) {
+        return getProjectIdsWithStalledProgress(daysWithoutUpdate, Optional.empty());
+    }
+
+    @Transactional(readOnly = true)
+    public List<StalledProjectDto> getProjectIdsWithStalledProgress(int daysWithoutUpdate, Optional<Set<Long>> allowedProjectIds) {
         LocalDateTime cutoff = LocalDateTime.now().minusDays(daysWithoutUpdate);
         List<Object[]> projectIdAndMaxUpdatedAt = progressUpdateRepository.findProjectIdAndMaxUpdatedAt();
         return projectIdAndMaxUpdatedAt.stream()
+                .filter(row -> isProjectAllowed((Long) row[0], allowedProjectIds))
                 .filter(row -> {
                     LocalDateTime lastUpdateAt = (LocalDateTime) row[1];
                     return lastUpdateAt != null && lastUpdateAt.isBefore(cutoff);
@@ -643,6 +782,24 @@ public class ProgressUpdateService {
                     return new StalledProjectDto(projectId, lastUpdateAt, lastProgressPercentage);
                 })
                 .toList();
+    }
+
+    private static Optional<Collection<Long>> normalizeAllowedProjectIds(Optional<Set<Long>> allowedProjectIds) {
+        return allowedProjectIds.map(set -> (Collection<Long>) set);
+    }
+
+    private static boolean isProjectDenied(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        return allowedProjectIds.isPresent() && (projectId == null || !allowedProjectIds.get().contains(projectId));
+    }
+
+    private static boolean isProjectAllowed(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        return !isProjectDenied(projectId, allowedProjectIds);
+    }
+
+    private static void enforceProjectAccess(Long projectId, Optional<Set<Long>> allowedProjectIds) {
+        if (isProjectDenied(projectId, allowedProjectIds)) {
+            throw new EntityNotFoundException("Project", projectId);
+        }
     }
 
     // --- Rankings (section 5) ---

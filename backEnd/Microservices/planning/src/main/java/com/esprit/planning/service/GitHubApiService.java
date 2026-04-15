@@ -4,11 +4,13 @@ import com.esprit.planning.dto.GitHubBranchDto;
 import com.esprit.planning.dto.GitHubCommitDto;
 import com.esprit.planning.dto.GitHubIssueRequest;
 import com.esprit.planning.dto.GitHubIssueResponseDto;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpStatusCodeException;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestTemplate;
 
@@ -23,9 +25,9 @@ import java.util.List;
  * Token is read from github.token, GITHUB_TOKEN env, or github.token-file (e.g. githubToken.txt).
  */
 @Service
-@Slf4j
 public class GitHubApiService {
 
+    private static final Logger log = LoggerFactory.getLogger(GitHubApiService.class);
     private static final String GITHUB_API_BASE = "https://api.github.com";
 
     private final RestTemplate restTemplate;
@@ -46,6 +48,7 @@ public class GitHubApiService {
         this.enabled = enabled;
     }
 
+    // Performs load token from file.
     private String loadTokenFromFile(String pathStr) {
         try {
             Path path = Paths.get(pathStr).toAbsolutePath().normalize();
@@ -67,10 +70,11 @@ public class GitHubApiService {
         return enabled && !token.isEmpty();
     }
 
-    private HttpHeaders authHeaders() {
+    // Builds headers for GitHub API calls.
+    private HttpHeaders authHeaders(boolean includeToken) {
         HttpHeaders headers = new HttpHeaders();
         headers.setAccept(Collections.singletonList(MediaType.parseMediaType("application/vnd.github.v3+json")));
-        if (!token.isEmpty()) {
+        if (includeToken && !token.isEmpty()) {
             headers.setBearerAuth(token);
         }
         return headers;
@@ -86,10 +90,27 @@ public class GitHubApiService {
             ResponseEntity<List<GitHubBranchDto>> resp = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    new HttpEntity<>(authHeaders()),
+                    new HttpEntity<>(authHeaders(true)),
                     new ParameterizedTypeReference<>() {}
             );
             return resp.getBody() != null ? resp.getBody() : Collections.emptyList();
+        } catch (HttpStatusCodeException e) {
+            if ((e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) && !token.isEmpty()) {
+                try {
+                    ResponseEntity<List<GitHubBranchDto>> resp = restTemplate.exchange(
+                            url,
+                            HttpMethod.GET,
+                            new HttpEntity<>(authHeaders(false)),
+                            new ParameterizedTypeReference<>() {}
+                    );
+                    return resp.getBody() != null ? resp.getBody() : Collections.emptyList();
+                } catch (RestClientException retryEx) {
+                    log.warn("GitHub getBranches retry (without token) failed for {}/{}: {}", owner, repo, retryEx.getMessage());
+                    return Collections.emptyList();
+                }
+            }
+            log.warn("GitHub getBranches failed for {}/{}: {}", owner, repo, e.getMessage());
+            return Collections.emptyList();
         } catch (RestClientException e) {
             log.warn("GitHub getBranches failed for {}/{}: {}", owner, repo, e.getMessage());
             return Collections.emptyList();
@@ -110,11 +131,29 @@ public class GitHubApiService {
             ResponseEntity<List<GitHubCommitDto>> resp = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    new HttpEntity<>(authHeaders()),
+                    new HttpEntity<>(authHeaders(true)),
                     new ParameterizedTypeReference<>() {}
             );
             List<GitHubCommitDto> list = resp.getBody();
             return (list != null && !list.isEmpty()) ? list.get(0) : null;
+        } catch (HttpStatusCodeException e) {
+            if ((e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) && !token.isEmpty()) {
+                try {
+                    ResponseEntity<List<GitHubCommitDto>> resp = restTemplate.exchange(
+                            url,
+                            HttpMethod.GET,
+                            new HttpEntity<>(authHeaders(false)),
+                            new ParameterizedTypeReference<>() {}
+                    );
+                    List<GitHubCommitDto> list = resp.getBody();
+                    return (list != null && !list.isEmpty()) ? list.get(0) : null;
+                } catch (RestClientException retryEx) {
+                    log.warn("GitHub getLatestCommit retry (without token) failed for {}/{}: {}", owner, repo, retryEx.getMessage());
+                    return null;
+                }
+            }
+            log.warn("GitHub getLatestCommit failed for {}/{}: {}", owner, repo, e.getMessage());
+            return null;
         } catch (RestClientException e) {
             log.warn("GitHub getLatestCommit failed for {}/{}: {}", owner, repo, e.getMessage());
             return null;
@@ -134,10 +173,27 @@ public class GitHubApiService {
             ResponseEntity<List<GitHubCommitDto>> resp = restTemplate.exchange(
                     url,
                     HttpMethod.GET,
-                    new HttpEntity<>(authHeaders()),
+                    new HttpEntity<>(authHeaders(true)),
                     new ParameterizedTypeReference<>() {}
             );
             return resp.getBody() != null ? resp.getBody() : Collections.emptyList();
+        } catch (HttpStatusCodeException e) {
+            if ((e.getStatusCode() == HttpStatus.UNAUTHORIZED || e.getStatusCode() == HttpStatus.FORBIDDEN) && !token.isEmpty()) {
+                try {
+                    ResponseEntity<List<GitHubCommitDto>> resp = restTemplate.exchange(
+                            url,
+                            HttpMethod.GET,
+                            new HttpEntity<>(authHeaders(false)),
+                            new ParameterizedTypeReference<>() {}
+                    );
+                    return resp.getBody() != null ? resp.getBody() : Collections.emptyList();
+                } catch (RestClientException retryEx) {
+                    log.warn("GitHub getCommits retry (without token) failed for {}/{}: {}", owner, repo, retryEx.getMessage());
+                    return Collections.emptyList();
+                }
+            }
+            log.warn("GitHub getCommits failed for {}/{}: {}", owner, repo, e.getMessage());
+            return Collections.emptyList();
         } catch (RestClientException e) {
             log.warn("GitHub getCommits failed for {}/{}: {}", owner, repo, e.getMessage());
             return Collections.emptyList();
@@ -156,7 +212,7 @@ public class GitHubApiService {
             ResponseEntity<GitHubIssueResponseDto> resp = restTemplate.exchange(
                     url,
                     HttpMethod.POST,
-                    new HttpEntity<>(request, authHeaders()),
+                    new HttpEntity<>(request, authHeaders(true)),
                     GitHubIssueResponseDto.class
             );
             return resp.getBody();

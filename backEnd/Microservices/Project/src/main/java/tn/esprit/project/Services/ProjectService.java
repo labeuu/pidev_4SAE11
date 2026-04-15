@@ -4,6 +4,7 @@ import com.itextpdf.layout.properties.UnitValue;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import tn.esprit.project.Entities.Project;
+import tn.esprit.project.Repository.ProjectApplicationRepository;
 import tn.esprit.project.Repository.ProjectRepository;
 import tn.esprit.project.Client.SkillClient;
 import tn.esprit.project.Dto.response.JointProjectItem;
@@ -39,19 +40,132 @@ import java.io.ByteArrayOutputStream;
 public class ProjectService implements IProjectService{
 
     private final ProjectRepository projectRepository;
+    private final ProjectApplicationRepository applicationRepository; // 🆕 Added
     private final SkillClient skillClient;
+    private final org.springframework.context.ApplicationEventPublisher eventPublisher; // 🆕 Pour les transactions
 
     // ------------------- CRUD -------------------
 
-    public Project addProject(Project project) {
-        return projectRepository.save(project);
+    public Project addProject(tn.esprit.project.Dto.request.ProjectRequest request) {
+        Project project = new Project();
+        project.setClientId(request.getClientId());
+        project.setTitle(request.getTitle());
+        project.setDescription(request.getDescription());
+        project.setBudget(request.getBudget());
+        project.setDeadline(request.getDeadline());
+        project.setCategory(request.getCategory());
+        project.setStatus(ProjectStatus.OPEN);
+
+        // 🛡️ List of final IDs
+        List<Long> finalSkillIds = new ArrayList<>();
+        if (request.getSkillIds() != null) {
+            finalSkillIds.addAll(request.getSkillIds());
+        }
+
+        // 🆕 Création dynamique de nouveaux skills (Nom + Domaines) dans Portfolio
+        if (request.getNewSkills() != null && !request.getNewSkills().isEmpty()) {
+            for (tn.esprit.project.Dto.request.NewSkillRequest ns : request.getNewSkills()) {
+                try {
+                    Skills newSkill = new Skills();
+                    newSkill.setName(ns.getName());
+                    newSkill.setDomains(ns.getDomains()); // ⚙️ Official plural list
+                    newSkill.setUserId(request.getClientId()); 
+                    
+                    Skills registered = skillClient.createSkill(newSkill);
+                    if (registered != null && registered.getId() != null) {
+                        finalSkillIds.add(registered.getId());
+                    }
+                } catch (Exception e) {
+                    org.slf4j.LoggerFactory.getLogger(ProjectService.class)
+                        .error("Failed to register skill '{}' in Portfolio: {}", ns.getName(), e.getMessage());
+                }
+            }
+        }
+        
+        project.setSkillIds(finalSkillIds);
+
+        Project saved = projectRepository.save(project);
+        
+        // 🎯 Gamification
+        if (saved.getClientId() != null) {
+            eventPublisher.publishEvent(new ProjectCreatedEvent(saved.getClientId()));
+        }
+        
+        return saved;
+    }
+
+    @lombok.Value
+    public static class ProjectCreatedEvent {
+        Long clientId;
+    }
+
+    // 🆕 Evénement pour le Freelancer (Complétion)
+    @lombok.Value
+    public static class ProjectCompletedEvent {
+        Long freelancerId;
+    }
+
+    /**
+     * Clôture un projet et notifie la gamification pour récompenser le Freelancer.
+     */
+    public Project completeProject(Long projectId) {
+        Project project = getProjectById(projectId);
+        project.setStatus(ProjectStatus.COMPLETED);
+        Project saved = projectRepository.save(project);
+
+        // 🎯 On cherche le freelancer qui a gagné l'offre pour le récompenser
+        applicationRepository.findByProjectId(projectId).stream()
+                .filter(app -> app.getStatus() == ApplicationStatus.ACCEPTED)
+                .findFirst()
+                .ifPresent(acceptedApp -> {
+                    eventPublisher.publishEvent(new ProjectCompletedEvent(acceptedApp.getFreelanceId()));
+                });
+
+        return saved;
     }
 
     public Project updateProject(Project project) {
-        return projectRepository.save(project);
+        if (project.getId() == null) return projectRepository.save(project);
+
+        Project existing = getProjectById(project.getId());
+        
+        // 1. Détection changement de statut (pour gamification)
+        boolean justCompleted = existing.getStatus() != ProjectStatus.COMPLETED && 
+                               project.getStatus() == ProjectStatus.COMPLETED;
+
+        // 2. Mise à jour sélective (Ne JAMAIS écraser avec null les champs critiques)
+        if (project.getTitle() != null) existing.setTitle(project.getTitle());
+        if (project.getDescription() != null) existing.setDescription(project.getDescription());
+        if (project.getBudget() != null) existing.setBudget(project.getBudget());
+        if (project.getDeadline() != null) existing.setDeadline(project.getDeadline());
+        if (project.getCategory() != null) existing.setCategory(project.getCategory());
+        if (project.getStatus() != null) existing.setStatus(project.getStatus());
+        if (project.getSkillIds() != null && !project.getSkillIds().isEmpty()) {
+            existing.setSkillIds(project.getSkillIds());
+        }
+
+        // On préserve explicitement les applications pour ne PAS les supprimer !
+        // existing.getApplications() est déjà rempli par Hibernate
+        
+        Project saved = projectRepository.save(existing); // 🛡️ Sauvegarde de l'objet déjà en base
+
+        // 🎯 Déclenchement APRES sauvegarde
+        if (justCompleted) {
+            applicationRepository.findByProjectId(saved.getId()).stream()
+                    .filter(app -> app.getStatus() == ApplicationStatus.ACCEPTED)
+                    .findFirst()
+                    .ifPresent(acceptedApp -> {
+                        eventPublisher.publishEvent(new ProjectCompletedEvent(acceptedApp.getFreelanceId()));
+                    });
+        }
+        return saved;
     }
 
     public void deleteProject(Long id) {
+        // 🛡️ Nettoyage des applications orphelines avant la suppression du projet
+        // pour ne pas avoir d'erreur de clé étrangère (Custom cleanup)
+        applicationRepository.deleteByProjectId(id);
+        
         projectRepository.deleteById(id);
     }
 
@@ -395,6 +509,18 @@ public class ProjectService implements IProjectService{
             cell.setBackgroundColor(backgroundColor);
         }
         return cell;
+    }
+
+// ------------------- Game Stats 🆕 -------------------
+    @Override
+    public long countCompletedProjectsByFreelancer(Long freelancerId) {
+        return applicationRepository.countByFreelanceIdAndStatusAndProject_Status(
+                freelancerId, ApplicationStatus.ACCEPTED, ProjectStatus.COMPLETED);
+    }
+
+    @Override
+    public long countCreatedProjectsByClient(Long clientId) {
+        return projectRepository.countByClientId(clientId);
     }
 
     // ------------------- Helper -------------------

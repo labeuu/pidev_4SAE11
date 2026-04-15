@@ -40,11 +40,13 @@ describe('ProjectTasks', () => {
       'getExtendedStatsByProject',
       'getOverdueTasks',
       'listSubtasks',
+      'clientStatusBrief',
     ]);
     taskSpy.getFilteredTasks.and.returnValue(of(emptyPage as PageResponse<Task>));
     taskSpy.getExtendedStatsByProject.and.returnValue(of(minimalExtended));
     taskSpy.getOverdueTasks.and.returnValue(of([]));
     taskSpy.listSubtasks.and.returnValue(of([]));
+    taskSpy.clientStatusBrief.and.returnValue(of({ briefMarkdown: 'Hello', planningDataWarning: null }));
 
     const authStub = {
       getUserId: () => 1,
@@ -105,5 +107,15 @@ describe('ProjectTasks', () => {
     taskService.getOverdueTasks.calls.reset();
     component.applyOverdueDrilldown();
     expect(taskService.getOverdueTasks).toHaveBeenCalledWith(1, null);
+  });
+
+  it('generateClientBrief should POST client-status-brief with project and client ids', () => {
+    fixture.detectChanges();
+    component.selectedProjectId = 1;
+    taskService.clientStatusBrief.calls.reset();
+    component.generateClientBrief();
+    expect(taskService.clientStatusBrief).toHaveBeenCalledWith(
+      jasmine.objectContaining({ projectId: 1, clientUserId: 1 })
+    );
   });
 });

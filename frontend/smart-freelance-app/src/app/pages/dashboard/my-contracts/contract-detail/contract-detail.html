@@ -137,11 +137,16 @@
             <!-- Section header with Report button -->
             <div class="conflict-section-header">
               <h2 class="section-title">⚠️ Conflicts <span class="conflict-count">{{ conflicts.length }}</span></h2>
-              @if (canReportConflict) {
-                <button class="btn-report-conflict" (click)="openConflictModal()">
-                  + Report Conflict
+              <div class="conflict-section-actions">
+                <button class="btn-schedule-meeting" (click)="scheduleMeeting()">
+                  📅 Schedule Meeting
                 </button>
-              }
+                @if (canReportConflict) {
+                  <button class="btn-report-conflict" (click)="openConflictModal()">
+                    + Report Conflict
+                  </button>
+                }
+              </div>
             </div>
 
             @if (conflicts.length === 0) {

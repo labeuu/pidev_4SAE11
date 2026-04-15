@@ -9,4 +9,6 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class AiPromptRequest {
     private String prompt;
+    /** Pass-through to AImodel / Ollama {@code num_predict} for faster short outputs (coach, ask-tasks). */
+    private Integer maxOutputTokens;
 }

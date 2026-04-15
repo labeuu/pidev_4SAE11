@@ -2,7 +2,7 @@
 
 - **Code**: [backEnd/Microservices/Notification](../../backEnd/Microservices/Notification)
 - **Spring name**: `notification`
-- **Port**: `8087`
+- **Port**: `8098`
 - **Gateway**: `http://localhost:8078/notification/**` (direct)
 
 ## Responsibilities

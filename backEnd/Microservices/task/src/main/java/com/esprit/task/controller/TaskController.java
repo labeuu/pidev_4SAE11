@@ -11,6 +11,7 @@ import com.esprit.task.entity.Task;
 import com.esprit.task.entity.TaskPriority;
 import com.esprit.task.entity.TaskStatus;
 import com.esprit.task.service.SubtaskService;
+import com.esprit.task.service.TaskFreelancerProjectAccessService;
 import com.esprit.task.service.TaskService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -25,9 +26,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.Instant;
 import java.time.LocalDate;
@@ -36,6 +39,7 @@ import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import java.util.Set;
 
 @RestController
 @RequestMapping("/api/tasks")
@@ -49,6 +53,7 @@ public class TaskController {
 
     private final TaskService taskService;
     private final SubtaskService subtaskService;
+    private final ObjectProvider<TaskFreelancerProjectAccessService> taskFreelancerProjectAccessServiceProvider;
 
     @GetMapping("/{taskId}/subtasks")
     @Operation(summary = "List subtasks for a root task", description = "Returns subtasks ordered by orderIndex.")
@@ -81,7 +86,14 @@ public class TaskController {
             @Parameter(description = "Due date from (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dueDateFrom,
             @Parameter(description = "Due date to (yyyy-MM-dd)") @RequestParam(required = false) LocalDate dueDateTo,
             @Parameter(description = "When true and status is not set, exclude DONE and CANCELLED (open root tasks only)")
-            @RequestParam(required = false) Boolean openTasksOnly) {
+            @RequestParam(required = false) Boolean openTasksOnly,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        projectId = projectId == null ? null : projectId;
+        if (projectId != null) {
+            enforceProjectAccess(allowedProjectIds, projectId);
+        }
         Sort sortObj = parseSort(sort);
         Pageable pageable = buildPageRequest(page, size, sortObj);
         Optional<Boolean> openOnly = Boolean.TRUE.equals(openTasksOnly) ? Optional.of(true) : Optional.empty();
@@ -90,6 +102,7 @@ public class TaskController {
                 Optional.ofNullable(status), Optional.ofNullable(priority),
                 Optional.ofNullable(search), Optional.ofNullable(dueDateFrom), Optional.ofNullable(dueDateTo),
                 openOnly,
+                allowedProjectIds,
                 pageable);
         return ResponseEntity.ok(result);
     }
@@ -100,7 +113,12 @@ public class TaskController {
             @ApiResponse(responseCode = "200", description = "Success"),
             @ApiResponse(responseCode = "404", description = "Task not found", content = @Content)
     })
-    public ResponseEntity<Task> getById(@Parameter(description = "Task ID", required = true) @PathVariable Long id) {
+    // Returns by id.
+    public ResponseEntity<Task> getById(@Parameter(description = "Task ID", required = true) @PathVariable Long id,
+                                        @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+                                        @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        enforceTaskAccess(allowedProjectIds, id);
         return ResponseEntity.ok(taskService.findById(id));
     }
 
@@ -108,29 +126,46 @@ public class TaskController {
     @Operation(summary = "Root tasks by project", description = "Returns top-level tasks (no parent) for backlog and planning views.")
     @ApiResponse(responseCode = "200", description = "Success")
     public ResponseEntity<List<Task>> getRootTasksByProject(
-            @Parameter(description = "Project ID", required = true) @PathVariable Long projectId) {
-        return ResponseEntity.ok(taskService.findRootTasksByProject(projectId));
+            @Parameter(description = "Project ID", required = true) @PathVariable Long projectId,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        enforceProjectAccess(allowedProjectIds, projectId);
+        return ResponseEntity.ok(taskService.findRootTasksByProject(projectId, allowedProjectIds));
     }
 
     @GetMapping("/project/{projectId}")
     @Operation(summary = "List by project", description = "Returns all tasks for the given project.")
     @ApiResponse(responseCode = "200", description = "Success")
-    public ResponseEntity<List<Task>> getByProjectId(@Parameter(description = "Project ID", required = true) @PathVariable Long projectId) {
-        return ResponseEntity.ok(taskService.findByProjectId(projectId));
+    // Returns by project id.
+    public ResponseEntity<List<Task>> getByProjectId(@Parameter(description = "Project ID", required = true) @PathVariable Long projectId,
+                                                     @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+                                                     @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        enforceProjectAccess(allowedProjectIds, projectId);
+        return ResponseEntity.ok(taskService.findByProjectId(projectId, allowedProjectIds));
     }
 
     @GetMapping("/contract/{contractId}")
     @Operation(summary = "List by contract", description = "Returns all tasks for the given contract.")
     @ApiResponse(responseCode = "200", description = "Success")
-    public ResponseEntity<List<Task>> getByContractId(@Parameter(description = "Contract ID", required = true) @PathVariable Long contractId) {
-        return ResponseEntity.ok(taskService.findByContractId(contractId));
+    // Returns by contract id.
+    public ResponseEntity<List<Task>> getByContractId(@Parameter(description = "Contract ID", required = true) @PathVariable Long contractId,
+                                                      @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+                                                      @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        return ResponseEntity.ok(taskService.findByContractId(contractId, allowedProjectIds));
     }
 
     @GetMapping("/assignee/{assigneeId}")
     @Operation(summary = "List by assignee", description = "Returns all tasks assigned to the given freelancer.")
     @ApiResponse(responseCode = "200", description = "Success")
-    public ResponseEntity<List<Task>> getByAssigneeId(@Parameter(description = "Assignee ID", required = true) @PathVariable Long assigneeId) {
-        return ResponseEntity.ok(taskService.findByAssigneeId(assigneeId));
+    // Returns by assignee id.
+    public ResponseEntity<List<Task>> getByAssigneeId(@Parameter(description = "Assignee ID", required = true) @PathVariable Long assigneeId,
+                                                      @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+                                                      @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        return ResponseEntity.ok(taskService.findByAssigneeId(assigneeId, allowedProjectIds));
     }
 
     @GetMapping("/assignee/{assigneeId}/subtask-progress")
@@ -154,8 +189,13 @@ public class TaskController {
     @GetMapping("/board/project/{projectId}")
     @Operation(summary = "Kanban board by project", description = "Returns tasks grouped by status for Kanban view.")
     @ApiResponse(responseCode = "200", description = "Success")
-    public ResponseEntity<?> getBoardByProject(@Parameter(description = "Project ID", required = true) @PathVariable Long projectId) {
-        return ResponseEntity.ok(taskService.getBoardByProject(projectId));
+    // Returns board by project.
+    public ResponseEntity<?> getBoardByProject(@Parameter(description = "Project ID", required = true) @PathVariable Long projectId,
+                                               @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+                                               @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        enforceProjectAccess(allowedProjectIds, projectId);
+        return ResponseEntity.ok(taskService.getBoardByProject(projectId, allowedProjectIds));
     }
 
     @GetMapping("/overdue")
@@ -163,8 +203,14 @@ public class TaskController {
     @ApiResponse(responseCode = "200", description = "Success")
     public ResponseEntity<List<Task>> getOverdue(
             @Parameter(description = "Filter by project ID") @RequestParam(required = false) Long projectId,
-            @Parameter(description = "Filter by assignee ID") @RequestParam(required = false) Long assigneeId) {
-        return ResponseEntity.ok(taskService.getOverdueTasks(Optional.ofNullable(projectId), Optional.ofNullable(assigneeId)));
+            @Parameter(description = "Filter by assignee ID") @RequestParam(required = false) Long assigneeId,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (projectId != null) {
+            enforceProjectAccess(allowedProjectIds, projectId);
+        }
+        return ResponseEntity.ok(taskService.getOverdueTasks(Optional.ofNullable(projectId), Optional.ofNullable(assigneeId), allowedProjectIds));
     }
 
     @GetMapping("/due-soon")
@@ -176,9 +222,15 @@ public class TaskController {
     public ResponseEntity<List<Task>> getDueSoon(
             @Parameter(description = "Horizon in days from today (inclusive)") @RequestParam(defaultValue = "7") int withinDays,
             @Parameter(description = "Filter by project ID") @RequestParam(required = false) Long projectId,
-            @Parameter(description = "Filter by assignee ID") @RequestParam(required = false) Long assigneeId) {
+            @Parameter(description = "Filter by assignee ID") @RequestParam(required = false) Long assigneeId,
+            @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
+            @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (projectId != null) {
+            enforceProjectAccess(allowedProjectIds, projectId);
+        }
         return ResponseEntity.ok(taskService.findDueSoon(
-                Optional.ofNullable(projectId), Optional.ofNullable(assigneeId), withinDays));
+                Optional.ofNullable(projectId), Optional.ofNullable(assigneeId), withinDays, allowedProjectIds));
     }
 
     @GetMapping("/calendar-events")
@@ -187,7 +239,9 @@ public class TaskController {
     public ResponseEntity<List<TaskCalendarEventDto>> getCalendarEvents(
             @Parameter(description = "Start of range (ISO-8601)") @RequestParam(required = false) String timeMin,
             @Parameter(description = "End of range (ISO-8601)") @RequestParam(required = false) String timeMax,
-            @Parameter(description = "Filter to tasks for this user (assignee or project client)") @RequestParam(required = false) Long userId) {
+            @Parameter(description = "Filter to tasks for this user (assignee or project client)") @RequestParam(required = false) Long userId,
+            @Parameter(description = "User role (CLIENT, FREELANCER, ADMIN)") @RequestParam(required = false) String role) {
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(userId, role);
         LocalDateTime min = parseDateTime(timeMin, LocalDateTime.now().withDayOfMonth(1).withHour(0).withMinute(0).withSecond(0).withNano(0));
         LocalDateTime max = parseDateTime(timeMax, min.plusMonths(2));
         if (max.isBefore(min)) {
@@ -195,8 +249,37 @@ public class TaskController {
             min = max;
             max = tmp;
         }
-        List<TaskCalendarEventDto> events = taskService.getCalendarEvents(min, max, Optional.ofNullable(userId));
+        List<TaskCalendarEventDto> events = taskService.getCalendarEvents(min, max, Optional.ofNullable(userId), allowedProjectIds);
         return ResponseEntity.ok(events);
+    }
+
+    private Optional<Set<Long>> resolveFreelancerScope(Long userId, String role) {
+        if (!"FREELANCER".equalsIgnoreCase(role)) {
+            return Optional.empty();
+        }
+        if (userId == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "X-User-Id is required for freelancer scope");
+        }
+        TaskFreelancerProjectAccessService accessService = taskFreelancerProjectAccessServiceProvider.getIfAvailable();
+        if (accessService == null) {
+            return Optional.empty();
+        }
+        return Optional.of(accessService.getAccessibleProjectIdsForFreelancer(userId));
+    }
+
+    private static void enforceProjectAccess(Optional<Set<Long>> allowedProjectIds, Long projectId) {
+        if (allowedProjectIds.isPresent() && (projectId == null || !allowedProjectIds.get().contains(projectId))) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Project is not accessible for this freelancer");
+        }
+    }
+
+    private void enforceTaskAccess(Optional<Set<Long>> allowedProjectIds, Long taskId) {
+        if (allowedProjectIds.isEmpty()) {
+            return;
+        }
+        if (!taskService.canAccessTask(taskId, allowedProjectIds)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Task is not accessible for this freelancer");
+        }
     }
 
     @PostMapping
@@ -205,6 +288,7 @@ public class TaskController {
             @ApiResponse(responseCode = "201", description = "Created", content = @Content(schema = @Schema(implementation = Task.class))),
             @ApiResponse(responseCode = "400", description = "Invalid request", content = @Content)
     })
+    // Creates this operation.
     public ResponseEntity<Task> create(@Valid @RequestBody TaskRequest request) {
         Task task = toEntity(request);
         return ResponseEntity.status(HttpStatus.CREATED).body(taskService.create(task));
@@ -265,6 +349,7 @@ public class TaskController {
             @ApiResponse(responseCode = "200", description = "Success"),
             @ApiResponse(responseCode = "400", description = "Invalid body", content = @Content)
     })
+    // Performs bulk patch status.
     public ResponseEntity<List<Task>> bulkPatchStatus(@Valid @RequestBody TaskBulkStatusRequest body) {
         return ResponseEntity.ok(taskService.bulkPatchStatus(body.getTaskIds(), body.getStatus()));
     }
@@ -272,6 +357,7 @@ public class TaskController {
     @PostMapping("/reorder")
     @Operation(summary = "Bulk reorder", description = "Reorders tasks by the given IDs (order = index).")
     @ApiResponse(responseCode = "200", description = "Success")
+    // Performs reorder.
     public ResponseEntity<Void> reorder(@RequestBody List<Long> taskIds) {
         taskService.reorder(taskIds);
         return ResponseEntity.ok().build();
@@ -283,11 +369,13 @@ public class TaskController {
             @ApiResponse(responseCode = "204", description = "No content"),
             @ApiResponse(responseCode = "404", description = "Task not found", content = @Content)
     })
+    // Deletes this operation.
     public ResponseEntity<Void> delete(@Parameter(description = "Task ID", required = true) @PathVariable Long id) {
         taskService.deleteById(id);
         return ResponseEntity.noContent().build();
     }
 
+    // Performs parse task id list.
     private static List<Long> parseTaskIdList(String taskIds) {
         if (taskIds == null || taskIds.isBlank()) {
             return List.of();
@@ -310,12 +398,14 @@ public class TaskController {
         return out;
     }
 
+    // Builds page request.
     private static PageRequest buildPageRequest(int page, int size, Sort sort) {
         int p = Math.max(0, page);
         int s = Math.min(Math.max(1, size), MAX_PAGE_SIZE);
         return PageRequest.of(p, s, sort);
     }
 
+    // Performs parse sort.
     private static Sort parseSort(String sort) {
         if (sort == null || sort.isBlank()) {
             return Sort.by(
@@ -332,6 +422,7 @@ public class TaskController {
         return Sort.by(direction, parts[0].trim());
     }
 
+    // Performs parse date time.
     private static LocalDateTime parseDateTime(String value, LocalDateTime defaultValue) {
         if (value == null || value.isBlank()) {
             return defaultValue;
@@ -352,6 +443,7 @@ public class TaskController {
         return defaultValue;
     }
 
+    // Performs to entity.
     private static Task toEntity(TaskRequest r) {
         return Task.builder()
                 .projectId(r.getProjectId())

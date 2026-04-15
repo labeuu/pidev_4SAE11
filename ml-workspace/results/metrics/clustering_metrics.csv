@@ -1,0 +1,4 @@
+algorithm,num_clusters,noise_ratio,silhouette,calinski_harabasz,davies_bouldin
+kmeans,4,0.0,0.09013729222876894,21.160696775667674,2.427320335563464
+agglomerative,4,0.0,0.07199233477928899,16.881603680344718,2.7174191119468025
+dbscan,0,1.0,,,

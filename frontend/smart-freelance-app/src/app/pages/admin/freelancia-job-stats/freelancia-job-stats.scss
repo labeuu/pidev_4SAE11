@@ -1,0 +1,213 @@
+@use '../../../../styles/variables' as v;
+
+.job-stats-page {
+  max-width: 1400px;
+  min-height: 100vh;
+  background: linear-gradient(180deg, v.$neutral-50 0%, v.$white 6%, v.$neutral-50 100%);
+}
+
+// ── Page header (reuses admin-dashboard pattern) ─────────────────────────────
+.page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: v.$spacing-xl;
+  padding: v.$spacing-2xl v.$spacing-lg;
+  margin-bottom: v.$spacing-2xl;
+  background: linear-gradient(135deg, rgba(227, 126, 51, 0.08) 0%, rgba(59, 130, 246, 0.08) 100%);
+  border-radius: v.$radius-xl;
+  border: 1px solid v.$neutral-200;
+
+  .page-header__content {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: v.$spacing-xl;
+    width: 100%;
+
+    @media (max-width: 768px) {
+      flex-direction: column;
+      text-align: center;
+    }
+  }
+
+  .page-header__text { flex: 1; }
+
+  .page-badge {
+    display: inline-block;
+    padding: v.$spacing-xs v.$spacing-sm;
+    font-size: v.$font-size-xs;
+    font-weight: v.$font-weight-semibold;
+    color: v.$primary-500;
+    background: rgba(227, 126, 51, 0.12);
+    border-radius: v.$radius-md;
+    margin-bottom: v.$spacing-sm;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+
+  .page-title {
+    font-size: clamp(v.$font-size-2xl, 4vw, v.$font-size-4xl);
+    font-weight: v.$font-weight-extrabold;
+    color: v.$neutral-900;
+    margin: 0 0 v.$spacing-sm;
+    letter-spacing: v.$letter-spacing-tight;
+  }
+
+  .page-subtitle {
+    font-size: v.$font-size-base;
+    color: v.$neutral-600;
+    margin: 0;
+  }
+
+  .header-icon {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 72px;
+    height: 72px;
+    font-size: 2.25rem;
+    background: v.$gradient-soft;
+    border-radius: v.$radius-xl;
+  }
+}
+
+// ── Loading ──────────────────────────────────────────────────────────────────
+.loading-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: v.$spacing-md;
+  color: v.$neutral-600;
+
+  .loading-spinner {
+    width: 40px;
+    height: 40px;
+    border: 3px solid v.$neutral-200;
+    border-top-color: v.$primary-500;
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+// ── KPI cards ────────────────────────────────────────────────────────────────
+.stats-section {
+  margin-bottom: v.$spacing-2xl;
+  padding: 0 v.$spacing-lg;
+}
+
+.section-title {
+  font-size: v.$font-size-sm;
+  font-weight: v.$font-weight-semibold;
+  color: v.$neutral-500;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  margin: 0 0 v.$spacing-lg;
+}
+
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: v.$spacing-lg;
+
+  @media (max-width: 768px) { grid-template-columns: 1fr; }
+}
+
+.stat-card {
+  padding: v.$spacing-xl;
+  border-radius: v.$radius-xl;
+  border: 1.5px solid v.$neutral-200;
+  transition: transform v.$transition-base, box-shadow v.$transition-base;
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: v.$shadow-lg;
+  }
+
+  .stat-icon  { font-size: 1.75rem; margin-bottom: v.$spacing-sm; }
+  .stat-value { font-size: v.$font-size-3xl; font-weight: v.$font-weight-extrabold; color: v.$neutral-900; margin-bottom: v.$spacing-xs; }
+  .stat-label { font-size: v.$font-size-sm; color: v.$neutral-600; }
+}
+
+// ── Charts ───────────────────────────────────────────────────────────────────
+.charts-section {
+  margin-bottom: v.$spacing-2xl;
+  padding: 0 v.$spacing-lg;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: v.$spacing-xl;
+
+  @media (max-width: 900px) { grid-template-columns: 1fr; }
+}
+
+.chart-card {
+  padding: v.$spacing-xl;
+  border-radius: v.$radius-xl;
+  border: 1.5px solid v.$neutral-200;
+
+  &--wide { grid-column: 1 / -1; }
+
+  .chart-title {
+    font-size: v.$font-size-base;
+    font-weight: v.$font-weight-semibold;
+    color: v.$neutral-900;
+    margin: 0 0 v.$spacing-lg;
+  }
+}
+
+.chart-container {
+  position: relative;
+
+  &--line { height: 220px; }
+  &--pie  { height: 240px; max-width: 280px; margin: 0 auto; }
+  &--bar  { height: 220px; }
+}
+
+// ── Table ────────────────────────────────────────────────────────────────────
+.table-section {
+  margin-bottom: v.$spacing-2xl;
+  padding: 0 v.$spacing-lg;
+
+  app-card { padding: v.$spacing-xl; border-radius: v.$radius-xl; border: 1.5px solid v.$neutral-200; display: block; }
+}
+
+.table-title {
+  font-size: v.$font-size-base;
+  font-weight: v.$font-weight-semibold;
+  color: v.$neutral-900;
+  margin: 0 0 v.$spacing-lg;
+}
+
+.table-wrapper { overflow-x: auto; }
+
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: v.$font-size-sm;
+
+  th, td {
+    padding: v.$spacing-md;
+    text-align: left;
+    border-bottom: 1px solid v.$neutral-200;
+  }
+
+  th {
+    font-weight: v.$font-weight-semibold;
+    color: v.$neutral-600;
+    background: v.$neutral-50;
+  }
+
+  tr:hover td { background: rgba(227, 126, 51, 0.05); }
+}
+
+.empty-msg {
+  color: v.$neutral-500;
+  font-style: italic;
+}

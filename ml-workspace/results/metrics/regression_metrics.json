@@ -1,0 +1,20 @@
+[
+  {
+    "algorithm":"linear_regression",
+    "mae":0.3008190212,
+    "rmse":0.3834252772,
+    "r2":0.858315064
+  },
+  {
+    "algorithm":"gradient_boosting_regressor",
+    "mae":0.3100879382,
+    "rmse":0.3948286298,
+    "r2":0.8497621115
+  },
+  {
+    "algorithm":"random_forest_regressor",
+    "mae":0.3189708042,
+    "rmse":0.4174617478,
+    "r2":0.8320439811
+  }
+]

@@ -3,7 +3,7 @@
 - **Code**: [backEnd/Microservices/Portfolio](../../backEnd/Microservices/Portfolio)
 - **Spring name**: `PORTFOLIO` (Eureka)
 - **Port**: `8086`
-- **Gateway**: `http://localhost:8078/portfolio/**` → `lb://PORTFOLIO`
+- **Gateway**: `http://localhost:8078/portfolio/**` → `http://localhost:8086`
 
 ## Responsibilities
 
@@ -18,7 +18,7 @@ Freelancer **portfolio**: profile views, **skills**, **experiences**, **evaluati
 
 ## Run
 
-Start **Eureka** so the gateway can resolve `lb://PORTFOLIO`.
+Run the service on `8086`; the gateway forwards directly to this port.
 
 ```bash
 cd backEnd/Microservices/Portfolio

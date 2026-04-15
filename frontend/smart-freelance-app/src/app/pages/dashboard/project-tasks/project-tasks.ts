@@ -21,6 +21,7 @@ import {
   TaskStatus,
   TaskPriority,
   Subtask,
+  TaskAiClientBriefRequest,
 } from '../../../core/services/task.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { ProjectService, Project } from '../../../core/services/project.service';
@@ -683,5 +684,76 @@ export class ProjectTasks implements OnInit, OnDestroy {
 
   clearStatDrilldownAndReload(): void {
     this.resetStatsListView();
+  }
+
+  /** AI brief modal: human must review before sending externally. */
+  clientBriefModalOpen = false;
+  clientBriefLoading = false;
+  clientBriefMarkdown = '';
+  clientBriefPlanningWarning: string | null = null;
+  clientBriefError = '';
+  clientBriefReportFrom: string | null = null;
+  clientBriefReportTo: string | null = null;
+
+  openClientBriefModal(): void {
+    if (!this.isClient || !this.selectedProjectId) return;
+    this.clientBriefModalOpen = true;
+    this.clientBriefMarkdown = '';
+    this.clientBriefPlanningWarning = null;
+    this.clientBriefError = '';
+    this.cdr.markForCheck();
+  }
+
+  closeClientBriefModal(): void {
+    if (this.clientBriefLoading) return;
+    this.clientBriefModalOpen = false;
+    this.cdr.markForCheck();
+  }
+
+  generateClientBrief(): void {
+    const uid = this.auth.getUserId();
+    const projectId = this.selectedProjectId;
+    if (uid == null || projectId == null || this.clientBriefLoading) return;
+    const body: TaskAiClientBriefRequest = { projectId, clientUserId: uid };
+    const from = this.clientBriefReportFrom?.trim();
+    const to = this.clientBriefReportTo?.trim();
+    if (from) body.reportFrom = from;
+    if (to) body.reportTo = to;
+    this.clientBriefLoading = true;
+    this.clientBriefError = '';
+    this.clientBriefPlanningWarning = null;
+    this.cdr.markForCheck();
+    this.taskService.clientStatusBrief(body).subscribe({
+      next: (res) => {
+        this.clientBriefLoading = false;
+        this.clientBriefMarkdown = (res.briefMarkdown ?? '').trim();
+        const w = res.planningDataWarning?.trim();
+        this.clientBriefPlanningWarning = w ? w : null;
+        this.cdr.markForCheck();
+      },
+      error: (err: { error?: { message?: string } }) => {
+        this.clientBriefLoading = false;
+        this.clientBriefError = err?.error?.message ?? 'Could not generate brief.';
+        this.cdr.markForCheck();
+      },
+    });
+  }
+
+  copyClientBriefMarkdown(): void {
+    const t = this.clientBriefMarkdown;
+    if (!t) return;
+    if (navigator.clipboard?.writeText) {
+      navigator.clipboard.writeText(t).catch(() => {});
+    }
+  }
+
+  onClientBriefFromInput(event: Event): void {
+    const v = (event.target as HTMLInputElement).value?.trim();
+    this.clientBriefReportFrom = v ? v : null;
+  }
+
+  onClientBriefToInput(event: Event): void {
+    const v = (event.target as HTMLInputElement).value?.trim();
+    this.clientBriefReportTo = v ? v : null;
   }
 }

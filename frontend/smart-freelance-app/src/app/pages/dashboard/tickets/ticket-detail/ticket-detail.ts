@@ -9,6 +9,7 @@ import { ReplyService, TicketReply } from '../../../../core/services/reply.servi
 import { ToastService } from '../../../../core/services/toast.service';
 import { toastSuccessWithOptionalFilterNote } from '../../../../core/utils/content-sanitized-notice.util';
 import { messageFromHttpError } from '../../../../core/utils/http-error.util';
+import { finalize } from 'rxjs/operators';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -81,14 +82,38 @@ export class TicketDetail implements OnInit {
     this.replyService.getByTicketId(ticketId).subscribe({
       next: (r) => {
         this.replies = r;
-        this.loading = false;
-        this.updateReplyFormDisabledState();
-        this.cdr.detectChanges();
+        this.ticketService
+          .markRead(ticketId)
+          .pipe(
+            finalize(() => {
+              this.loading = false;
+              this.updateReplyFormDisabledState();
+              this.cdr.detectChanges();
+            })
+          )
+          .subscribe({ error: () => {} });
       },
       error: (err: unknown) => {
         this.errorMessage = messageFromHttpError(err, 'Failed to load replies.');
         this.toast.error(this.errorMessage);
         this.loading = false;
+        this.cdr.detectChanges();
+      },
+    });
+  }
+
+  reopenTicket(): void {
+    if (!this.ticket?.id || !this.ticket.canReopen) return;
+    this.ticketService.reopen(this.ticket.id).subscribe({
+      next: (t) => {
+        this.ticket = t;
+        this.updateReplyFormDisabledState();
+        this.toast.success('Ticket reopened.');
+        this.load(this.ticket.id);
+      },
+      error: (err: unknown) => {
+        this.errorMessage = messageFromHttpError(err, 'Could not reopen ticket.');
+        this.toast.error(this.errorMessage);
         this.cdr.detectChanges();
       },
     });

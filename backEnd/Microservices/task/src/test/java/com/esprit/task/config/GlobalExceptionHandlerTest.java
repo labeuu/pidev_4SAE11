@@ -92,7 +92,9 @@ class GlobalExceptionHandlerTest {
         when(ex.getMessage()).thenReturn("Connection refused: connect");
 
         assertThat(GlobalExceptionHandler.resolveFeignClientMessage(ex))
-                .contains("Cannot reach the AI model service");
+                .contains("Connection refused")
+                .contains("Project microservice")
+                .contains("AImodel");
     }
 
     @Test
@@ -142,5 +144,16 @@ class GlobalExceptionHandlerTest {
 
         assertThat(GlobalExceptionHandler.resolveFeignClientMessage(ex))
                 .containsIgnoringCase("timed out");
+    }
+
+    @Test
+    void resolveFeignClientMessage_keepsProviderMessage() {
+        FeignException ex = mock(FeignException.class);
+        when(ex.status()).thenReturn(502);
+        when(ex.contentUTF8())
+                .thenReturn("{\"success\":false,\"error\":{\"message\":\"Failed to generate content\"}}");
+
+        assertThat(GlobalExceptionHandler.resolveFeignClientMessage(ex))
+                .isEqualTo("Failed to generate content");
     }
 }

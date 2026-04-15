@@ -14,9 +14,9 @@ Dashboard (local): `http://localhost:8420`
 
 - **Path**: [backEnd/ConfigServer](../backEnd/ConfigServer)
 - **Port**: **8888**
-- **Role**: Serves `*.properties` from `src/main/resources/config/` to clients that import the config server (e.g. **OFFER**, **VENDOR** bootstrap via `spring.config.import=configserver:http://localhost:8888`).
+- **Role**: Serves `*.properties` from `src/main/resources/config/` to clients that import the config server (e.g. **OFFER**, **VENDOR**, **SUBCONTRACTING** bootstrap via `spring.config.import=configserver:http://localhost:8888`).
 
-Some microservices use `optional:configserver:...` so they can start without Config Server; **OFFER** and **VENDOR** expect Config Server for their main `server.port` and datasource settings.
+Some microservices use `optional:configserver:...` so they can start without Config Server. **OFFER**, **VENDOR**, **SUBCONTRACTING**, **task**, and **planning** use the same bootstrap as Offer: `spring.config.import=configserver:http://localhost:8888` plus optional `application-local.properties`, so Config Server must be running for their main `server.port`, datasource, and related settings.
 
 Start Eureka **before** Config Server if profiles depend on discovery (typical local setup starts Eureka first).
 

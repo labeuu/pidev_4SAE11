@@ -25,11 +25,11 @@
       <h2 class="section-title">Repository</h2>
       <div class="form-row">
         <label for="owner">Owner (user or org)</label>
-        <input id="owner" type="text" [(ngModel)]="owner" placeholder="e.g. octocat" class="input" />
+        <input id="owner" type="text" [(ngModel)]="owner" (ngModelChange)="onRepoInputChange()" placeholder="e.g. octocat" class="input" />
       </div>
       <div class="form-row">
         <label for="repo">Repo name</label>
-        <input id="repo" type="text" [(ngModel)]="repo" placeholder="e.g. Hello-World" class="input" />
+        <input id="repo" type="text" [(ngModel)]="repo" (ngModelChange)="onRepoInputChange()" placeholder="e.g. Hello-World" class="input" />
       </div>
       @if (repoUrl) {
         <p class="repo-open">
@@ -79,7 +79,7 @@
           <p class="commit-meta">
             <code>{{ latestCommit.sha.slice(0, 7) }}</code>
             @if (latestCommit.commit?.author?.date) {
-              <span>{{ latestCommit.commit?.author?.date }}</span>
+              <span>{{ formatGitHubDate(latestCommit.commit?.author?.date) }}</span>
             }
           </p>
           @if (latestCommit.html_url) {
@@ -101,7 +101,7 @@
               <code class="commit-sha">{{ c.sha.slice(0, 7) }}</code>
               <span class="commit-msg">{{ c.commit?.message ?? '—' }}</span>
               @if (c.commit?.author?.date) {
-                <span class="commit-date">{{ c.commit?.author?.date }}</span>
+                <span class="commit-date">{{ formatGitHubDate(c.commit?.author?.date) }}</span>
               }
               @if (c.html_url) {
                 <a [href]="c.html_url" target="_blank" rel="noopener noreferrer" class="commit-link-inline">View</a>

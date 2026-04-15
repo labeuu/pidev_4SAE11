@@ -6,7 +6,6 @@ import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
@@ -23,12 +22,15 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/planning")
-@RequiredArgsConstructor
 @CrossOrigin(origins = "*")
 @Tag(name = "Planning Health", description = "Health and readiness checks for the Planning microservice")
 public class PlanningHealthController {
 
     private final ProgressUpdateRepository progressUpdateRepository;
+
+    public PlanningHealthController(ProgressUpdateRepository progressUpdateRepository) {
+        this.progressUpdateRepository = progressUpdateRepository;
+    }
 
     /** Returns service health: status UP with database count when DB is reachable; 503 with status DEGRADED when DB fails. */
     @GetMapping("/health")
@@ -37,6 +39,7 @@ public class PlanningHealthController {
             description = "Simple health/readiness endpoint for the Planning microservice, including a lightweight database check."
     )
     @ApiResponse(responseCode = "200", description = "Service is healthy", content = @Content(schema = @Schema(implementation = Map.class)))
+    // Performs health.
     public ResponseEntity<Map<String, Object>> health() {
         Map<String, Object> body = new HashMap<>();
         body.put("service", "planning");

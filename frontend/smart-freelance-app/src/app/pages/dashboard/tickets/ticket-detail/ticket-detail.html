@@ -2,7 +2,7 @@
   <div class="ticket-detail-page">
     <header class="ticket-detail-hero">
       <div class="ticket-detail-hero__main">
-        <div class="ticket-detail-meta">Ticket #{{ t.id }}</div>
+        <div class="ticket-detail-meta">Your support thread</div>
         <h1 class="ticket-detail-title">{{ t.subject }}</h1>
         <div class="ticket-detail-badges">
           <span [ngClass]="badgeStatusClasses(t.status)">{{ t.status }}</span>
@@ -19,6 +19,14 @@
         >
           Edit
         </a>
+        <button
+          type="button"
+          class="ticket-detail-btn-secondary"
+          *ngIf="t.status === 'CLOSED' && (t.canReopen ?? (t.reopenCount ?? 0) < 1)"
+          (click)="reopenTicket()"
+        >
+          Reopen ticket
+        </button>
       </div>
     </header>
 

@@ -49,6 +49,7 @@ public class SubtaskController {
 
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete subtask")
+    // Deletes this operation.
     public ResponseEntity<Void> delete(@PathVariable Long id) {
         subtaskService.deleteById(id);
         return ResponseEntity.noContent().build();

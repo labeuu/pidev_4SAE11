@@ -10,6 +10,7 @@ public record ReplyResponse(
         String message,
         ReplySender sender,
         Long authorUserId,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        boolean readByUser,
+        boolean readByAdmin
 ) {}
-

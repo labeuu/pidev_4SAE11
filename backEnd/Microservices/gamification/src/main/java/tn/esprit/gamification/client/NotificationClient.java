@@ -8,7 +8,7 @@ import tn.esprit.gamification.dto.NotificationRequestDto;
 
 @FeignClient(
         name = "gamificationNotificationFeign",
-        url = "${notification.service.url:http://localhost:8087}",
+        url = "${notification.service.url:http://localhost:8098}",
         path = "/api/notifications"
 )
 public interface NotificationClient {

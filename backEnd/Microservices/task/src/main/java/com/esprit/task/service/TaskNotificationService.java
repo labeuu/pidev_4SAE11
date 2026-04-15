@@ -97,19 +97,77 @@ public class TaskNotificationService {
         notifyUser(userId, title, body, TYPE_TASK_STATUS_UPDATE, data);
     }
 
-    /**
-     * Notify the assignee when a scheduled job escalates an overdue task to HIGH priority.
-     */
+    /** Overdue LOW/MEDIUM → HIGH: default notification copy. */
     public void notifyTaskPriorityEscalated(Task task) {
+        notifyTaskPriorityEscalated(task, "HIGH");
+    }
+
+    /**
+     * Notify the assignee when a scheduled policy escalates task priority (overdue, stuck IN_REVIEW, etc.).
+     *
+     * @param newPriorityLabel human-readable target priority (e.g. HIGH, URGENT)
+     */
+    public void notifyTaskPriorityEscalated(Task task, String newPriorityLabel) {
         if (task == null || task.getAssigneeId() == null) {
             return;
         }
         String userId = String.valueOf(task.getAssigneeId());
         String taskTitle = task.getTitle() != null ? task.getTitle() : "Task #" + task.getId();
         String title = "Task priority escalated";
+        String label = newPriorityLabel != null ? newPriorityLabel : "HIGH";
         String body = String.format(
-                "Overdue task \"%s\" was escalated to HIGH priority. Please update or complete it.",
-                taskTitle);
+                "Task \"%s\" was escalated to %s priority by automated policy. Please update or complete it.",
+                taskTitle, label);
+        Map<String, String> data = new HashMap<>();
+        data.put("projectId", String.valueOf(task.getProjectId()));
+        data.put("taskId", String.valueOf(task.getId()));
+        notifyUser(userId, title, body, TYPE_TASK_PRIORITY_ESCALATED, data);
+    }
+
+    /**
+     * Notify assignee when a subtask priority is raised by the escalation scheduler.
+     */
+    public void notifySubtaskPriorityEscalated(Subtask subtask, String newPriorityLabel) {
+        if (subtask == null || subtask.getAssigneeId() == null) {
+            return;
+        }
+        String userId = String.valueOf(subtask.getAssigneeId());
+        String subTitle = subtask.getTitle() != null ? subtask.getTitle() : "Subtask #" + subtask.getId();
+        String label = newPriorityLabel != null ? newPriorityLabel : "HIGH";
+        String title = "Subtask priority escalated";
+        String body = String.format(
+                "Subtask \"%s\" was escalated to %s priority by automated policy.",
+                subTitle, label);
+        Map<String, String> data = new HashMap<>();
+        data.put("projectId", String.valueOf(subtask.getProjectId()));
+        data.put("subtaskId", String.valueOf(subtask.getId()));
+        notifyUser(userId, title, body, TYPE_TASK_PRIORITY_ESCALATED, data);
+    }
+
+    /**
+     * Optional: inform project client that work was auto-escalated (gated by {@code task.escalation.notify-client-on-escalation}).
+     */
+    public void notifyClientTaskPriorityEscalated(Task task, String newPriorityLabel) {
+        if (task == null || task.getProjectId() == null) {
+            return;
+        }
+        ProjectDto project;
+        try {
+            project = projectClient.getProjectById(task.getProjectId());
+        } catch (Exception e) {
+            log.warn("Failed to load project {} for client escalation notification: {}", task.getProjectId(), e.getMessage());
+            return;
+        }
+        if (project == null || project.getClientId() == null) {
+            return;
+        }
+        String userId = String.valueOf(project.getClientId());
+        String taskTitle = task.getTitle() != null ? task.getTitle() : "Task #" + task.getId();
+        String label = newPriorityLabel != null ? newPriorityLabel : "HIGH";
+        String title = "Task priority auto-escalated";
+        String body = String.format(
+                "\"%s\" was escalated to %s priority due to schedule/risk policy. The assignee was notified.",
+                taskTitle, label);
         Map<String, String> data = new HashMap<>();
         data.put("projectId", String.valueOf(task.getProjectId()));
         data.put("taskId", String.valueOf(task.getId()));
@@ -142,6 +200,7 @@ public class TaskNotificationService {
         notifyUser(userId, title, body.toString().trim(), TYPE_TASK_OVERDUE_DAILY_REMINDER, data);
     }
 
+    // Performs notify user.
     private void notifyUser(String userId, String title, String body, String type, Map<String, String> data) {
         if (userId == null || title == null) {
             return;

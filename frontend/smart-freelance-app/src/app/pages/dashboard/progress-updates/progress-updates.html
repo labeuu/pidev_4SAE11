@@ -43,7 +43,12 @@
               <p class="due-text due-text--ok">All your projects have recent progress updates.</p>
             }
           </div>
-          @if (calendarEvents.length > 0) {
+          @if (calendarEventsLoading) {
+            <div class="calendar-events-strip">
+              <h4 class="calendar-events-title">Upcoming reminders (next 60 days)</h4>
+              <p class="stats-loading">Loading reminders…</p>
+            </div>
+          } @else if (calendarEvents.length > 0) {
             <div class="calendar-events-strip">
               <h4 class="calendar-events-title">Upcoming reminders (next 60 days)</h4>
               <ul class="calendar-events-list">
@@ -54,6 +59,11 @@
                   </li>
                 }
               </ul>
+            </div>
+          } @else {
+            <div class="calendar-events-strip">
+              <h4 class="calendar-events-title">Upcoming reminders (next 60 days)</h4>
+              <p class="stats-loading">No reminders yet. Add a next update due date to see reminders here.</p>
             </div>
           }
         }

@@ -6,8 +6,9 @@ import com.esprit.planning.dto.CalendarEventDto;
 import com.esprit.planning.dto.ProjectDto;
 import com.esprit.planning.entity.ProgressUpdate;
 import com.esprit.planning.repository.ProgressUpdateRepository;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
@@ -26,13 +27,24 @@ import java.util.Set;
  * see only their projects and freelancers see only their assigned work.
  */
 @Service
-@Slf4j
-@RequiredArgsConstructor
 public class CalendarEventService {
+
+    private static final Logger log = LoggerFactory.getLogger(CalendarEventService.class);
 
     private final ProgressUpdateRepository progressUpdateRepository;
     private final ProjectClient projectClient;
     private final TaskClient taskClient;
+    private final ObjectProvider<FreelancerProjectAccessService> freelancerProjectAccessServiceProvider;
+
+    public CalendarEventService(ProgressUpdateRepository progressUpdateRepository,
+                                ProjectClient projectClient,
+                                TaskClient taskClient,
+                                ObjectProvider<FreelancerProjectAccessService> freelancerProjectAccessServiceProvider) {
+        this.progressUpdateRepository = progressUpdateRepository;
+        this.projectClient = projectClient;
+        this.taskClient = taskClient;
+        this.freelancerProjectAccessServiceProvider = freelancerProjectAccessServiceProvider;
+    }
 
     /**
      * Returns calendar events from our own data (no user filter). Use {@link #listEventsFromDb(LocalDateTime, LocalDateTime, Long, String)}
@@ -51,13 +63,17 @@ public class CalendarEventService {
     public List<CalendarEventDto> listEventsFromDb(LocalDateTime timeMin, LocalDateTime timeMax, Long userId, String role) {
         List<CalendarEventDto> events = new ArrayList<>();
         boolean filterByUser = userId != null;
+        FreelancerProjectAccessService accessService = freelancerProjectAccessServiceProvider.getIfAvailable();
+        Set<Long> allowedFreelancerProjectIds = (isFreelancerRole(role) && userId != null && accessService != null)
+                ? accessService.getAccessibleProjectIdsForFreelancer(userId)
+                : null;
 
         // Progress updates with "next update due" in range
         try {
             List<ProgressUpdate> updates = progressUpdateRepository.findByNextUpdateDueBetween(timeMin, timeMax);
             java.util.Map<Long, Long> projectIdToClientId = filterByUser ? new java.util.HashMap<>() : null;
             for (ProgressUpdate pu : updates) {
-                if (filterByUser && !isProgressUpdateVisibleToUser(pu, userId, projectIdToClientId)) continue;
+                if (filterByUser && !isProgressUpdateVisibleToUser(pu, userId, projectIdToClientId, allowedFreelancerProjectIds)) continue;
                 LocalDateTime start = pu.getNextUpdateDue();
                 if (start == null) continue;
                 String summary = "Next progress update due – " + (pu.getTitle() != null ? pu.getTitle() : "Update #" + pu.getId());
@@ -77,9 +93,12 @@ public class CalendarEventService {
         try {
             List<ProjectDto> projects = projectClient.getProjects();
             Set<Long> freelancerProjectIds = filterByUser ? new HashSet<>(progressUpdateRepository.findDistinctProjectIdsByFreelancerId(userId)) : null;
+            if (allowedFreelancerProjectIds != null && freelancerProjectIds != null) {
+                freelancerProjectIds.retainAll(allowedFreelancerProjectIds);
+            }
             if (projects != null) {
                 for (ProjectDto p : projects) {
-                    if (filterByUser && !isProjectDeadlineVisibleToUser(p, userId, freelancerProjectIds)) continue;
+                    if (filterByUser && !isProjectDeadlineVisibleToUser(p, userId, freelancerProjectIds, allowedFreelancerProjectIds)) continue;
                     LocalDateTime deadline = p.getDeadline();
                     if (deadline == null) continue;
                     if (deadline.isBefore(timeMin) || deadline.isAfter(timeMax)) continue;
@@ -101,7 +120,7 @@ public class CalendarEventService {
         try {
             String timeMinStr = timeMin.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_INSTANT);
             String timeMaxStr = timeMax.atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ISO_INSTANT);
-            List<CalendarEventDto> taskEvents = taskClient.getCalendarEvents(timeMinStr, timeMaxStr, userId);
+            List<CalendarEventDto> taskEvents = taskClient.getCalendarEvents(timeMinStr, timeMaxStr, userId, role);
             if (taskEvents != null) {
                 events.addAll(taskEvents);
             }
@@ -113,7 +132,11 @@ public class CalendarEventService {
         return events;
     }
 
-    private boolean isProgressUpdateVisibleToUser(ProgressUpdate pu, Long userId, java.util.Map<Long, Long> projectIdToClientId) {
+    // Checks whether progress update visible to user.
+    private boolean isProgressUpdateVisibleToUser(ProgressUpdate pu, Long userId, java.util.Map<Long, Long> projectIdToClientId, Set<Long> allowedFreelancerProjectIds) {
+        if (allowedFreelancerProjectIds != null) {
+            return pu.getProjectId() != null && allowedFreelancerProjectIds.contains(pu.getProjectId());
+        }
         if (pu.getFreelancerId() != null && pu.getFreelancerId().equals(userId)) return true;
         Long projectId = pu.getProjectId();
         if (projectId == null) return false;
@@ -128,9 +151,17 @@ public class CalendarEventService {
         return clientId != null && clientId.equals(userId);
     }
 
-    private boolean isProjectDeadlineVisibleToUser(ProjectDto p, Long userId, Set<Long> freelancerProjectIds) {
+    // Checks whether project deadline visible to user.
+    private boolean isProjectDeadlineVisibleToUser(ProjectDto p, Long userId, Set<Long> freelancerProjectIds, Set<Long> allowedFreelancerProjectIds) {
+        if (allowedFreelancerProjectIds != null) {
+            return p.getId() != null && allowedFreelancerProjectIds.contains(p.getId());
+        }
         if (p.getClientId() != null && p.getClientId().equals(userId)) return true;
         if (p.getId() != null && freelancerProjectIds != null && freelancerProjectIds.contains(p.getId())) return true;
         return false;
+    }
+
+    private static boolean isFreelancerRole(String role) {
+        return role != null && "FREELANCER".equalsIgnoreCase(role);
     }
 }

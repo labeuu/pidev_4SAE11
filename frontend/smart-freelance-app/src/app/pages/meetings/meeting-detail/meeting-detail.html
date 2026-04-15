@@ -1,0 +1,185 @@
+<div class="detail-page">
+  <!-- Back -->
+  <a routerLink="/dashboard/meetings" class="back-link">← Back to Meetings</a>
+
+  @if (loading()) {
+    <div class="skeleton-detail"></div>
+  } @else if (error() || !meeting()) {
+    <div class="error-state">
+      <div class="error-icon">❌</div>
+      <h3>{{ error() || 'Meeting not found' }}</h3>
+      <a routerLink="/dashboard/meetings" class="btn-primary">Go back</a>
+    </div>
+  } @else {
+    @let m = meeting()!;
+
+    <!-- Join banner -->
+    @if (m.canJoinNow) {
+      <div class="join-banner">
+        <span class="pulse-dot"></span>
+        <span>This meeting is happening now!</span>
+        <button class="btn-join" (click)="joinMeeting()">Join with Google Meet</button>
+      </div>
+    }
+
+    <div class="detail-card">
+      <!-- Header -->
+      <div class="detail-header">
+        <div class="header-left">
+          <span class="type-badge">{{ typeLabel(m.meetingType) }}</span>
+          <h1 class="meeting-title">{{ m.title }}</h1>
+          <div class="participants">
+            <span class="participant client">{{ m.clientName }}</span>
+            <span class="arrow">↔</span>
+            <span class="participant freelancer">{{ m.freelancerName }}</span>
+          </div>
+        </div>
+        <span class="status-badge" [class]="statusClass(m.status)">{{ m.status }}</span>
+      </div>
+
+      <!-- Time info -->
+      <div class="info-section">
+        <div class="info-row">
+          <span class="info-icon">📅</span>
+          <div>
+            <div class="info-label">Date</div>
+            <div class="info-value">{{ formatDate(m.startTime) }}</div>
+          </div>
+        </div>
+        <div class="info-row">
+          <span class="info-icon">🕐</span>
+          <div>
+            <div class="info-label">Time</div>
+            <div class="info-value">{{ formatTime(m.startTime) }} – {{ formatTime(m.endTime) }} ({{ duration(m.startTime, m.endTime) }})</div>
+          </div>
+        </div>
+        @if (m.agenda) {
+          <div class="info-row">
+            <span class="info-icon">📝</span>
+            <div>
+              <div class="info-label">Agenda</div>
+              <div class="info-value agenda-text">{{ m.agenda }}</div>
+            </div>
+          </div>
+        }
+        @if (m.projectId) {
+          <div class="info-row">
+            <span class="info-icon">📁</span>
+            <div>
+              <div class="info-label">Project ID</div>
+              <div class="info-value">#{{ m.projectId }}</div>
+            </div>
+          </div>
+        }
+        @if (m.contractId) {
+          <div class="info-row">
+            <span class="info-icon">📄</span>
+            <div>
+              <div class="info-label">Contract ID</div>
+              <div class="info-value">#{{ m.contractId }}</div>
+            </div>
+          </div>
+        }
+        @if (m.cancellationReason) {
+          <div class="info-row reason-row">
+            <span class="info-icon">💬</span>
+            <div>
+              <div class="info-label">Reason</div>
+              <div class="info-value">{{ m.cancellationReason }}</div>
+            </div>
+          </div>
+        }
+      </div>
+
+      <!-- Meet link (ACCEPTED, not live yet) -->
+      @if (m.meetLink && m.status === 'ACCEPTED' && !m.canJoinNow) {
+        <div class="meet-link-section">
+          <div class="meet-link-label">📹 Google Meet Link</div>
+          <div class="meet-link-row">
+            <a [href]="m.meetLink" target="_blank" rel="noopener noreferrer" class="meet-link">
+              {{ m.meetLink }}
+            </a>
+            <button class="btn-copy" (click)="joinMeeting()" title="Open link">↗</button>
+          </div>
+          <p class="meet-hint">The link becomes active 15 minutes before the meeting starts.</p>
+        </div>
+      }
+
+      @if (!m.meetLink && m.status === 'ACCEPTED' && m.meetingType !== 'IN_PERSON') {
+        <div class="meet-pending">
+          <span>⚠️</span>
+          No video link available for this meeting. Please contact the other party to arrange a call.
+        </div>
+      }
+
+      <!-- Action error -->
+      @if (actionError()) {
+        <div class="alert-error">{{ actionError() }}</div>
+      }
+
+      <!-- Actions -->
+      <div class="action-bar">
+        @if (canAccept()) {
+          <button class="btn-action btn-accept" [disabled]="busy()" (click)="accept()">
+            ✅ Accept Meeting
+          </button>
+        }
+        @if (canDecline()) {
+          <button class="btn-action btn-decline" [disabled]="busy()" (click)="showDeclineDialog.set(true)">
+            ❌ Decline
+          </button>
+        }
+        @if (canCancel()) {
+          <button class="btn-action btn-cancel" [disabled]="busy()" (click)="showCancelDialog.set(true)">
+            🚫 Cancel Meeting
+          </button>
+        }
+        @if (m.canJoinNow) {
+          <button class="btn-action btn-join-action" [disabled]="busy()" (click)="joinMeeting()">
+            📹 Join Now
+          </button>
+        }
+      </div>
+    </div>
+  }
+
+  <!-- Decline dialog -->
+  @if (showDeclineDialog()) {
+    <div class="dialog-backdrop" (click)="showDeclineDialog.set(false)">
+      <div class="dialog" (click)="$event.stopPropagation()">
+        <h3>Decline Meeting</h3>
+        <p>Optionally provide a reason for declining.</p>
+        <textarea
+          class="dialog-textarea"
+          placeholder="Reason (optional)"
+          [(ngModel)]="declineReason"
+          rows="3">
+        </textarea>
+        <div class="dialog-actions">
+          <button class="btn-cancel-dialog" (click)="showDeclineDialog.set(false)">Cancel</button>
+          <button class="btn-confirm-danger" [disabled]="busy()" (click)="submitDecline()">Decline</button>
+        </div>
+      </div>
+    </div>
+  }
+
+  <!-- Cancel dialog -->
+  @if (showCancelDialog()) {
+    <div class="dialog-backdrop" (click)="showCancelDialog.set(false)">
+      <div class="dialog" (click)="$event.stopPropagation()">
+        <h3>Cancel Meeting</h3>
+        <p>Are you sure you want to cancel this meeting? This will also remove the Google Calendar event.</p>
+        <textarea
+          class="dialog-textarea"
+          placeholder="Reason (optional)"
+          [(ngModel)]="cancelReason"
+          rows="3">
+        </textarea>
+        <div class="dialog-actions">
+          <button class="btn-cancel-dialog" (click)="showCancelDialog.set(false)">Go back</button>
+          <button class="btn-confirm-danger" [disabled]="busy()" (click)="submitCancel()">Yes, Cancel</button>
+        </div>
+      </div>
+    </div>
+  }
+</div>
