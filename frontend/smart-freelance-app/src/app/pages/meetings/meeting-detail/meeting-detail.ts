@@ -1,5 +1,6 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { MeetingService } from '../../../core/services/meeting.service';
@@ -237,9 +238,17 @@ export class MeetingDetail implements OnInit {
     this.summaryError.set(null);
     this.meetingService.generateSummary(m.id).subscribe({
       next: s => { this.summary.set(s); this.generatingSummary.set(false); },
-      error: () => {
+      error: (err: HttpErrorResponse) => {
         this.generatingSummary.set(false);
-        this.summaryError.set('Failed to generate summary. Make sure Ollama is running.');
+        const body = err.error as { error?: string; message?: string } | null;
+        const detail =
+          (typeof body?.error === 'string' && body.error) ||
+          (typeof body?.message === 'string' && body.message) ||
+          null;
+        this.summaryError.set(
+          detail ??
+            'Failed to generate summary. If you use a custom model, set OLLAMA_MODEL (e.g. gemma3:4b) and restart the Meeting service, and ensure Ollama is reachable.'
+        );
       },
     });
   }

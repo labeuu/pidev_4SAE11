@@ -11,6 +11,9 @@ export interface JobApplication {
   jobId: number;
   jobTitle?: string;
   freelancerId: number;
+  /** Set by API when listing applications for a job (from USER service). */
+  freelancerFirstName?: string;
+  freelancerLastName?: string;
   proposalMessage?: string;
   expectedRate?: number;
   availabilityStart?: string;

@@ -1,5 +1,6 @@
 package tn.esprit.freelanciajob.service;
 
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -9,7 +10,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.web.multipart.MultipartFile;
+import tn.esprit.freelanciajob.Client.UserClient;
 import tn.esprit.freelanciajob.Dto.request.JobApplicationRequest;
+import tn.esprit.freelanciajob.Dto.response.UserDto;
 import tn.esprit.freelanciajob.Dto.response.ApplyJobResponse;
 import tn.esprit.freelanciajob.Dto.response.AttachmentResponse;
 import tn.esprit.freelanciajob.Dto.response.JobApplicationResponse;
@@ -51,9 +54,18 @@ class JobApplicationServiceTest {
     @Mock private ApplicationAttachmentRepository attachmentRepository;
     @Mock private FileStorageService            fileStorageService;
     @Mock private ApplicationEventPublisher     eventPublisher;
+    @Mock private UserClient                    userClient;
 
     @InjectMocks
     private JobApplicationServiceImpl applicationService;
+
+    @BeforeEach
+    void stubFreelancerLookup() {
+        UserDto u = new UserDto();
+        u.setFirstName("Jane");
+        u.setLastName("Doe");
+        lenient().when(userClient.getUserById(anyLong())).thenReturn(u);
+    }
 
     // ── Shared fixtures ───────────────────────────────────────────────────────
 
@@ -416,6 +428,8 @@ class JobApplicationServiceTest {
         // Assert
         assertThat(result).hasSize(1);
         assertThat(result.get(0).getJobId()).isEqualTo(JOB_ID);
+        assertThat(result.get(0).getFreelancerFirstName()).isEqualTo("Jane");
+        assertThat(result.get(0).getFreelancerLastName()).isEqualTo("Doe");
     }
 
     @Test

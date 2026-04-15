@@ -20,7 +20,7 @@ RUN chown appuser:appgroup app.jar
 RUN mkdir -p /credentials && chown appuser:appgroup /credentials
 USER appuser
 
-EXPOSE 8094
+EXPOSE 8101
 
 ENTRYPOINT ["java", \
   "-XX:+UseContainerSupport", \

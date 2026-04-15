@@ -32,6 +32,11 @@ spring:
               - Accept
               - Origin
               - X-Requested-With
+              - X-User-Id
+              - Sec-WebSocket-Key
+              - Sec-WebSocket-Version
+              - Sec-WebSocket-Protocol
+              - Sec-WebSocket-Extensions
             exposedHeaders:
               - Content-Disposition
               - Content-Type
@@ -103,8 +108,9 @@ spring:
           filters:
             - StripPrefix=1
 
+        # Offer (local IntelliJ default port 8082; use lb://OFFER if you prefer Eureka-only)
         - id: offer
-          uri: lb://OFFER
+          uri: http://localhost:8082
           predicates:
             - Path=/offer/**
           filters:
@@ -141,6 +147,29 @@ spring:
           filters:
             - StripPrefix=1
 
+        # Freelancia Job — direct URL for local IntelliJ (avoids 502 when Eureka advertises a LAN IP Netty can't use).
+        # Docker: use application-docker.yml (service hostnames). Override: GATEWAY_FREELANCIA_JOB_URI
+        - id: freelancia-job
+          uri: ${GATEWAY_FREELANCIA_JOB_URI:http://127.0.0.1:8097}
+          predicates:
+            - Path=/freelancia-job/**
+          filters:
+            - StripPrefix=1
+
+        - id: meeting
+          uri: ${GATEWAY_MEETING_URI:http://127.0.0.1:8101}
+          predicates:
+            - Path=/meeting/**
+          filters:
+            - StripPrefix=1
+
+        - id: chat
+          uri: ${GATEWAY_CHAT_URI:http://127.0.0.1:8096}
+          predicates:
+            - Path=/chat/**
+          filters:
+            - StripPrefix=1
+
         # Task AI: match first — metadata response-timeout in milliseconds (4h) for slow Ollama.
         - id: task-ai
           uri: http://localhost:8091
@@ -161,9 +190,9 @@ spring:
           filters:
             - StripPrefix=1
 
-        # AImodel (Node): discovered via Eureka, port 8092
+        # AImodel (local IntelliJ default 8095; use lb://AIMODEL if you prefer Eureka-only)
         - id: aimodel
-          uri: lb://AIMODEL
+          uri: http://localhost:8095
           predicates:
             - Path=/aimodel/**
           filters:

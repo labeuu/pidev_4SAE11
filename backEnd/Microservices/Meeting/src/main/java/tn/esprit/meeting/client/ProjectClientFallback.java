@@ -15,4 +15,10 @@ public class ProjectClientFallback implements ProjectClient {
         log.warn("[MeetingService] ProjectClient fallback for clientId={}", clientId);
         return List.of();
     }
+
+    @Override
+    public List<ProjectDto> getProjectsByFreelancer(Long freelancerId) {
+        log.warn("[MeetingService] ProjectClient fallback for freelancerId={}", freelancerId);
+        return List.of();
+    }
 }

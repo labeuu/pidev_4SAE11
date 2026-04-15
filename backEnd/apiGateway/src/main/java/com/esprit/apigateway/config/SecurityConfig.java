@@ -25,6 +25,8 @@ public class SecurityConfig {
                     public Mono<ServerWebExchangeMatcher.MatchResult> matches(ServerWebExchange exchange) {
                         String path = exchange.getRequest().getPath().value();
                         boolean match = exchange.getRequest().getMethod() == HttpMethod.OPTIONS
+                                // SockJS hits /chat/ws/info (etc.) over HTTP without Authorization; STOMP CONNECT carries JWT downstream.
+                                || path.startsWith("/chat/ws")
                                 || path.startsWith("/planning/")
                                 || path.startsWith("/project/")
                                 || path.startsWith("/gamification/")

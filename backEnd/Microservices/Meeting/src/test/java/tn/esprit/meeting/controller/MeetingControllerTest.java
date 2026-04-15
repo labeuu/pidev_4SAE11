@@ -372,10 +372,11 @@ class MeetingControllerTest {
     // ── GET /api/meetings/my-projects ─────────────────────────────────────────
 
     @Test
-    @DisplayName("GET /api/meetings/my-projects – should return 200 with empty list on Feign failure")
+    @DisplayName("GET /api/meetings/my-projects – should return 200 with empty list when both Feign calls fail")
     void getMyProjects_feignThrows_returnsEmptyList() throws Exception {
         // Arrange
         when(projectClient.getProjectsByClient(USER_ID)).thenThrow(new RuntimeException("Service down"));
+        when(projectClient.getProjectsByFreelancer(USER_ID)).thenThrow(new RuntimeException("Service down"));
 
         // Act & Assert
         mockMvc.perform(get("/api/meetings/my-projects")

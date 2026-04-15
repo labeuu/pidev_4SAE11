@@ -12,4 +12,8 @@ public interface ProjectClient {
 
     @GetMapping("/client/{clientId}")
     List<ProjectDto> getProjectsByClient(@PathVariable("clientId") Long clientId);
+
+    /** Projects where this user has an accepted application (freelancer side). */
+    @GetMapping("/freelancer/{freelancerId}")
+    List<ProjectDto> getProjectsByFreelancer(@PathVariable("freelancerId") Long freelancerId);
 }

@@ -104,7 +104,7 @@
             <scope>test</scope>
         </dependency>
 
-        <!-- H2 in-memory database for tests (@DataJpaTest, @SpringBootTest) -->
+        <!-- H2 in-memory database for tests (@DataJpaTest, @SpringBootTest) — merged from main -->
         <dependency>
             <groupId>com.h2database</groupId>
             <artifactId>h2</artifactId>

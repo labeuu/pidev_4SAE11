@@ -205,4 +205,14 @@ export class ShowJob implements OnInit {
   }
 
   back(): void { window.history.back(); }
+
+  /** Uses names from API when present; otherwise falls back to Freelancer #id. */
+  freelancerDisplayName(app: JobApplication): string {
+    const f = app.freelancerFirstName?.trim();
+    const l = app.freelancerLastName?.trim();
+    if (f || l) {
+      return [f, l].filter(Boolean).join(' ');
+    }
+    return `Freelancer #${app.freelancerId}`;
+  }
 }

@@ -365,9 +365,13 @@
   }
 
   &__freelancer {
-    font-size: var(--text-sm);
+    font-size: var(--text-base);
     font-weight: 600;
     color: var(--text-primary);
+    line-height: 1.35;
+    word-break: break-word;
+    flex: 1;
+    min-width: 0;
   }
 
   &__meta {
@@ -515,6 +519,28 @@
   transition: background 0.2s ease, color 0.2s ease;
 
   &:hover { background: var(--error); color: #fff; }
+}
+
+.btn-profile {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-card);
+  color: var(--primary-dark);
+  border: 1.5px solid var(--primary);
+  border-radius: var(--radius-md);
+  padding: var(--spacing-xs) var(--spacing-md);
+  font-size: var(--text-sm);
+  font-weight: 600;
+  cursor: pointer;
+  text-decoration: none;
+  transition: background 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
+
+  &:hover {
+    background: var(--primary-light);
+    color: var(--primary-dark);
+    box-shadow: var(--shadow-sm);
+  }
 }
 
 .btn-message {
