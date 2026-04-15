@@ -2,10 +2,12 @@ package com.esprit.ticket.controller;
 
 import com.esprit.ticket.dto.ticket.CreateTicketRequest;
 import com.esprit.ticket.dto.ticket.MonthlyTicketCount;
+import com.esprit.ticket.dto.ticket.TicketPageResponse;
 import com.esprit.ticket.dto.ticket.TicketResponse;
 import com.esprit.ticket.dto.ticket.TicketStatsResponse;
 import com.esprit.ticket.dto.ticket.TicketUnreadCountEntry;
 import com.esprit.ticket.domain.TicketPriority;
+import com.esprit.ticket.domain.TicketStatus;
 import com.esprit.ticket.dto.ticket.UpdateTicketRequest;
 import com.esprit.ticket.service.TicketPdfExportService;
 import com.esprit.ticket.service.TicketService;
@@ -62,15 +64,28 @@ public class TicketController {
 
     @GetMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public List<TicketResponse> getAll(@RequestParam(required = false) TicketPriority priority) {
-        return ticketService.getAll(priority);
+    public TicketPageResponse getAll(
+            @RequestParam(required = false) TicketPriority priority,
+            @RequestParam(required = false) TicketStatus status,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "lastActivityAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ticketService.getAll(priority, status, q, sortBy, sortDir, page, size);
     }
 
     @GetMapping("/user/{userId}")
-    public List<TicketResponse> getByUserId(
+    public TicketPageResponse getByUserId(
             @PathVariable Long userId,
-            @RequestParam(required = false) TicketPriority priority) {
-        return ticketService.getByUserId(userId, priority);
+            @RequestParam(required = false) TicketPriority priority,
+            @RequestParam(required = false) TicketStatus status,
+            @RequestParam(required = false) String q,
+            @RequestParam(defaultValue = "lastActivityAt") String sortBy,
+            @RequestParam(defaultValue = "desc") String sortDir,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ticketService.getByUserId(userId, priority, status, q, sortBy, sortDir, page, size);
     }
 
     @PutMapping("/{id}/read")
@@ -98,6 +113,18 @@ public class TicketController {
     @PreAuthorize("hasRole('ADMIN')")
     public TicketResponse close(@PathVariable Long id) {
         return ticketService.close(id);
+    }
+
+    @PutMapping("/{id}/assign")
+    @PreAuthorize("hasRole('ADMIN')")
+    public TicketResponse assign(@PathVariable Long id) {
+        return ticketService.assignToCurrentAdmin(id);
+    }
+
+    @PutMapping("/{id}/unassign")
+    @PreAuthorize("hasRole('ADMIN')")
+    public TicketResponse unassign(@PathVariable Long id) {
+        return ticketService.unassign(id);
     }
 
     @DeleteMapping("/{id}")

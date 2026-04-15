@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
+import { Component, ChangeDetectorRef, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -11,6 +11,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { toastSuccessWithOptionalFilterNote } from '../../../../core/utils/content-sanitized-notice.util';
 import { messageFromHttpError } from '../../../../core/utils/http-error.util';
 import { finalize } from 'rxjs/operators';
+import { Subscription, interval } from 'rxjs';
 
 @Component({
   selector: 'app-admin-ticket-detail',
@@ -19,7 +20,7 @@ import { finalize } from 'rxjs/operators';
   templateUrl: './ticket-detail.html',
   styleUrl: './ticket-detail.scss',
 })
-export class AdminTicketDetail implements OnInit {
+export class AdminTicketDetail implements OnInit, OnDestroy {
   ticket: Ticket | null = null;
   replies: TicketReply[] = [];
   ownerLabel = '';
@@ -33,17 +34,19 @@ export class AdminTicketDetail implements OnInit {
   deleting = false;
   deleteDialogOpen = false;
   closeDialogOpen = false;
+  lastUpdatedAt: Date | null = null;
+  private pollSub?: Subscription;
 
   constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private fb: FormBuilder,
-    private ticketService: TicketService,
-    private replyService: ReplyService,
-    private userService: UserService,
-    private auth: AuthService,
-    private toast: ToastService,
-    private cdr: ChangeDetectorRef
+    private readonly route: ActivatedRoute,
+    private readonly router: Router,
+    private readonly fb: FormBuilder,
+    private readonly ticketService: TicketService,
+    private readonly replyService: ReplyService,
+    private readonly userService: UserService,
+    private readonly auth: AuthService,
+    private readonly toast: ToastService,
+    private readonly cdr: ChangeDetectorRef
   ) {
     this.replyForm = this.fb.group({
       message: ['', [Validators.required, Validators.maxLength(2000)]],
@@ -57,10 +60,21 @@ export class AdminTicketDetail implements OnInit {
       return;
     }
     this.load(id);
+    this.pollSub = interval(8000).subscribe(() => {
+      if (!document.hidden && this.ticket?.id) {
+        this.load(this.ticket.id, false);
+      }
+    });
   }
 
-  load(id: number): void {
-    this.loading = true;
+  ngOnDestroy(): void {
+    this.pollSub?.unsubscribe();
+  }
+
+  load(id: number, showLoading = true): void {
+    if (showLoading) {
+      this.loading = true;
+    }
     this.errorMessage = '';
     this.ticketService.getById(id).subscribe({
       next: (t) => {
@@ -106,6 +120,7 @@ export class AdminTicketDetail implements OnInit {
           .pipe(
             finalize(() => {
               this.loading = false;
+              this.lastUpdatedAt = new Date();
               this.updateReplyFormDisabledState();
               this.cdr.detectChanges();
             })
@@ -136,7 +151,7 @@ export class AdminTicketDetail implements OnInit {
         this.replyForm.reset({ message: '' });
         this.updateReplyFormDisabledState();
         toastSuccessWithOptionalFilterNote(this.toast, msg, reply.message, 'Reply sent.');
-        this.load(this.ticket!.id);
+        this.load(this.ticket!.id, false);
       },
       error: (err: unknown) => {
         this.sending = false;
@@ -182,7 +197,7 @@ export class AdminTicketDetail implements OnInit {
         this.ticket = t;
         this.updateReplyFormDisabledState();
         this.toast.success('Ticket reopened.');
-        if (this.ticket.id) this.loadReplies(this.ticket.id);
+        if (this.ticket.id) this.load(this.ticket.id, false);
         this.cdr.detectChanges();
       },
       error: (err: unknown) => {
@@ -204,6 +219,7 @@ export class AdminTicketDetail implements OnInit {
         this.ticket = t;
         this.updateReplyFormDisabledState();
         this.toast.success('Ticket closed.');
+        this.load(t.id, false);
         this.cdr.detectChanges();
       },
       error: (err: unknown) => {
@@ -248,6 +264,52 @@ export class AdminTicketDetail implements OnInit {
   isMe(r: TicketReply): boolean {
     const myId = this.auth.getUserId();
     return myId != null && r.authorUserId === myId;
+  }
+
+  assignToMe(): void {
+    if (!this.ticket?.id) return;
+    this.ticketService.assign(this.ticket.id).subscribe({
+      next: (t) => {
+        this.ticket = t;
+        this.toast.success('Ticket assigned to you.');
+        this.load(t.id, false);
+      },
+      error: (err: unknown) => {
+        this.toast.error(messageFromHttpError(err, 'Failed to assign ticket.'));
+      },
+    });
+  }
+
+  unassign(): void {
+    if (!this.ticket?.id) return;
+    this.ticketService.unassign(this.ticket.id).subscribe({
+      next: (t) => {
+        this.ticket = t;
+        this.toast.success('Ticket unassigned.');
+        this.load(t.id, false);
+      },
+      error: (err: unknown) => {
+        this.toast.error(messageFromHttpError(err, 'Failed to unassign ticket.'));
+      },
+    });
+  }
+
+  timeline(t: Ticket): Array<{ label: string; date?: string | null }> {
+    return [
+      { label: 'Created', date: t.createdAt },
+      { label: 'Assigned', date: t.assignedAt },
+      { label: 'First response', date: t.firstResponseAt },
+      { label: 'Last activity', date: t.lastActivityAt },
+      { label: 'Resolved', date: t.resolvedAt },
+    ];
+  }
+
+  adminNextAction(t: Ticket): string {
+    if (t.status === 'CLOSED') return 'Ticket is closed. Reopen only if customer provides new details.';
+    const staleHours = (Date.now() - new Date(t.lastActivityAt).getTime()) / (1000 * 60 * 60);
+    if (staleHours > 24) return 'Reply overdue. Send an update to the user.';
+    if (!t.assignedAdminId) return 'Claim ticket to avoid duplicate handling.';
+    return 'Review latest user message and post the next support reply.';
   }
 
   badgeStatusClasses(status: string): Record<string, boolean> {
