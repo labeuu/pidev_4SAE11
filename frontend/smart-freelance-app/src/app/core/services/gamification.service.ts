@@ -90,6 +90,7 @@ export interface UserLevelSummary {
   progressPercent: number;
   isTopFreelancer: boolean;
   fastResponderStreak: number;
+  activeStreak: number; // 🆕
 }
 
 export interface LeaderboardEntry {

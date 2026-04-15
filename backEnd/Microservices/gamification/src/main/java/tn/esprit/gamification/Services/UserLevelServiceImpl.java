@@ -12,6 +12,8 @@ import tn.esprit.gamification.Repository.UserLevelRepository;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
+import java.time.LocalDate;
+import java.time.temporal.ChronoUnit;
 
 @Service
 public class UserLevelServiceImpl implements UserLevelService {
@@ -83,6 +85,9 @@ public class UserLevelServiceImpl implements UserLevelService {
         int totalNeededInTier = xpNextLevel - xpCurrentLevel;
         int progressPercent = (totalNeededInTier == 0) ? 100 : Math.min(100, (xpInCurrentTier * 100) / totalNeededInTier);
 
+        // Mettre à jour l'active streak automatiquement lors du fetch du summary
+        int currentActiveStreak = updateAndGetActiveStreak(userId);
+
         return UserLevelSummaryDTO.builder()
                 .userId(userId)
                 .xp(xp)
@@ -93,6 +98,7 @@ public class UserLevelServiceImpl implements UserLevelService {
                 .progressPercent(progressPercent)
                 .isTopFreelancer(ul.isTopFreelancer())
                 .fastResponderStreak(ul.getFastResponderStreak())
+                .activeStreak(currentActiveStreak) // 🆕
                 .build();
     }
 
@@ -162,5 +168,33 @@ public class UserLevelServiceImpl implements UserLevelService {
         UserLevel ul = getUserLevel(userId);
         ul.setTopFreelancer(status);
         repo.save(ul);
+    }
+
+    @Override
+    public int updateAndGetActiveStreak(Long userId) {
+        UserLevel ul = getUserLevel(userId);
+        LocalDate today = LocalDate.now();
+
+        if (ul.getLastActiveDate() == null) {
+            // Première visite
+            ul.setActiveStreak(1);
+            ul.setLastActiveDate(today);
+        } else {
+            long daysBetween = ChronoUnit.DAYS.between(ul.getLastActiveDate(), today);
+
+            if (daysBetween == 1) {
+                // Streak maintenu (hier -> aujourd'hui)
+                ul.setActiveStreak(ul.getActiveStreak() + 1);
+                ul.setLastActiveDate(today);
+            } else if (daysBetween > 1) {
+                // L'utilisateur préfère que ça retombe strictement à 0
+                ul.setActiveStreak(0);
+                ul.setLastActiveDate(today);
+            }
+            // Si daysBetween == 0, on a déjà mis à jour aujourd'hui, on ne fait rien.
+        }
+
+        repo.save(ul);
+        return ul.getActiveStreak();
     }
 }

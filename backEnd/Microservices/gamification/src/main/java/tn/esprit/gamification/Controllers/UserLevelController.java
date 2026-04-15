@@ -30,4 +30,9 @@ public class UserLevelController {
     public List<LeaderboardEntryDTO> getLeaderboard(@RequestParam(defaultValue = "10") int top) {
         return service.getLeaderboard(top);
     }
+
+    @PostMapping("/{userId}/streak/update")
+    public int updateStreak(@PathVariable Long userId) {
+        return service.updateAndGetActiveStreak(userId);
+    }
 }

@@ -17,4 +17,5 @@ public interface UserLevelService {
     // 🆕 Nouveaux endpoints pour gamification avancée
     tn.esprit.gamification.Dto.UserLevelSummaryDTO getUserLevelSummary(Long userId);
     List<tn.esprit.gamification.Dto.LeaderboardEntryDTO> getLeaderboard(int topN);
+    int updateAndGetActiveStreak(Long userId);
 }

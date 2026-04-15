@@ -134,7 +134,7 @@ export class GamificationPage implements OnInit {
   }
 
   streak(): number {
-    return this.summary?.fastResponderStreak ?? 0;
+    return this.summary?.activeStreak ?? 0;
   }
 
   topFreelancer(): boolean {
