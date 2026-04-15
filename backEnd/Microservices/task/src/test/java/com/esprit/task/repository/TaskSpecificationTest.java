@@ -22,7 +22,7 @@ class TaskSpecificationTest {
                 Optional.of(1L), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(),
-                Optional.empty());
+                Optional.empty(), Optional.empty());
 
         assertThat(spec).isNotNull();
     }
@@ -33,7 +33,7 @@ class TaskSpecificationTest {
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.of("test"),
                 Optional.empty(), Optional.empty(),
-                Optional.empty());
+                Optional.empty(), Optional.empty());
 
         assertThat(spec).isNotNull();
     }
@@ -44,7 +44,7 @@ class TaskSpecificationTest {
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(),
-                Optional.empty());
+                Optional.empty(), Optional.empty());
 
         assertThat(spec).isNotNull();
     }
@@ -55,7 +55,7 @@ class TaskSpecificationTest {
                 Optional.empty(), Optional.of(2L), Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(),
-                Optional.empty());
+                Optional.empty(), Optional.empty());
         assertThat(spec).isNotNull();
     }
 
@@ -65,7 +65,7 @@ class TaskSpecificationTest {
                 Optional.empty(), Optional.empty(), Optional.of(10L),
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(),
-                Optional.empty());
+                Optional.empty(), Optional.empty());
         assertThat(spec).isNotNull();
     }
 
@@ -75,7 +75,7 @@ class TaskSpecificationTest {
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.of(TaskStatus.IN_PROGRESS), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(),
-                Optional.empty());
+                Optional.empty(), Optional.empty());
         assertThat(spec).isNotNull();
     }
 
@@ -85,7 +85,7 @@ class TaskSpecificationTest {
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.of(TaskPriority.HIGH), Optional.empty(),
                 Optional.empty(), Optional.empty(),
-                Optional.empty());
+                Optional.empty(), Optional.empty());
         assertThat(spec).isNotNull();
     }
 
@@ -96,7 +96,7 @@ class TaskSpecificationTest {
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.of(LocalDate.of(2024, 1, 1)),
                 Optional.empty(),
-                Optional.empty());
+                Optional.empty(), Optional.empty());
         assertThat(spec).isNotNull();
     }
 
@@ -107,7 +107,7 @@ class TaskSpecificationTest {
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.of(LocalDate.of(2024, 1, 1)),
                 Optional.of(LocalDate.of(2024, 12, 31)),
-                Optional.empty());
+                Optional.empty(), Optional.empty());
         assertThat(spec).isNotNull();
     }
 
@@ -117,7 +117,7 @@ class TaskSpecificationTest {
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(), Optional.empty(),
                 Optional.empty(), Optional.empty(),
-                Optional.of(true));
+                Optional.of(true), Optional.empty());
         assertThat(spec).isNotNull();
     }
 
@@ -127,7 +127,8 @@ class TaskSpecificationTest {
                 LocalDate.of(2026, 4, 1),
                 LocalDate.of(2026, 4, 30),
                 Optional.of(1L),
-                Optional.of(10L));
+                Optional.of(10L),
+                Optional.empty());
         assertThat(spec).isNotNull();
     }
 }

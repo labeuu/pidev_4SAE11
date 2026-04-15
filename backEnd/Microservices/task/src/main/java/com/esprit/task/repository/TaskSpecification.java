@@ -11,6 +11,7 @@ import org.springframework.data.jpa.domain.Specification;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 
@@ -26,7 +27,8 @@ public final class TaskSpecification {
             LocalDate from,
             LocalDate to,
             Optional<Long> projectId,
-            Optional<Long> assigneeId) {
+            Optional<Long> assigneeId,
+            Optional<Collection<Long>> allowedProjectIds) {
         return (Root<Task> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
             List<Predicate> predicates = new ArrayList<>();
             predicates.add(cb.isNotNull(root.get("dueDate")));
@@ -37,6 +39,7 @@ public final class TaskSpecification {
                     cb.equal(root.get("status"), TaskStatus.CANCELLED))));
             projectId.ifPresent(id -> predicates.add(cb.equal(root.get("projectId"), id)));
             assigneeId.ifPresent(id -> predicates.add(cb.equal(root.get("assigneeId"), id)));
+            allowedProjectIds.ifPresent(ids -> predicates.add(root.get("projectId").in(ids)));
             return cb.and(predicates.toArray(new Predicate[0]));
         };
     }
@@ -50,11 +53,13 @@ public final class TaskSpecification {
             Optional<String> search,
             Optional<LocalDate> dueDateFrom,
             Optional<LocalDate> dueDateTo,
-            Optional<Boolean> openTasksOnly) {
+            Optional<Boolean> openTasksOnly,
+            Optional<Collection<Long>> allowedProjectIds) {
         return (Root<Task> root, CriteriaQuery<?> query, CriteriaBuilder cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
             projectId.ifPresent(id -> predicates.add(cb.equal(root.get("projectId"), id)));
+            allowedProjectIds.ifPresent(ids -> predicates.add(root.get("projectId").in(ids)));
             contractId.ifPresent(id -> predicates.add(cb.equal(root.get("contractId"), id)));
             assigneeId.ifPresent(id -> predicates.add(cb.equal(root.get("assigneeId"), id)));
             status.ifPresent(s -> predicates.add(cb.equal(root.get("status"), s)));

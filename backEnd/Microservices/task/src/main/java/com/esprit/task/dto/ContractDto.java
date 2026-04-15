@@ -12,4 +12,5 @@ public class ContractDto {
     private Long projectId;
     private Long freelancerId;
     private Long clientId;
+    private String status;
 }

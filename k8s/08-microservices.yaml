@@ -628,24 +628,24 @@ spec:
       containers:
         - name: meeting
           image: YOUR_DOCKERHUB_USERNAME/meeting:latest
-          ports: [{containerPort: 8094}]
+          ports: [{containerPort: 8101}]
           envFrom:
             - configMapRef: {name: app-config}
             - secretRef:    {name: mysql-secret}
           env:
-            - {name: SERVER_PORT, value: "8094"}
+            - {name: SERVER_PORT, value: "8101"}
             - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/meetingdb"}
             - {name: GOOGLE_APPLICATION_CREDENTIALS, value: "/credentials/meeting-service-account.json"}
           resources:
             requests: {cpu: 150m, memory: 256Mi}
             limits:   {cpu: 500m, memory: 512Mi}
           readinessProbe:
-            httpGet: {path: /actuator/health, port: 8094}
+            httpGet: {path: /actuator/health, port: 8101}
             initialDelaySeconds: 45
             periodSeconds: 10
             failureThreshold: 6
           livenessProbe:
-            httpGet: {path: /actuator/health, port: 8094}
+            httpGet: {path: /actuator/health, port: 8101}
             initialDelaySeconds: 90
             periodSeconds: 20
           volumeMounts:
@@ -664,7 +664,7 @@ metadata:
   namespace: smart-freelance
 spec:
   selector: {app: meeting}
-  ports: [{port: 8094, targetPort: 8094}]
+  ports: [{port: 8101, targetPort: 8101}]
 
 ---
 # ─────────────────────────────── freelancia-job ─────────────────────────────
@@ -684,23 +684,23 @@ spec:
       containers:
         - name: freelancia-job
           image: YOUR_DOCKERHUB_USERNAME/freelancia-job:latest
-          ports: [{containerPort: 8095}]
+          ports: [{containerPort: 8097}]
           envFrom:
             - configMapRef: {name: app-config}
             - secretRef:    {name: mysql-secret}
           env:
-            - {name: SERVER_PORT, value: "8095"}
+            - {name: SERVER_PORT, value: "8097"}
             - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/freelancia_job_db"}
           resources:
             requests: {cpu: 150m, memory: 256Mi}
             limits:   {cpu: 500m, memory: 512Mi}
           readinessProbe:
-            httpGet: {path: /actuator/health, port: 8095}
+            httpGet: {path: /actuator/health, port: 8097}
             initialDelaySeconds: 45
             periodSeconds: 10
             failureThreshold: 6
           livenessProbe:
-            httpGet: {path: /actuator/health, port: 8095}
+            httpGet: {path: /actuator/health, port: 8097}
             initialDelaySeconds: 90
             periodSeconds: 20
 ---
@@ -711,7 +711,7 @@ metadata:
   namespace: smart-freelance
 spec:
   selector: {app: freelancia-job}
-  ports: [{port: 8095, targetPort: 8095}]
+  ports: [{port: 8097, targetPort: 8097}]
 
 ---
 # ─────────────────────────────── vendor ─────────────────────────────────────

@@ -24,6 +24,8 @@
         <option value="$PROJECT_DIR$/ConfigServer/pom.xml" />
         <option value="$PROJECT_DIR$/Microservices/Chat/pom.xml" />
         <option value="$PROJECT_DIR$/Microservices/AImodel/pom.xml" />
+        <option value="$PROJECT_DIR$/Microservices/Vendor/pom.xml" />
+        <option value="$PROJECT_DIR$/Microservices/Subcontracting/pom.xml" />
       </list>
     </option>
   </component>

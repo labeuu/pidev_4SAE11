@@ -92,12 +92,12 @@ A microservices-based platform connecting freelancers and clients for project co
 | Notification | 8098 | Firebase |
 | Gamification | 8088 | `gamificationdb` |
 | Task | 8091 | `taskdb` |
-| FreelanciaJob | 8092 | `freelancia_job_db` |
+| FreelanciaJob | 8097 | `freelancia_job_db` |
 | Vendor | 8093 | `gestion_vendor_db` |
 | Ticket | 8094 | `ticketdb` |
 | AImodel (Spring AI + Ollama) | 8095 | — (Ollama, no app DB) |
 | Chat | 8096 | `chatdb` |
-| Meeting | 8097 | `meetingdb` |
+| Meeting | 8101 | `meetingdb` |
 | Subcontracting | 8099 | `gestion_subcontracting_db` |
 
 ### Startup Order

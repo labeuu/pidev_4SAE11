@@ -190,10 +190,10 @@ REMAINING=(
   "review:8085"
   "Portfolio:8086"
   "gamification:8088"
-  "FreelanciaJob:8092"
+  "FreelanciaJob:8097"
   "ticket-service:8094"
   "Chat:8096"
-  "Meeting:8097"
+  "Meeting:8101"
   "Notification:8098"
 )
 
