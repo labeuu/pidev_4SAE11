@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Rapport mensuel sous-traitance</title>
+</head>
+<body style="font-family: Arial, sans-serif; background:#f7f9fc; margin:0; padding:24px; color:#1f2937;">
+<table width="100%" cellpadding="0" cellspacing="0" style="max-width:720px; margin:0 auto; background:#fff; border-radius:12px; border:1px solid #e5e7eb;">
+  <tr>
+    <td style="padding:24px;">
+      <h2 style="margin:0 0 10px;">Rapport de Performance Sous-traitance</h2>
+      <p style="margin:0 0 14px;">Bonjour <strong th:text="${name}">Freelancer</strong>,</p>
+      <p style="margin:0 0 14px;" th:text="${summary}">Résumé mensuel...</p>
+      <p style="margin:0 0 14px;"><strong>Prochain incident probable :</strong> <span th:text="${nextIncident}"></span></p>
+
+      <h3 style="margin:18px 0 8px;">Taux de succès par catégorie</h3>
+      <ul style="margin:0 0 12px; padding-left:18px;">
+        <li th:each="entry : ${successByCategory}" style="margin-bottom:4px;">
+          <span th:text="${entry.key}">DEVELOPMENT</span>:
+          <strong th:text="${entry.value + '%'}">78%</strong>
+        </li>
+      </ul>
+
+      <h3 style="margin:18px 0 8px;">Mois les plus propices</h3>
+      <ul style="margin:0 0 16px; padding-left:18px;">
+        <li th:each="m : ${bestMonths}" style="margin-bottom:4px;">
+          <strong th:text="${m.month}">Mars</strong> — <span th:text="${m.score + '%'}">71%</span>
+          (<span th:text="${m.rationale}">Fenêtre favorable</span>)
+        </li>
+      </ul>
+
+      <a th:href="${dashboardUrl}" style="display:inline-block; background:#2563eb; color:#fff; text-decoration:none; padding:10px 14px; border-radius:8px;">
+        Ouvrir le dashboard prédictif
+      </a>
+    </td>
+  </tr>
+</table>
+</body>
+</html>
+

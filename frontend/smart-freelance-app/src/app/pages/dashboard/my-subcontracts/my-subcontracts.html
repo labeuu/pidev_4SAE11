@@ -1,21 +1,40 @@
-<div class="my-sc">
-  <div class="header-row">
-    <h2>Mes Sous-Traitances</h2>
+<div class="my-sc" [class.detail-open]="!!selected">
+  <header class="sc-page-head">
+    <div class="sc-page-title">
+      <h2>Mes sous-traitances</h2>
+      <p class="sc-page-sub">Déléguez une partie de vos missions et suivez les livrables en un coup d’œil.</p>
+    </div>
     <div class="header-actions">
-      <div class="tab-switch">
-        <button [class.active]="activeTab === 'list'" (click)="switchTab('list')">Sous-traitances</button>
-        <button [class.active]="activeTab === 'history'" (click)="switchTab('history')">Historique</button>
+      <div class="tab-switch" role="tablist">
+        <button type="button" role="tab" [class.active]="activeTab === 'list'" (click)="switchTab('list')">Sous-traitances</button>
+        <button type="button" role="tab" [class.active]="activeTab === 'history'" (click)="switchTab('history')">Historique</button>
+        <button type="button" role="tab" [class.active]="activeTab === 'predictive'" (click)="switchTab('predictive')">Prédictif IA</button>
+        <button type="button" role="tab" [class.active]="activeTab === 'coach'" (click)="switchTab('coach')">Coaching wallet</button>
       </div>
       @if (activeTab === 'list') {
-        <button class="btn-primary" (click)="openForm()">+ Nouvelle sous-traitance</button>
+        <button type="button" class="btn-primary btn-new-sc" (click)="openForm()">
+          <span class="btn-ico" aria-hidden="true">+</span>
+          Nouvelle sous-traitance
+        </button>
       }
     </div>
-  </div>
+  </header>
+
+  @if (profileError) {
+    <div class="empty">
+      <div class="empty-icon">⚠️</div>
+      <p>{{ profileError }}</p>
+      <p class="empty-sub">Aucun appel API de sous-traitance n'est lancé sans userId valide.</p>
+    </div>
+  } @else {
 
   <!-- ═══════ TAB: List ═══════ -->
   @if (activeTab === 'list') {
     @if (loading) {
-      <p class="loading">Chargement...</p>
+      <div class="loading-block" aria-busy="true">
+        <div class="loading-spinner"></div>
+        <p>Chargement de vos sous-traitances…</p>
+      </div>
     } @else if (subcontracts.length === 0) {
       <div class="empty">
         <div class="empty-icon">📋</div>
@@ -25,21 +44,38 @@
     } @else {
       <div class="sc-list">
         @for (s of subcontracts; track s.id) {
-          <div class="sc-card" (click)="select(s)" [class.active]="selected?.id === s.id">
+          <article class="sc-card" (click)="select(s)" [class.active]="selected?.id === s.id" [attr.aria-current]="selected?.id === s.id ? 'true' : null">
             <div class="sc-card-header">
               <span class="sc-title">{{ s.title }}</span>
               <span class="badge" [class]="statusClass(s.status)">{{ s.status }}</span>
             </div>
             <div class="sc-card-body">
-              <span>Sous-traitant: <strong>{{ s.subcontractorName }}</strong></span>
-              <span>{{ s.category }}</span>
-              <span>{{ s.budget ? (s.budget + ' ' + s.currency) : '-' }}</span>
+              <div class="sc-meta">
+                <span class="sc-meta-item"><span class="sc-meta-lbl">Sous-traitant</span><span class="sc-meta-val">{{ s.subcontractorName }}</span></span>
+                <span class="sc-pill sc-pill-cat">{{ s.category }}</span>
+                <span class="sc-meta-item sc-meta-budget">
+                  <span class="sc-meta-lbl">Budget</span>
+                  <span class="sc-meta-val">{{ s.budget ? (s.budget + ' ' + s.currency) : '—' }}</span>
+                </span>
+              </div>
             </div>
             <div class="sc-card-footer">
-              <div class="progress-bar"><div class="progress-fill" [style.width.%]="progressPercent(s)"></div></div>
-              <small>{{ s.approvedDeliverables }}/{{ s.totalDeliverables }} livrables</small>
+              <div class="sc-progress-wrap">
+                <div class="progress-bar"><div class="progress-fill" [style.width.%]="progressPercent(s)"></div></div>
+                <span class="sc-progress-label">{{ progressPercent(s) }}%</span>
+              </div>
+              <span class="sc-deliv-count">{{ s.approvedDeliverables }}/{{ s.totalDeliverables }} livrables</span>
+              <button
+                type="button"
+                class="btn-secondary btn-xs"
+                (click)="openNegotiationFromCard(s, $event)"
+                [disabled]="!isNegotiationEligible(s)"
+                [attr.title]="negotiationAvailabilityMessage(s)"
+              >
+                Négociation IA
+              </button>
             </div>
-          </div>
+          </article>
         }
       </div>
     }
@@ -48,7 +84,10 @@
   <!-- ═══════ TAB: History (Métier 5) ═══════ -->
   @if (activeTab === 'history') {
     @if (loadingHistory) {
-      <p class="loading">Chargement de l'historique...</p>
+      <div class="loading-block" aria-busy="true">
+        <div class="loading-spinner"></div>
+        <p>Chargement de l’historique…</p>
+      </div>
     } @else if (!history || history.totalEvents === 0) {
       <div class="empty">
         <div class="empty-icon">📜</div>
@@ -81,6 +120,7 @@
       <!-- Filter -->
       <div class="history-filter">
         <input [(ngModel)]="historyFilter" (input)="filterTimeline()"
+               [attr.maxlength]="historyFilterMaxLen"
                placeholder="Filtrer par action, titre, acteur..." />
         <span class="filter-count">{{ filteredTimeline.length }} événement(s)</span>
       </div>
@@ -117,159 +157,1063 @@
     }
   }
 
+  <!-- ═══════ TAB: Predictive Dashboard ═══════ -->
+  @if (activeTab === 'predictive') {
+    @if (loadingPredictive) {
+      <div class="ai-pred-skeleton-wrap" aria-busy="true">
+        <div class="ai-skeleton ai-skeleton-hero"></div>
+        <div class="ai-skeleton ai-skeleton-row"></div>
+        <div class="ai-skeleton ai-skeleton-row"></div>
+      </div>
+    } @else if (!predictive || !hasPredictiveInsight) {
+      <div class="empty ai-pred-empty">
+        <div class="empty-icon">📈</div>
+        <p>Créez votre première sous-traitance pour activer l'analyse prédictive IA</p>
+        <p class="empty-sub">Le dashboard deviendra actif dès que des données exploitables seront disponibles.</p>
+        <button type="button" class="btn-primary" (click)="openForm()">Créer une sous-traitance</button>
+      </div>
+    } @else {
+      @if (predictiveAlerts.length > 0) {
+        <section class="ai-alerts-section">
+          <div class="ai-alerts-head">
+            <h3>🔔 Alertes IA</h3>
+            <span>{{ predictiveAlerts.length }} action(s) requise(s)</span>
+          </div>
+          <div class="ai-alerts-list">
+            @for (alert of predictiveAlerts; track alert.id) {
+              <article class="ai-alert-item" [class]="'lvl-' + alert.level.toLowerCase()">
+                <div class="ai-alert-main">
+                  <strong>{{ alert.level }}</strong>
+                  <p>{{ alert.title }}</p>
+                  <small>{{ alert.detail }}</small>
+                </div>
+                <div class="ai-alert-actions">
+                  <button type="button" class="btn-small" (click)="scrollToAlerts()">{{ alert.primary }}</button>
+                  <button type="button" class="btn-secondary">{{ alert.secondary }}</button>
+                  <button type="button" class="btn-ignore" (click)="dismissAlert(alert.id)">Ignorer</button>
+                </div>
+              </article>
+            }
+          </div>
+        </section>
+      }
+
+      <section class="ai-pred-hero">
+        <div class="ai-pred-title">
+          <h3>🤖 Dashboard Prédictif IA</h3>
+          <p>{{ dashboardNarrative || 'Analyse IA • Mise à jour automatique' }}</p>
+        </div>
+        <div class="ai-pred-kpis">
+          <article class="ai-kpi-card" [class]="'tone-' + globalPredictiveScoreClass">
+            <span>Score global</span>
+            <strong>{{ globalPredictiveScore }}/100</strong>
+            <small>{{ monthTrendDelta >= 0 ? '↑' : '↓' }} {{ monthTrendText }}</small>
+          </article>
+          <article class="ai-kpi-card" [class]="'trend-' + monthTrendClass">
+            <span>Tendance du mois</span>
+            <strong>{{ monthTrendText }}</strong>
+            <small>Comparaison vs mois précédent</small>
+          </article>
+          <article class="ai-kpi-card clickable" (click)="scrollToAlerts()">
+            <span>Alertes actives</span>
+            <strong>{{ predictiveAlerts.length }} ⚠</strong>
+            <small>Cliquez pour voir les alertes IA</small>
+          </article>
+          <article class="ai-kpi-card">
+            <span>Rapport mensuel</span>
+            <strong>Prêt ✓</strong>
+            <button type="button" class="btn-small" (click)="downloadMonthlyReport()">Télécharger PDF</button>
+          </article>
+        </div>
+        <div class="ai-pred-foot">
+          <span><i class="pulse-dot"></i> Dernière analyse : {{ lastAnalysisLabel }}</span>
+          <button type="button" class="btn-secondary" (click)="loadPredictiveDashboard()">Relancer IA ↺</button>
+        </div>
+      </section>
+
+      <div class="ai-pred-grid">
+        <article class="ai-pred-card">
+          <h4>Taux de succès par catégorie</h4>
+          @if (successRows.length > 0) {
+            <canvas baseChart [type]="'bar'" [data]="successByCategoryChartData" [options]="successByCategoryChartOptions"></canvas>
+            <p class="ai-chart-target">Objectif IA : 70%</p>
+            <ul class="ai-success-list">
+              @for (row of successRows; track row.category) {
+                <li>
+                  <span>{{ row.category }}</span>
+                  @if (row.missions === 0) {
+                    <em>Aucune mission</em>
+                  } @else {
+                    <strong>{{ row.successRate }}% ({{ row.missions }} missions)</strong>
+                  }
+                </li>
+              }
+            </ul>
+          } @else {
+            <p class="pred-muted">Données insuffisantes pour afficher les catégories.</p>
+          }
+        </article>
+        <article class="ai-pred-card">
+          <h4>Évolution du risque moyen</h4>
+          @if (riskTrendPoints.length > 1) {
+            <canvas baseChart [type]="'line'" [data]="riskTrendChartData" [options]="riskTrendChartOptions"></canvas>
+          } @else if (riskTrendPoints.length === 1) {
+            <div class="single-point-state">
+              <strong>{{ riskTrendPoints[0].avgRiskScore }}/100</strong>
+              <p>Historique insuffisant — revenez dans 30 jours</p>
+            </div>
+          } @else {
+            <p class="pred-muted">Historique indisponible pour le moment.</p>
+          }
+        </article>
+      </div>
+
+      <div class="ai-pred-grid">
+        <article class="ai-pred-card">
+          <h4>Sous-traitants les plus rentables</h4>
+          <div class="ai-sub-list">
+            @for (s of profitableCards; track s.name) {
+              <article class="ai-sub-card">
+                <header>
+                  <span class="sub-avatar" [class]="progressClass(s.rank)">{{ s.rank }}</span>
+                  <div>
+                    <strong>{{ s.name }}</strong>
+                    <small [class]="s.trend === 'up' ? 'trend-up' : 'trend-flat'">{{ s.trend === 'up' ? '↑ En progression' : '→ Stable' }}</small>
+                  </div>
+                </header>
+                <div class="meter-row"><span>Rentabilité</span><div class="meter"><i [style.width.%]="s.profitabilityScore"></i></div><b>{{ s.profitabilityScore }}/100</b></div>
+                <div class="meter-row"><span>Fiabilité</span><div class="meter"><i [style.width.%]="s.reliabilityScore"></i></div><b>{{ s.reliabilityScore }}/100</b></div>
+                <p class="ai-stats">✓ {{ s.successCount }} succès • ⚡ {{ s.incidentCount }} incidents • 📅 {{ s.activeMissions }} missions</p>
+                <p class="ai-note">IA : "{{ s.note }}"</p>
+                <button type="button" class="btn-secondary" (click)="navigateToSubcontractorProfile(s.name)">Voir profil →</button>
+              </article>
+            }
+          </div>
+        </article>
+        <article class="ai-pred-card">
+          <h4>Sous-traitants les plus risqués</h4>
+          <div class="ai-sub-list">
+            @for (s of riskyCards; track s.name) {
+              <article class="ai-sub-card risk">
+                <header>
+                  <span class="sub-avatar risk" [class]="progressClass(s.rank)">{{ s.rank }}</span>
+                  <div>
+                    <strong>{{ s.name }}</strong>
+                    <small [class]="s.trend === 'down' ? 'trend-down' : 'trend-flat'">{{ s.trend === 'down' ? '↓ En baisse' : '→ Stable' }}</small>
+                  </div>
+                </header>
+                <div class="meter-row"><span>Risque</span><div class="meter"><i [style.width.%]="s.riskScore"></i></div><b>{{ s.riskScore }}/100</b></div>
+                <div class="meter-row"><span>Fiabilité</span><div class="meter"><i [style.width.%]="s.reliabilityScore"></i></div><b>{{ s.reliabilityScore }}/100</b></div>
+                <p class="ai-stats">✓ {{ s.successCount }} succès • ⚡ {{ s.incidentCount }} incidents • 📅 {{ s.activeMissions }} missions</p>
+                <p class="ai-note">IA : "{{ s.note }}"</p>
+                @if (s.calculating) {
+                  <small class="calc-note">Score en cours de calcul ⏳</small>
+                }
+                <button type="button" class="btn-danger" (click)="openRiskSidebar(s.name)">⚠ Voir les risques</button>
+              </article>
+            }
+          </div>
+        </article>
+      </div>
+
+      <div class="ai-pred-grid">
+        <article class="ai-pred-card">
+          <h4>📅 Calendrier de saisonnalité IA</h4>
+          <div class="seasonality-grid">
+            @for (m of ['Jan','Fev','Mar','Avr','Mai','Jun','Jul','Aou','Sep','Oct','Nov','Dec']; track $index) {
+              <div class="month-pill" [class]="'state-' + seasonalityForMonth($index).state">{{ m }}</div>
+            }
+          </div>
+          <p class="seasonality-legend">🟢 Favorable • 🟡 Prudence • 🔴 Risqué</p>
+          <p class="ai-note">{{ seasonalityLegend }}</p>
+        </article>
+        <article class="ai-pred-card">
+          <h4>{{ isIncidentSafe ? '🛡️ Radar d incidents' : '⚠️ Radar d incidents' }}</h4>
+          @if (isIncidentSafe) {
+            <div class="incident-safe">
+              <strong>✅ Tout est sous contrôle</strong>
+              <p>Aucun incident détecté dans les 7 prochains jours selon l'analyse IA.</p>
+              <small>Prochaine analyse : dans 24h</small>
+            </div>
+          } @else {
+            <div class="incident-alert">
+              <p>{{ predictive.nextIncidentPrediction }}</p>
+              <div class="incident-actions">
+                <button type="button" class="btn-small">Envoyer un rappel</button>
+                <button type="button" class="btn-secondary">Voir le livrable →</button>
+              </div>
+            </div>
+          }
+        </article>
+      </div>
+
+      <section class="ai-monthly-report">
+        <h4>📊 Rapport IA — {{ (predictive.generatedAt | date:'MMMM yyyy') || 'Mois en cours' }}</h4>
+        <p>{{ monthlyHintText }}</p>
+        <div class="report-actions">
+          <button type="button" class="btn-primary" (click)="downloadMonthlyReport()">📥 Télécharger PDF</button>
+          <button type="button" class="btn-secondary" (click)="sendMonthlyReportByEmail()">📧 Recevoir par email</button>
+        </div>
+      </section>
+
+      @if (riskInsightOpen) {
+        <aside class="risk-sidebar">
+          <div class="risk-sidebar-head">
+            <h4>Risques IA — {{ riskInsightSelectedName }}</h4>
+            <button type="button" class="btn-secondary" (click)="closeRiskSidebar()">Fermer</button>
+          </div>
+          <div class="risk-summary" [class]="'level-' + riskInsightLevelClass()">
+            <span class="risk-level">{{ riskInsightLevel }}</span>
+            <strong>{{ riskInsightScore }}/100</strong>
+          </div>
+          <p class="risk-summary-text">{{ riskInsightSummary }}</p>
+          <div class="risk-columns">
+            <section>
+              <h5>Causes probables</h5>
+              <ul>
+                @for (cause of riskInsightCauses; track cause) {
+                  <li>{{ cause }}</li>
+                }
+              </ul>
+            </section>
+            <section>
+              <h5>Actions immédiates</h5>
+              <ul>
+                @for (action of riskInsightActions; track action) {
+                  <li>{{ action }}</li>
+                }
+              </ul>
+            </section>
+          </div>
+        </aside>
+      }
+    }
+  }
+
+  <!-- ═══════ TAB: Coaching wallet (freemium) ═══════ -->
+  @if (activeTab === 'coach') {
+    @if (profileError || !currentUserId) {
+      <div class="empty">
+        <div class="empty-icon">👤</div>
+        <p>Connectez-vous pour accéder au coaching wallet.</p>
+      </div>
+    } @else {
+      <div class="coach-process-banner">
+        <h4>Parcours Coaching IA</h4>
+        <p>1) Sélectionnez une mission · 2) Lancez l’analyse initiale · 3) Activez l’analyse avancée selon votre solde de points.</p>
+      </div>
+      <div class="coach-tab-layout">
+        <aside class="coach-mission-list" aria-label="Sous-traitances pour le coaching">
+          <div class="coach-mission-head">
+            <h4>Choisir une mission</h4>
+            <small>{{ subcontracts.length }} disponible(s)</small>
+          </div>
+          @if (subcontracts.length === 0) {
+            <div class="coach-mission-empty">
+              <p>Aucune sous-traitance disponible.</p>
+              <button type="button" class="btn-primary" (click)="openForm()">Créer une sous-traitance</button>
+            </div>
+          } @else {
+            <div class="coach-mission-items">
+              @for (s of subcontracts; track s.id) {
+                <button
+                  type="button"
+                  class="coach-mission-item"
+                  [class.active]="selected?.id === s.id"
+                  (click)="select(s)"
+                >
+                  <span class="coach-mission-title">{{ s.title }}</span>
+                  <span class="coach-mission-meta">{{ s.category }} · {{ s.budget ? (s.budget + ' ' + s.currency) : 'Budget —' }}</span>
+                  <span class="coach-mission-status badge" [class]="statusClass(s.status)">{{ s.status }}</span>
+                </button>
+              }
+            </div>
+          }
+        </aside>
+        <app-coach-insight-panel [userId]="currentUserId" [selected]="selected" />
+      </div>
+    }
+  }
+
   <!-- ═══════ Create Form ═══════ -->
   @if (showForm) {
     <div class="modal-overlay" (click)="closeForm()">
-      <div class="modal-content modal-wide" (click)="$event.stopPropagation()">
+      <div class="modal-content modal-wide modal-ai-match" (click)="$event.stopPropagation()">
         <div class="modal-header">
-          <h3>Nouvelle Sous-Traitance</h3>
-          <button class="modal-close" (click)="closeForm()">✕</button>
+          <div>
+            <p class="modal-kicker">Création</p>
+            <h3>Nouvelle sous-traitance</h3>
+          </div>
+          <button type="button" class="modal-close" (click)="closeForm()" aria-label="Fermer">✕</button>
         </div>
 
         <div class="form-grid">
           <!-- Left column: form fields -->
-          <div class="form-col">
-            <div class="field">
-              <label class="field-label">Titre *</label>
-              <input [(ngModel)]="form.title" placeholder="Ex: Intégration front-end React" />
+          <div class="form-col form-col-main">
+            <p class="form-section-title">Mission & projet</p>
+            <div class="field" [class.field-invalid]="scShowScError('title')">
+              <label class="field-label" for="sc-title-input">Titre *</label>
+              <input
+                id="sc-title-input"
+                [(ngModel)]="form.title"
+                (ngModelChange)="onFormRiskInputChanged()"
+                [attr.maxlength]="scTitleMaxLen"
+                [attr.aria-invalid]="scShowScError('title')"
+                placeholder="Ex: Intégration front-end React"
+                autocomplete="off"
+              />
+              <p class="sc-field-meta">{{ (form.title || '').length }} / {{ scTitleMaxLen }} · minimum 3 caractères</p>
+              @if (scShowScError('title')) {
+                <p class="sc-field-error" role="alert">{{ scFieldErrors['title'] }}</p>
+              }
             </div>
 
-            <div class="field">
-              <label class="field-label">Projet *</label>
-              <select [(ngModel)]="form.projectId">
-                <option [value]="0" disabled>-- Choisir un projet --</option>
-                @for (p of myProjects; track p.id) {
-                  <option [value]="p.id">{{ p.title || ('Projet #' + p.id) }}</option>
+            <div class="field" [class.field-invalid]="scShowScError('mission')">
+              <label class="field-label" for="sc-mission-select">Mission (projet ou offre) *</label>
+              @if (loadingMissions) {
+                <p class="field-hint" aria-live="polite">Chargement de vos missions…</p>
+              }
+              <select
+                id="sc-mission-select"
+                [ngModel]="selectedMission"
+                (ngModelChange)="onMissionSelect($event)"
+                [disabled]="loadingMissions"
+                [attr.aria-invalid]="scShowScError('mission')"
+              >
+                <option value="" disabled>-- Choisir une mission --</option>
+                @if (myProjectsAsFreelancer.length > 0) {
+                  <optgroup label="Projet — j’ai postulé, candidature acceptée par le client">
+                    @for (p of myProjectsAsFreelancer; track p.id) {
+                      <option [value]="'p:' + p.id">{{ p.title?.trim() ? p.title : 'Projet sans titre' }}{{ p.status ? ' — ' + p.status : '' }}</option>
+                    }
+                  </optgroup>
+                }
+                @if (myProjectsAsClient.length > 0) {
+                  <optgroup label="Projet — mon annonce client, j’ai accepté un freelancer">
+                    @for (p of myProjectsAsClient; track p.id) {
+                      <option [value]="'p:' + p.id">{{ p.title?.trim() ? p.title : 'Projet sans titre' }}{{ p.status ? ' — ' + p.status : '' }}</option>
+                    }
+                  </optgroup>
+                }
+                @if (acceptedOfferApps.length > 0) {
+                  <optgroup label="Offre — mon annonce freelancer, candidature client acceptée">
+                    @for (a of acceptedOfferApps; track a.id) {
+                      <option [value]="'o:' + a.offerId">{{ (a.offerTitle || 'Offre').trim() }} — acceptée</option>
+                    }
+                  </optgroup>
                 }
               </select>
+              @if (projectsLoadError) {
+                <p class="field-hint field-hint-warn">{{ projectsLoadError }}</p>
+                @if (missionsLoadHadError) {
+                  <button type="button" class="btn-link-retry" (click)="loadEligibleMissionsForForm()">Réessayer</button>
+                }
+              }
+              @if (!projectsLoadError && !loadingMissions && (myProjects.length > 0 || acceptedOfferApps.length > 0)) {
+                <p class="field-hint">Sélectionnez la mission pour laquelle vous souhaitez proposer une sous-traitance.</p>
+              }
+              @if (scShowScError('mission')) {
+                <p class="sc-field-error" role="alert">{{ scFieldErrors['mission'] }}</p>
+              }
             </div>
 
             <div class="field-row">
-              <div class="field">
-                <label class="field-label">Catégorie</label>
-                <select [(ngModel)]="form.category">
+              <div class="field" [class.field-invalid]="scShowScError('category')">
+                <label class="field-label" for="sc-category-select">Catégorie *</label>
+                <select id="sc-category-select" [(ngModel)]="form.category" (ngModelChange)="onFormRiskInputChanged()" [attr.aria-invalid]="scShowScError('category')">
                   @for (c of categories; track c) { <option [value]="c">{{ c }}</option> }
                 </select>
+                @if (scShowScError('category')) {
+                  <p class="sc-field-error" role="alert">{{ scFieldErrors['category'] }}</p>
+                }
+              </div>
+              <div class="field" [class.field-invalid]="scShowScError('budget')">
+                <label class="field-label" for="sc-budget-input">Budget (TND) *</label>
+                <input
+                  id="sc-budget-input"
+                  type="number"
+                  [(ngModel)]="form.budget"
+                  (ngModelChange)="onFormRiskInputChanged()"
+                  min="0.01"
+                  step="0.01"
+                  placeholder="500"
+                  [attr.aria-invalid]="scShowScError('budget')"
+                />
+                @if (scShowScError('budget')) {
+                  <p class="sc-field-error" role="alert">{{ scFieldErrors['budget'] }}</p>
+                }
+              </div>
+            </div>
+
+            <div class="field" [class.field-invalid]="scShowScError('scope')">
+              <label class="field-label" for="sc-scope-textarea">Scope / Description</label>
+              <p class="field-hint">Optionnel — si renseigné, au moins {{ scScopeMinWhenSet }} caractères (max {{ scScopeMaxLen }}).</p>
+              <textarea
+                id="sc-scope-textarea"
+                [(ngModel)]="form.scope"
+                (ngModelChange)="onFormRiskInputChanged()"
+                [attr.maxlength]="scScopeMaxLen"
+                [attr.aria-invalid]="scShowScError('scope')"
+                rows="3"
+                placeholder="Décrivez le périmètre du travail à sous-traiter..."
+              ></textarea>
+              @if (scShowScError('scope')) {
+                <p class="sc-field-error" role="alert">{{ scFieldErrors['scope'] }}</p>
+              }
+            </div>
+
+            <div class="field">
+              <label class="field-label">Présentation (optionnel)</label>
+              <p class="presentation-hint">Vidéo MP4 (~3 min max conseillé) ou audio MP3 (~5 min max conseillé). Le lien sera inclus dans l’e-mail au sous-traitant lorsque vous proposerez la mission.</p>
+              <input
+                type="file"
+                accept=".mp4,.mp3,video/mp4,audio/mpeg,audio/mp3"
+                (change)="onPresentationSelected($event)"
+                [disabled]="mediaUploading"
+              />
+              @if (mediaUploading) {
+                <p class="presentation-status">Téléversement en cours…</p>
+              }
+              @if (presentationFileName && !mediaUploading) {
+                <div class="presentation-ok">
+                  <span>{{ presentationFileName }}</span>
+                  <button type="button" class="btn-remove" (click)="clearPresentation()">Retirer</button>
+                </div>
+              }
+              @if (mediaError) {
+                <div class="presentation-err">{{ mediaError }}</div>
+              }
+            </div>
+
+            <div class="field-row field-row--dates" [class.field-invalid]="scShowScError('dates')">
+              <div class="field">
+                <label class="field-label" for="sc-start-date">Date de début</label>
+                <input id="sc-start-date" type="date" [(ngModel)]="form.startDate" (ngModelChange)="onFormRiskInputChanged()" [attr.aria-invalid]="scShowScError('dates')" />
               </div>
               <div class="field">
-                <label class="field-label">Budget (TND)</label>
-                <input type="number" [(ngModel)]="form.budget" placeholder="500" />
+                <label class="field-label" for="sc-deadline-date">Deadline</label>
+                <input id="sc-deadline-date" type="date" [(ngModel)]="form.deadline" (ngModelChange)="onFormRiskInputChanged()" [attr.aria-invalid]="scShowScError('dates')" />
               </div>
             </div>
-
-            <div class="field">
-              <label class="field-label">Scope / Description</label>
-              <textarea [(ngModel)]="form.scope" rows="3" placeholder="Décrivez le périmètre du travail à sous-traiter..."></textarea>
-            </div>
-
-            <div class="field">
-              <label class="field-label">Deadline</label>
-              <input type="date" [(ngModel)]="form.deadline" />
-            </div>
+            @if (scShowScError('dates')) {
+              <p class="sc-field-error sc-field-error--row" role="alert">{{ scFieldErrors['dates'] }}</p>
+            }
           </div>
 
-          <!-- Right column: freelancer picker -->
-          <div class="picker-col">
-            <label class="field-label">Sous-traitant *</label>
+          <!-- Right column: matching IA par compétences -->
+          <div
+            class="picker-col ai-picker"
+            [class.field-invalid]="scShowScError('requiredSkills') || scShowScError('subcontractorId')"
+          >
+            <p class="form-section-title">Sous-traitant (IA)</p>
+            <label class="field-label">Compétences & matching *</label>
+            <p class="ai-hint">Ajoutez les compétences attendues, puis lancez l’analyse. Tous les freelances actifs sont listés avec leur score pour vous aider à choisir.</p>
+            @if (scShowScError('requiredSkills')) {
+              <p class="sc-field-error" role="alert">{{ scFieldErrors['requiredSkills'] }}</p>
+            }
+            @if (scShowScError('subcontractorId')) {
+              <p class="sc-field-error" role="alert">{{ scFieldErrors['subcontractorId'] }}</p>
+            }
 
+            <div class="ai-panel">
             @if (selectedFreelancer) {
               <div class="selected-freelancer-card">
-                <div class="sf-avatar">{{ selectedFreelancer.firstName.charAt(0) }}{{ selectedFreelancer.lastName.charAt(0) }}</div>
+                <div class="sf-avatar">{{ selectedFreelancer.firstName.charAt(0) }}{{ selectedFreelancer.lastName.charAt(0) || '?' }}</div>
                 <div class="sf-info">
                   <strong>{{ selectedFreelancer.firstName }} {{ selectedFreelancer.lastName }}</strong>
                   <span>{{ selectedFreelancer.email }}</span>
                 </div>
-                <button class="btn-remove" (click)="clearFreelancer()">Changer</button>
+                <button type="button" class="btn-remove" (click)="clearFreelancer()">Changer</button>
               </div>
             } @else {
-              <div class="fl-search-box">
-                <input [(ngModel)]="freelancerSearch" (input)="onFreelancerSearch()" placeholder="Filtrer par nom ou email..." />
+              <div class="skill-chips-wrap">
+                <div class="skill-input-row">
+                  <input
+                    [(ngModel)]="skillInput"
+                    (keydown)="onSkillKeydown($event)"
+                    (blur)="addSkillFromInput()"
+                    placeholder="Ex: Spring Boot, React… (Entrée pour ajouter)"
+                  />
+                  <button type="button" class="btn-small" (click)="addSkillFromInput()">Ajouter</button>
+                </div>
+                <div class="suggested-skills">
+                  @for (s of suggestedSkills; track s) {
+                    <button type="button" class="chip-suggest" (click)="addSuggestedSkill(s)">+ {{ s }}</button>
+                  }
+                </div>
+                @if (requiredSkills.length > 0) {
+                  <div class="chips">
+                    @for (sk of requiredSkills; track sk) {
+                      <span class="chip">{{ sk }} <button type="button" class="chip-x" (click)="removeSkill(sk)" aria-label="Retirer">×</button></span>
+                    }
+                  </div>
+                }
+                <button type="button" class="btn-ai" (click)="runAiMatch()" [disabled]="loadingAi || requiredSkills.length === 0">
+                  @if (loadingAi) {
+                    <span class="btn-ai-inner"><span class="loading-spinner loading-spinner--sm"></span> Analyse en cours…</span>
+                  } @else {
+                    <span class="btn-ai-inner">Analyser avec l’IA</span>
+                  }
+                </button>
               </div>
-              @if (loadingFreelancers) {
-                <div class="fl-list"><div class="fl-loading">Chargement des freelancers...</div></div>
-              } @else {
-                <div class="fl-count">{{ filteredFreelancers.length }} freelancer(s) disponible(s)</div>
-                <div class="fl-list">
-                  @for (f of filteredFreelancers; track f.id) {
-                    <div class="fl-item" (click)="selectFreelancer(f)">
-                      <div class="fl-avatar" [style.background]="avatarColor(f.id)">{{ f.firstName.charAt(0) }}{{ f.lastName.charAt(0) }}</div>
-                      <div class="fl-details">
-                        <span class="fl-name">{{ f.firstName }} {{ f.lastName }}</span>
-                        <span class="fl-email">{{ f.email }}</span>
+
+              @if (aiError) {
+                <div class="ai-error">{{ aiError }}</div>
+              }
+
+              @if (loadingAi) {
+                <div class="ai-loading">
+                  <div class="loading-spinner"></div>
+                  <p>Analyse des profils (portfolio, historique, score plateforme)…</p>
+                </div>
+              } @else if (aiMatches && aiMatches.length > 0) {
+                <div class="ai-results-head">{{ aiMatches.length }} profil(s) — tri par score</div>
+                <div class="ai-results">
+                  @for (c of aiMatches; track c.freelancerId) {
+                    <button type="button" class="ai-match-card" (click)="selectMatchCandidate(c)">
+                      <div class="ai-match-top">
+                        <span class="ai-name">{{ c.fullName }}</span>
+                        <div class="ai-score-ring" [attr.data-score]="c.matchScore">
+                          <span class="ai-score-num">{{ c.matchScore }}</span>
+                          <span class="ai-score-suffix">%</span>
+                        </div>
                       </div>
-                      <div class="fl-select-icon">+</div>
-                    </div>
-                  } @empty {
-                    <div class="fl-empty">Aucun freelancer trouvé</div>
+                      <span class="rec-badge" [class]="recommendationClass(c.recommendation)">{{ recommendationLabel(c.recommendation) }}</span>
+                      <div class="ai-meta">
+                        <span class="ai-meta-pill" title="Score de confiance sur la plateforme">Confiance {{ c.trustScore }}</span>
+                        <span class="ai-meta-pill" title="Sous-traitances passées avec vous">Collab. {{ c.previousCollaborations }}</span>
+                      </div>
+                      <ul class="ai-reasons">
+                        @for (r of c.matchReasons; track r) {
+                          <li>{{ r }}</li>
+                        }
+                      </ul>
+                      <span class="ai-pick-hint">Cliquer pour sélectionner ce sous-traitant</span>
+                    </button>
                   }
                 </div>
               }
             }
+
+            <!-- ═══ Cockpit risque entreprise (3 sections) ═══ -->
+            <div class="risk-enterprise">
+              <section class="re-section re-section--header">
+                <p class="re-kicker">Cockpit de risque (IA)</p>
+                <p class="re-sub">Calcul dynamique (budget, durée, sous-traitant, scope) avec simulation What-If.</p>
+
+                <div class="what-if-enterprise">
+                  <div class="what-if-slider-card">
+                    <label class="what-if-label">Simulation budget (TND)</label>
+                    <div class="what-if-track">
+                      <span class="what-if-mark what-if-mark--min">100</span>
+                      <div class="what-if-slider-wrap">
+                        <input
+                          type="range"
+                          class="what-if-range"
+                          min="100"
+                          max="6000"
+                          step="50"
+                          [(ngModel)]="simulationBudget"
+                          (ngModelChange)="onSimulationChanged()"
+                        />
+                        <div class="what-if-bubble" [style.left.%]="budgetSliderPct">
+                          {{ simulationBudget ?? form.budget ?? 0 }} TND
+                        </div>
+                        <div class="what-if-zone what-if-zone--warn" title="Zone vigilance"></div>
+                      </div>
+                      <span class="what-if-mark what-if-mark--max">6000</span>
+                    </div>
+                    <p class="what-if-impact" [class.what-if-impact--bad]="budgetSliderImpactLine().startsWith('↑')" [class.what-if-impact--good]="budgetSliderImpactLine().startsWith('↓')">
+                      {{ budgetSliderImpactLine() || 'Ajustez le curseur pour recalculer' }}
+                    </p>
+                  </div>
+                  <div class="what-if-slider-card">
+                    <label class="what-if-label">Simulation durée (jours)</label>
+                    <div class="what-if-track">
+                      <span class="what-if-mark what-if-mark--min">1</span>
+                      <div class="what-if-slider-wrap">
+                        <input
+                          type="range"
+                          class="what-if-range"
+                          min="1"
+                          max="120"
+                          step="1"
+                          [(ngModel)]="simulationDurationDays"
+                          (ngModelChange)="onSimulationChanged()"
+                        />
+                        <div class="what-if-bubble what-if-bubble--dur" [style.left.%]="durationSliderPct">
+                          {{ simulationDurationDays }} j
+                        </div>
+                      </div>
+                      <span class="what-if-mark what-if-mark--max">120</span>
+                    </div>
+                    <p class="what-if-impact" [class.what-if-impact--bad]="durationSliderImpactLine().startsWith('↑')" [class.what-if-impact--good]="durationSliderImpactLine().startsWith('↓')">
+                      {{ durationSliderImpactLine() || 'Ajustez la durée pour recalculer' }}
+                    </p>
+                  </div>
+                </div>
+
+                @if (riskLoading) {
+                  <div class="re-loading">Analyse en cours…</div>
+                }
+                @if (riskError) {
+                  <div class="re-error">{{ riskError }}</div>
+                }
+
+                @if (riskCockpit) {
+                  <div class="re-gauge-hero" [class.re-gauge-hero--loading]="riskLoading">
+                    <div class="re-gauge-chart-wrap">
+                      <canvas baseChart [type]="'doughnut'" [data]="mainRiskGaugeData" [options]="mainRiskGaugeOptions"></canvas>
+                      <div class="re-gauge-center">
+                        <span class="re-gauge-num" [style.color]="mainRiskArcColor(riskCockpit.totalRiskScore)">{{ riskCockpit.totalRiskScore }}</span>
+                        <span class="re-gauge-denom">/100</span>
+                      </div>
+                      @if (riskLoading) {
+                        <div class="re-gauge-spinner" aria-hidden="true"></div>
+                      }
+                    </div>
+                    <div class="re-gauge-meta">
+                      <span class="re-badge-level" [class]="riskEnterpriseBadgeClass(riskCockpit.level)">
+                        {{ riskLevelLabelFr(riskCockpit.level) }}
+                      </span>
+                      <p class="re-live-line">
+                        <span class="re-pulse-dot"></span>
+                        Recalcul en temps réel · Dernière analyse : il y a {{ riskAgoSeconds() }}s
+                      </p>
+                    </div>
+                  </div>
+                }
+              </section>
+
+              @if (riskCockpit) {
+                <section class="re-section">
+                  <p class="re-kicker">Analyse des {{ riskCockpit.gauges?.length || 5 }} risques</p>
+                  <div class="re-risk-cards">
+                    @for (g of riskCockpit.gauges; track g.key) {
+                      <div class="re-rcard" [class.re-rcard--open]="expandedGaugeKey === g.key">
+                        <button type="button" class="re-rcard-head" (click)="toggleGaugeExpand(g)">
+                          <span class="re-rcard-ico">{{ gaugeIcon(g.key) }}</span>
+                          <div class="re-rcard-main">
+                            <span class="re-rcard-title">{{ g.label }}</span>
+                            <div class="re-rcard-bar-wrap">
+                              <div class="re-rcard-bar" [style.width.%]="g.score ?? 0" [style.background]="gradientForGauge(g.score ?? 0)"></div>
+                            </div>
+                          </div>
+                          <div class="re-rcard-score-block">
+                            <span class="re-rcard-score">{{ g.score }}</span>
+                            <span class="re-rcard-lbl">{{ gaugeFrLabel(g.score ?? 0) }}</span>
+                          </div>
+                        </button>
+                        @if (gaugeTrendText(g)) {
+                          <p class="re-rcard-trend">{{ gaugeTrendText(g) }}</p>
+                        }
+                        @if (expandedGaugeKey === g.key) {
+                          <div class="re-rcard-body">
+                            @for (f of splitExplanationFactors(g.explanation); track f) {
+                              <p class="re-rcard-factor">• {{ f }}</p>
+                            }
+                          </div>
+                        }
+                      </div>
+                    }
+                  </div>
+
+                  <div class="re-radar-wrap">
+                    <canvas baseChart [type]="'radar'" [data]="riskRadarChartData" [options]="riskRadarChartOptions"></canvas>
+                    <p class="re-radar-legend">Actuel (rouge) vs configuration cible IA (vert pointillé)</p>
+                  </div>
+
+                  @if (riskCockpit.recommendations?.length) {
+                    <div class="re-recs-grid">
+                      @for (r of riskCockpit.recommendations.slice(0, 3); track $index) {
+                        <div class="re-rec-card" [class.re-rec-card--done]="appliedRiskRecommendationIndexes.has($index)">
+                          <span class="re-rec-title">Action recommandée</span>
+                          <p class="re-rec-text">{{ r.text }}</p>
+                          <p class="re-rec-impact">{{ recommendationImpactEstimate($index) }}</p>
+                          <div class="re-rec-actions">
+                            @if (appliedRiskRecommendationIndexes.has($index)) {
+                              <span class="re-rec-applied">✓ Appliqué</span>
+                            } @else {
+                              <button type="button" class="btn-re-apply" (click)="applyRecommendation(r, $index)">Appliquer</button>
+                            }
+                          </div>
+                        </div>
+                      }
+                    </div>
+                  }
+
+                  @if (riskCockpit.level === 'CRITICAL' && riskCockpit.alternatives?.length) {
+                    <div class="re-alt">
+                      <p class="re-alt-title">Alternatives proposées</p>
+                      @for (a of riskCockpit.alternatives; track a.label) {
+                        <button type="button" class="re-alt-btn" (click)="applyAlternative(a)">
+                          <strong>{{ a.label }}</strong> — score {{ a.score }} — {{ a.changes }}
+                        </button>
+                      }
+                    </div>
+                  }
+                </section>
+              }
+
+            </div>
+            </div>
           </div>
         </div>
 
-        <div class="form-actions">
-          <button class="btn-secondary" (click)="closeForm()">Annuler</button>
-          <button class="btn-primary" (click)="createSubcontract()" [disabled]="!form.title || !form.subcontractorId || !form.projectId">Créer la sous-traitance</button>
+        @if (createSubmitError) {
+          <div class="create-submit-banner" role="alert">{{ createSubmitError }}</div>
+        }
+        <div class="form-footer-enterprise">
+          <p class="form-footer-summary">{{ riskFooterSummary() }}</p>
+          @if (isCreateBlockedByCriticalRisk()) {
+            <p class="form-footer-block-msg">
+              Réduisez d’abord le risque global en dessous de 80 pour débloquer la création (actuellement {{ riskCockpit?.totalRiskScore }}/100).
+            </p>
+            <div class="form-footer-unlock-bar">
+              <div class="form-footer-unlock-fill" [style.width.%]="Math.max(0, Math.min(100, (100 - (riskCockpit?.totalRiskScore ?? 100)) * 1.25))"></div>
+            </div>
+          }
+          <div class="form-actions-enterprise">
+            <button type="button" class="btn-fe-cancel" (click)="closeForm()" [disabled]="creatingSubcontract">Annuler</button>
+            @if (showModifyFormButton()) {
+              <button type="button" class="btn-fe-edit" (click)="scrollFormToEdit()">Modifier le formulaire</button>
+            }
+            <button
+              type="button"
+              class="btn-fe-create"
+              [class.btn-fe-create--warn]="showModifyFormButton()"
+              (click)="createSubcontract()"
+              [disabled]="creatingSubcontract || loadingMissions || isCreateBlockedByCriticalRisk()"
+              [attr.title]="loadingMissions ? 'Chargement des missions…' : (isCreateBlockedByCriticalRisk() ? 'Risque critique trop élevé' : null)"
+            >
+              @if (creatingSubcontract) {
+                <span class="btn-create-inner"><span class="loading-spinner loading-spinner--sm"></span> Création…</span>
+              } @else {
+                @if (showModifyFormButton()) {
+                  <span class="btn-fe-warn-ico" aria-hidden="true">⚠</span>
+                }
+                {{ createButtonLabel() }}
+              }
+            </button>
+          </div>
         </div>
       </div>
     </div>
   }
 
   <!-- ═══════ Detail Panel ═══════ -->
-  @if (selected) {
-    <div class="detail-panel">
+  @if (selected && activeTab === 'list') {
+    <aside class="detail-panel">
       <div class="detail-header">
-        <h3>{{ selected.title }}</h3>
-        <button (click)="closeDetail()">✕</button>
-      </div>
-      <p><strong>Sous-traitant:</strong> {{ selected.subcontractorName }}</p>
-      <p><strong>Projet:</strong> {{ selected.projectTitle }}</p>
-      <p><strong>Scope:</strong> {{ selected.scope || '-' }}</p>
-      <p><strong>Statut:</strong> <span class="badge" [class]="statusClass(selected.status)">{{ selected.status }}</span></p>
-
-      <div class="actions">
-        @if (selected.status === 'DRAFT') {
-          <button class="btn-primary" (click)="propose(selected.id)">Proposer</button>
-          <button class="btn-danger" (click)="deleteSubcontract(selected.id)">Supprimer</button>
-        }
-        @if (selected.status === 'ACCEPTED') { <button class="btn-primary" (click)="startWork(selected.id)">Démarrer</button> }
-        @if (selected.status === 'IN_PROGRESS') { <button class="btn-success" (click)="complete(selected.id)">Compléter</button> }
-        @if (selected.status === 'COMPLETED') { <button class="btn-primary" (click)="close(selected.id)">Clôturer</button> }
-        @if (selected.status !== 'CANCELLED' && selected.status !== 'CLOSED' && selected.status !== 'COMPLETED') {
-          <button class="btn-danger" (click)="cancel(selected.id)">Annuler</button>
-        }
+        <div class="detail-header-text">
+          <p class="detail-kicker">Détail</p>
+          <h3>{{ selected.title }}</h3>
+        </div>
+        <button type="button" class="detail-close" (click)="closeDetail()" aria-label="Fermer le panneau">✕</button>
       </div>
 
-      <div class="deliverables-section">
-        <div class="del-header">
-          <h4>Livrables ({{ selected.deliverables.length }})</h4>
-          @if (selected.status !== 'CLOSED' && selected.status !== 'CANCELLED') {
-            <button class="btn-small" (click)="openDeliverableForm()">+ Ajouter</button>
+      <div class="detail-body">
+        <section class="detail-hero" aria-label="Sous-traitant">
+          <div class="detail-avatar">{{ detailSubInitials }}</div>
+          <div class="detail-hero-main">
+            <span class="detail-hero-label">Sous-traitant</span>
+            <span class="detail-hero-name">{{ selected.subcontractorName }}</span>
+            <span class="badge detail-status-pill" [class]="statusClass(selected.status)">{{ selected.status }}</span>
+          </div>
+        </section>
+
+        <section class="detail-card" aria-labelledby="detail-mission-h">
+          <h4 class="detail-card-title" id="detail-mission-h">Mission & calendrier</h4>
+          <div class="detail-grid-2">
+            <div class="detail-field detail-field--span">
+              <span class="detail-field-k">Mission liée</span>
+              <span class="detail-field-v">{{ selected.projectTitle }}</span>
+            </div>
+            @if (selected.budget) {
+              <div class="detail-field">
+                <span class="detail-field-k">Budget</span>
+                <span class="detail-field-v detail-field-v--money">{{ selected.budget }} {{ selected.currency }}</span>
+              </div>
+            }
+            @if (selected.startDate) {
+              <div class="detail-field">
+                <span class="detail-field-k">Début</span>
+                <span class="detail-field-v">{{ selected.startDate }}</span>
+              </div>
+            }
+            @if (selected.deadline) {
+              <div class="detail-field">
+                <span class="detail-field-k">Fin</span>
+                <span class="detail-field-v">{{ selected.deadline }}</span>
+              </div>
+            }
+          </div>
+        </section>
+
+        <section class="detail-card">
+          <h4 class="detail-card-title">Périmètre</h4>
+          <p class="detail-scope-text">{{ selected.scope || '—' }}</p>
+        </section>
+
+        @if (selected.requiredSkills && selected.requiredSkills.length > 0) {
+          <section class="detail-card">
+            <h4 class="detail-card-title">Compétences</h4>
+            <div class="detail-skill-chips">
+              @for (sk of selected.requiredSkills; track sk) {
+                <span class="detail-skill-chip">{{ sk }}</span>
+              }
+            </div>
+          </section>
+        }
+
+        @if (selected.mediaUrl) {
+          <section class="detail-card detail-card--compact">
+            <h4 class="detail-card-title">Présentation</h4>
+            <a class="detail-media-link" [href]="selected.mediaUrl" target="_blank" rel="noopener">Ouvrir le média ({{ selected.mediaType }})</a>
+          </section>
+        }
+
+        @if (!canShowNegotiationPanel()) {
+          <section class="detail-card">
+            <h4 class="detail-card-title">Négociation assistée IA</h4>
+            <p class="detail-scope-text">{{ negotiationAvailabilityMessage(selected) }}</p>
+          </section>
+        }
+
+        @if (canShowNegotiationPanel()) {
+          <section class="detail-card negotiation-card">
+            <h4 class="detail-card-title">Négociation assistée IA</h4>
+            <p class="neg-hint">
+              Utilisez ce module pour simuler la contre-offre du sous-traitant, puis lancer la médiation IA et obtenir un compromis chiffré.
+            </p>
+            <div class="neg-form-grid">
+              <div class="field">
+                <label class="field-label">Budget contre-offre (TND)</label>
+                <input type="number" min="1" step="0.01" [(ngModel)]="negotiationForm.proposedBudget" />
+              </div>
+              <div class="field">
+                <label class="field-label">Durée contre-offre (jours)</label>
+                <input type="number" min="1" step="1" [(ngModel)]="negotiationForm.proposedDurationDays" />
+              </div>
+            </div>
+            <div class="field">
+              <label class="field-label">Note de négociation (optionnel)</label>
+              <textarea rows="2" [(ngModel)]="negotiationForm.note" placeholder="Contexte : contraintes planning, charge, qualité attendue..."></textarea>
+            </div>
+
+            <div class="neg-actions">
+              <button type="button" class="btn-secondary" (click)="sendCounterOffer()" [disabled]="negotiationBusy">
+                {{ negotiationBusy ? 'Envoi...' : 'Proposer une contre-offre' }}
+              </button>
+              <button type="button" class="btn-primary" (click)="mediateWithAi()" [disabled]="negotiationBusy || selected.status !== 'COUNTER_OFFERED'">
+                {{ negotiationBusy ? 'Médiation...' : 'Lancer la médiation IA' }}
+              </button>
+              @if (selected.status === 'NEGOTIATED') {
+                <button type="button" class="btn-success" (click)="acceptNegotiated()">Accepter ce compromis</button>
+              }
+            </div>
+
+            @if (negotiationError) {
+              <div class="coach-alert coach-alert-danger">{{ negotiationError }}</div>
+            }
+
+            @if (negotiationRound) {
+              <div class="neg-round">
+                <div class="neg-round-head">
+                  <strong>Round {{ negotiationRound.roundNumber }}</strong>
+                  <span class="badge badge-info">{{ negotiationRound.negotiationStatus }}</span>
+                </div>
+                <div class="neg-offers">
+                  <div>
+                    <span>Offre principale</span>
+                    <strong>{{ negotiationRound.primaryOffer?.budget }} TND • {{ negotiationRound.primaryOffer?.durationDays }} j</strong>
+                  </div>
+                  <div>
+                    <span>Contre-offre</span>
+                    <strong>{{ negotiationRound.subcontractorOffer?.budget }} TND • {{ negotiationRound.subcontractorOffer?.durationDays }} j</strong>
+                  </div>
+                  <div>
+                    <span>Compromis IA</span>
+                    <strong>
+                      {{ negotiationRound.aiCompromise?.budget ?? '—' }} TND • {{ negotiationRound.aiCompromise?.durationDays ?? '—' }} j
+                    </strong>
+                  </div>
+                </div>
+                @if (negotiationRound.compromiseJustification) {
+                  <p class="neg-justify">{{ negotiationRound.compromiseJustification }}</p>
+                }
+              </div>
+            }
+          </section>
+        }
+
+        <div class="deliverables-section">
+          <div class="del-header">
+            <h4>Livrables <span class="del-count">{{ selected.deliverables.length }}</span></h4>
+            @if (selected.status !== 'CLOSED' && selected.status !== 'CANCELLED') {
+              <button class="btn-small" (click)="openDeliverableForm()">+ Ajouter</button>
+            }
+          </div>
+          @for (d of selected.deliverables; track d.id) {
+            <div class="deliverable-card" [class.overdue]="d.overdue">
+              <div class="del-info">
+                <span class="del-title">{{ d.title }}</span>
+                <span class="badge" [class]="statusClass(d.status)">{{ d.status }}</span>
+                @if (d.deadline) { <span class="del-deadline">{{ d.deadline }}</span> }
+                @if (d.overdue) { <span class="overdue-tag">EN RETARD</span> }
+              </div>
+              @if (d.submissionNote) { <p class="sub-note">Note: {{ d.submissionNote }}</p> }
+              <div class="del-actions">
+                @if (d.status === 'SUBMITTED') {
+                  <button class="btn-success btn-xs" (click)="reviewDeliverable(d.id, true)">Approuver</button>
+                  <button class="btn-danger btn-xs" (click)="reviewDeliverable(d.id, false)">Rejeter</button>
+                }
+                @if (d.status === 'PENDING') {
+                  <button class="btn-danger btn-xs" (click)="deleteDeliverable(d.id)">Supprimer</button>
+                }
+              </div>
+            </div>
           }
         </div>
-        @for (d of selected.deliverables; track d.id) {
-          <div class="deliverable-card" [class.overdue]="d.overdue">
-            <div class="del-info">
-              <span class="del-title">{{ d.title }}</span>
-              <span class="badge" [class]="statusClass(d.status)">{{ d.status }}</span>
-              @if (d.deadline) { <span class="del-deadline">{{ d.deadline }}</span> }
-              @if (d.overdue) { <span class="overdue-tag">EN RETARD</span> }
+
+        <section class="chat-section">
+          <div class="chat-head">
+            <h4>Conversation mission</h4>
+            <button type="button" class="btn-small" (click)="loadChatMessages()">Actualiser</button>
+          </div>
+          <div class="chat-box">
+            @if (chatLoading) {
+              <p class="chat-empty">Chargement des messages…</p>
+            } @else if (chatMessages.length === 0) {
+              <p class="chat-empty">Aucun message pour le moment. Démarrez la discussion avec le sous-traitant.</p>
+            } @else {
+              @for (m of chatMessages; track m.id) {
+                <div class="chat-msg" [class.mine]="m.senderUserId === currentUserId">
+                  <div class="chat-meta">
+                    <span class="chat-author">{{ m.senderName }}</span>
+                    <span class="chat-time">{{ m.createdAt | date:'dd/MM/yyyy HH:mm' }}</span>
+                  </div>
+                  <p>{{ m.message }}</p>
+                </div>
+              }
+            }
+          </div>
+          <div class="chat-input-row">
+            <textarea
+              [(ngModel)]="chatInput"
+              [maxlength]="2000"
+              rows="2"
+              placeholder="Écrire un message au sous-traitant..."
+            ></textarea>
+            <button type="button" class="btn-primary" (click)="sendChatMessage()" [disabled]="chatSending || !chatInput.trim()">
+              {{ chatSending ? 'Envoi...' : 'Envoyer' }}
+            </button>
+          </div>
+        </section>
+
+      <!-- Analyse BI financière (IA) -->
+      <section class="bi-section" aria-labelledby="bi-heading">
+        <div class="bi-head">
+          <h4 id="bi-heading">Analyse financière (IA)</h4>
+          <button type="button" class="btn-small" (click)="loadFinancialAnalysis()" [disabled]="loadingFinancial">
+            @if (loadingFinancial) {
+              <span class="loading-spinner loading-spinner--sm" aria-hidden="true"></span>
+              Analyse…
+            } @else {
+              Actualiser l’analyse
+            }
+          </button>
+        </div>
+        <p class="bi-hint">Budget du contrat principal, répartition, historique du sous-traitant et recommandations (Claude).</p>
+
+        @if (financialError) {
+          <div class="bi-error">{{ financialError }}</div>
+        }
+
+        @if (financialBi) {
+          <div class="bi-verdict-row">
+            <span class="bi-score-pill" title="Score de rentabilité">{{ financialBi.rentabilityScore }}<small>/100</small></span>
+            <span class="bi-verdict" [class]="verdictClass(financialBi.verdict)">{{ verdictLabel(financialBi.verdict) }}</span>
+          </div>
+
+          <div class="bi-kpis">
+            @if (financialBi.marginRate != null) {
+              <div class="bi-kpi"><span class="bi-kpi-l">Marge estimée</span><span class="bi-kpi-v">{{ financialBi.marginRate | number:'1.0-1' }}%</span></div>
+            }
+            @if (financialBi.estimatedRoi != null) {
+              <div class="bi-kpi"><span class="bi-kpi-l">ROI attendu</span><span class="bi-kpi-v">{{ financialBi.estimatedRoi | number:'1.0-1' }}%</span></div>
+            }
+            @if (financialBi.breakEvenThreshold != null) {
+              <div class="bi-kpi"><span class="bi-kpi-l">Seuil rentabilité</span><span class="bi-kpi-v">{{ financialBi.breakEvenThreshold | number:'1.0-1' }}%</span></div>
+            }
+            @if (financialBi.subcontractToPrincipalRatioPercent != null) {
+              <div class="bi-kpi"><span class="bi-kpi-l">ST / contrat</span><span class="bi-kpi-v">{{ financialBi.subcontractToPrincipalRatioPercent | number:'1.0-1' }}%</span></div>
+            }
+          </div>
+
+          <div class="bi-charts">
+            <div class="bi-chart-card">
+              <span class="bi-chart-title">Rentabilité</span>
+              <div class="bi-gauge-wrap">
+                <canvas baseChart [type]="'doughnut'" [data]="gaugeChartData" [options]="gaugeChartOptions"></canvas>
+              </div>
             </div>
-            @if (d.submissionNote) { <p class="sub-note">Note: {{ d.submissionNote }}</p> }
-            <div class="del-actions">
-              @if (d.status === 'SUBMITTED') {
-                <button class="btn-success btn-xs" (click)="reviewDeliverable(d.id, true)">Approuver</button>
-                <button class="btn-danger btn-xs" (click)="reviewDeliverable(d.id, false)">Rejeter</button>
-              }
-              @if (d.status === 'PENDING') {
-                <button class="btn-danger btn-xs" (click)="deleteDeliverable(d.id)">Supprimer</button>
-              }
+            <div class="bi-chart-card">
+              <span class="bi-chart-title">Répartition budget</span>
+              <canvas baseChart [type]="'doughnut'" [data]="budgetChartData" [options]="budgetChartOptions"></canvas>
             </div>
           </div>
+
+          @if ((financialBi.financialTimeline?.length ?? 0) > 0) {
+            <div class="bi-chart-card bi-chart-wide">
+              <span class="bi-chart-title">Timeline missions passées (montants)</span>
+              <canvas baseChart [type]="'bar'" [data]="timelineChartData" [options]="timelineChartOptions"></canvas>
+            </div>
+          }
+
+          @if (financialBi.paymentHistorySummary) {
+            <div class="bi-history-mini">
+              <span>Missions analysées : {{ financialBi.paymentHistorySummary.pastMissionsConsidered }}</span>
+              <span>Retards (livrables) : {{ financialBi.paymentHistorySummary.missionsWithLateDeliverables }}</span>
+              <span>Annul. / rejet : {{ financialBi.paymentHistorySummary.cancelledOrRejectedMissions }}</span>
+            </div>
+          }
+
+          @if (financialBi.recommendations?.length) {
+            <ul class="bi-recs">
+              @for (r of financialBi.recommendations; track r) {
+                <li>{{ r }}</li>
+              }
+            </ul>
+          }
+        } @else if (!loadingFinancial && !financialError) {
+          <p class="bi-placeholder">Cliquez sur « Actualiser l’analyse » pour charger le tableau de bord.</p>
         }
+      </section>
+
       </div>
-    </div>
+
+      <div class="detail-action-bar">
+        <div class="detail-actions">
+          @if (selected.status === 'DRAFT') {
+            <button type="button" class="btn-primary" (click)="propose(selected.id)">Proposer</button>
+            <button type="button" class="btn-danger btn-ghost-danger" (click)="deleteSubcontract(selected.id)">Supprimer</button>
+          }
+          @if (selected.status === 'ACCEPTED') {
+            <button type="button" class="btn-primary" (click)="startWork(selected.id)">Démarrer</button>
+          }
+          @if (selected.status === 'IN_PROGRESS') {
+            <button type="button" class="btn-success" (click)="complete(selected.id)">Compléter</button>
+          }
+          @if (selected.status === 'COMPLETED') {
+            <button type="button" class="btn-primary" (click)="close(selected.id)">Clôturer</button>
+          }
+          @if (selected.status !== 'CANCELLED' && selected.status !== 'CLOSED' && selected.status !== 'COMPLETED') {
+            <button type="button" class="btn-danger" (click)="cancel(selected.id)">Annuler</button>
+          }
+        </div>
+      </div>
+    </aside>
   }
 
   <!-- ═══════ Add Deliverable Modal ═══════ -->
@@ -280,14 +1224,71 @@
           <h3>Nouveau Livrable</h3>
           <button class="modal-close" (click)="closeDeliverableForm()">✕</button>
         </div>
-        <div class="field"><label class="field-label">Titre *</label><input [(ngModel)]="delForm.title" placeholder="Ex: Maquette Figma" /></div>
-        <div class="field"><label class="field-label">Description</label><textarea [(ngModel)]="delForm.description" rows="3"></textarea></div>
-        <div class="field"><label class="field-label">Deadline</label><input type="date" [(ngModel)]="delForm.deadline" /></div>
+        <div class="field" [class.field-invalid]="delAttempted && delFieldErrors['title']">
+          <label class="field-label">Titre *</label>
+          <input
+            [(ngModel)]="delForm.title"
+            (ngModelChange)="onDeliverableFieldChange()"
+            [attr.maxlength]="delTitleMaxLen"
+            placeholder="Ex: Maquette Figma"
+          />
+          @if (delAttempted && delFieldErrors['title']) {
+            <p class="sc-field-error">{{ delFieldErrors['title'] }}</p>
+          }
+        </div>
+        <div class="field" [class.field-invalid]="delAttempted && delFieldErrors['description']">
+          <label class="field-label">Description</label>
+          <textarea
+            [(ngModel)]="delForm.description"
+            (ngModelChange)="onDeliverableFieldChange()"
+            [attr.maxlength]="delDescMaxLen"
+            rows="3"
+          ></textarea>
+          @if (delAttempted && delFieldErrors['description']) {
+            <p class="sc-field-error">{{ delFieldErrors['description'] }}</p>
+          }
+        </div>
+        <div class="field">
+          <label class="field-label">Deadline</label>
+          <input type="date" [(ngModel)]="delForm.deadline" (ngModelChange)="onDeliverableFieldChange()" />
+        </div>
         <div class="form-actions">
           <button class="btn-secondary" (click)="closeDeliverableForm()">Annuler</button>
           <button class="btn-primary" (click)="addDeliverable()">Ajouter</button>
         </div>
       </div>
     </div>
+  }
+
+  @if (actionModalOpen) {
+    <div class="modal-overlay" (click)="closeActionModal()">
+      <div class="modal-content" (click)="$event.stopPropagation()">
+        <div class="modal-header">
+          <h3>{{ actionModalTitle }}</h3>
+          <button class="modal-close" (click)="closeActionModal()">✕</button>
+        </div>
+        <p class="field-hint">{{ actionModalMessage }}</p>
+        @if (actionModalType === 'cancel-subcontract' || actionModalType === 'reject-deliverable') {
+          <div class="field">
+            <label class="field-label">{{ actionModalReasonLabel }}</label>
+            <textarea
+              rows="3"
+              [(ngModel)]="actionModalReason"
+              [placeholder]="actionModalReasonPlaceholder"
+              maxlength="255"
+            ></textarea>
+          </div>
+        }
+        @if (actionModalError) {
+          <p class="sc-field-error">{{ actionModalError }}</p>
+        }
+        <div class="form-actions">
+          <button class="btn-secondary" (click)="closeActionModal()">Annuler</button>
+          <button class="btn-danger" (click)="confirmActionModal()">{{ actionModalConfirmLabel }}</button>
+        </div>
+      </div>
+    </div>
+  }
+
   }
 </div>

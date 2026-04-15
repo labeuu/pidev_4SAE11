@@ -55,8 +55,10 @@ spring:
           filters:
             - StripPrefix=1
 
+        # Portfolio: URL directe (port 8086) — évite 503 « Unable to find instance for PORTFOLIO »
+        # si Eureka n’est pas démarré ou si le service n’est pas enregistré.
         - id: portfolio
-          uri: lb://PORTFOLIO
+          uri: http://localhost:8086
           predicates:
             - Path=/portfolio/**
           filters:
@@ -158,17 +160,6 @@ spring:
             - Path=/task/**
           filters:
             - StripPrefix=1
-
-        # Vendor Management — port must match Config Server VENDOR.properties (8093); 8092 is AImodel.
-        - id: vendor
-          uri: http://localhost:8093
-          predicates:
-            - Path=/vendor/**
-          filters:
-            - StripPrefix=1
-          metadata:
-            response-timeout: 14400000
-            connect-timeout: 30000
 
         # AImodel (Node): discovered via Eureka, port 8092
         - id: aimodel

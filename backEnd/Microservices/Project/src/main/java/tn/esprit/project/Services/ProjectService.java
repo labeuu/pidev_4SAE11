@@ -10,6 +10,7 @@ import tn.esprit.project.Dto.response.JointProjectItem;
 import tn.esprit.project.Dto.response.JointProjectsResponse;
 import tn.esprit.project.Dto.response.ProjectResponse;
 import tn.esprit.project.Dto.Skills;
+import tn.esprit.project.Entities.Enums.ApplicationStatus;
 import tn.esprit.project.Entities.Enums.ProjectStatus;
 
 import java.util.*;
@@ -118,6 +119,29 @@ public class ProjectService implements IProjectService{
 
     public List<Project> getProjectsByClientId(Long clientId) {
         return projectRepository.findByClientId(clientId);
+    }
+
+    @Override
+    public List<Project> getProjectsForClientWithAcceptedFreelancer(Long clientId) {
+        List<Project> list = projectRepository.findProjectsWhereClientAcceptedAFreelancer(
+                clientId, ApplicationStatus.ACCEPTED);
+        return list.stream()
+                .sorted(Comparator.comparing(
+                        Project::getUpdatedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
+    }
+
+    @Override
+    public List<Project> getProjectsForFreelancer(Long freelancerId) {
+        List<Project> list = projectRepository.findProjectsWhereFreelancerAccepted(
+                freelancerId, ApplicationStatus.ACCEPTED);
+        // Missions les plus récentes en premier (candidature acceptée par le client).
+        return list.stream()
+                .sorted(Comparator.comparing(
+                        Project::getUpdatedAt,
+                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
     }
 
     @Override

@@ -52,6 +52,23 @@ export class ProjectService {
       timeout(REQUEST_TIMEOUT_MS)
     );
   }
+
+  /**
+   * Projets publiés par ce client avec au moins une candidature acceptée
+   * (vous avez accepté un freelancer sur l’annonce).
+   */
+  getProjectsAsClientWithAcceptedFreelancer(clientId: number): Observable<Project[]> {
+    return this.http
+      .get<Project[]>(`${PROJECT_API}/client/${clientId}/with-accepted-freelancer`)
+      .pipe(timeout(REQUEST_TIMEOUT_MS));
+  }
+
+  /** Projets où ce freelancer a une candidature acceptée (missions qu'il exécute). */
+  getProjectsForFreelancer(freelancerId: number): Observable<Project[]> {
+    return this.http.get<Project[]>(`${PROJECT_API}/freelancer/${freelancerId}`).pipe(
+      timeout(REQUEST_TIMEOUT_MS)
+    );
+  }
   /** Get projects for a freelancer (uses recommended endpoint; backend has no /freelancer/{id}). */
   getByFreelancerId(id: number): Observable<Project[]> {
     return this.http.get<Project[]>(`${PROJECT_API}/recommended`, { params: { userId: id } }).pipe(

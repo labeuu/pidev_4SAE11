@@ -53,10 +53,6 @@
                   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 2h8l4 4v12a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1h3z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
                   My Contracts
                 </a>
-                <a routerLink="/dashboard/my-vendors" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
-                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M16 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M17 11l2 2 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  My Vendors
-                </a>
                 <a routerLink="/dashboard/my-subcontracts" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
                   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 3h6v6H3V3zm8 0h6v6h-6V3zm-8 8h6v6H3v-6zm8 2h6m-3-3v6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   My Subcontracts
@@ -167,10 +163,6 @@
                 <a routerLink="/dashboard/my-contracts" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
                   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 2h8l4 4v12a1 1 0 01-1 1H3a1 1 0 01-1-1V3a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
                   My Contracts
-                </a>
-                <a routerLink="/dashboard/client-vendors" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
-                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M17 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/><circle cx="10" cy="7" r="4" stroke="currentColor" stroke-width="1.4"/><path d="M19 8l2 2 4-4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
-                  Mes fournisseurs
                 </a>
                 <a routerLink="/dashboard/my-offer-applications" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
                   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 4h12a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 8h6M7 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -478,7 +470,6 @@
             <a routerLink="/dashboard/browse-jobs"      routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Browse Jobs</a>
             <a routerLink="/dashboard/my-applications"  routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Applications</a>
             <a routerLink="/dashboard/my-contracts"     routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Contracts</a>
-            <a routerLink="/dashboard/my-vendors"      routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Vendors</a>
             <a routerLink="/dashboard/my-subcontracts"  routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Subcontracts</a>
             <a routerLink="/dashboard/subcontractor-work" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Subcontractor Work</a>
             <a routerLink="/dashboard/my-tasks"         routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Tasks</a>
@@ -503,7 +494,6 @@
             <span class="mobile-section-label">Manage</span>
             <a routerLink="/dashboard/my-projects"          routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Projects</a>
             <a routerLink="/dashboard/my-contracts"         routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Contracts</a>
-            <a routerLink="/dashboard/client-vendors"      routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Mes fournisseurs</a>
             <a routerLink="/dashboard/project-tasks"        routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Project Tasks</a>
             <a routerLink="/dashboard/my-offer-applications" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Applications</a>
             <a routerLink="/dashboard/track-progress"       routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Track Progress</a>

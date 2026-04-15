@@ -1,0 +1,280 @@
+<section class="coach-panel" aria-labelledby="coach-panel-title">
+  <div class="coach-panel-head">
+    <div>
+      <h3 id="coach-panel-title" class="coach-title">Coaching IA</h3>
+      <p class="coach-intro">
+        La première analyse est <strong>offerte</strong>. Les analyses avancées sont ensuite facturées en <strong>points</strong>.
+        Sélectionnez une mission pour obtenir une recommandation contextualisée et exploitable.
+      </p>
+    </div>
+    @if (wallet && state !== 'loading' && state !== 'error') {
+      <div class="coach-balance-pill" aria-live="polite">
+        <span class="coach-balance-pill-lbl">Solde</span>
+        <span class="coach-balance-pill-val">{{ wallet.balance }}</span>
+        <span class="coach-balance-pill-unit">{{ wallet.currency }}</span>
+      </div>
+    }
+  </div>
+
+  <div class="coach-context" [class.coach-context--empty]="!selected">
+    <span class="coach-context-ico" aria-hidden="true">{{ selected ? '📎' : '📋' }}</span>
+    <div class="coach-context-body">
+      <span class="coach-context-k">Contexte mission</span>
+      @if (selected) {
+        <p class="coach-context-title">{{ selected.title }}</p>
+        <p class="coach-context-meta">{{ selected.category }} · {{ selected.budget }} {{ selected.currency }}</p>
+      } @else {
+        <p class="coach-context-title coach-context-muted">Aucune sous-traitance sélectionnée</p>
+        <p class="coach-context-meta">Pour une analyse fiable, sélectionnez une mission dans la liste à gauche.</p>
+      }
+    </div>
+  </div>
+
+  @if (state === 'loading') {
+    <div class="coach-loading" aria-busy="true">
+      <span class="coach-spinner"></span>
+      Chargement du wallet…
+    </div>
+  }
+
+  @if (state === 'error') {
+    <div class="coach-alert coach-alert-danger">
+      <div>{{ errorMsg }}</div>
+      <button type="button" class="btn-coach-primary" (click)="refreshWallet()">Réessayer</button>
+    </div>
+  }
+
+  @if (actionError && (state === 'free' || state === 'advanced' || state === 'insufficient')) {
+    <div class="coach-alert coach-alert-action" role="alert">
+      <span>{{ actionError }}</span>
+      <button type="button" class="coach-alert-dismiss" (click)="dismissActionError()" aria-label="Fermer">×</button>
+    </div>
+  }
+
+  @if (actionSuccess) {
+    <div class="coach-alert coach-alert-success" role="status">
+      <span>{{ actionSuccess }}</span>
+      <button type="button" class="coach-alert-dismiss coach-alert-dismiss-success" (click)="dismissActionSuccess()" aria-label="Fermer">×</button>
+    </div>
+  }
+
+  @if (state === 'blocked' && wallet) {
+    <div class="coach-card coach-card-blocked">
+      <div class="coach-card-ico" aria-hidden="true">⛔</div>
+      <h4>Compte coaching suspendu</h4>
+      <p>Votre accès aux analyses payantes est bloqué (solde épuisé ou décision admin). Contactez un administrateur.</p>
+      <p class="coach-balance">Solde actuel : <strong>{{ wallet.balance }}</strong> {{ wallet.currency }}</p>
+    </div>
+  }
+
+  @if (state === 'free' && wallet) {
+    <div class="coach-card coach-card-gift">
+      <div class="coach-card-glow" aria-hidden="true"></div>
+      <div class="coach-card-top">
+        <div class="coach-card-icon-wrap" aria-hidden="true">🎁</div>
+        <span class="coach-card-badge">Offert</span>
+      </div>
+      <h4 class="coach-card-h">Analyse gratuite disponible</h4>
+      <p class="coach-card-lead">
+        Obtenez immédiatement une synthèse structurée (risques, actions prioritaires et conseil expert) — <strong>0 point</strong> débité.
+      </p>
+      <div class="coach-card-cta">
+        <button
+          type="button"
+          class="btn-coach-primary btn-coach-lg"
+          [disabled]="busy || !userId || !hasSelectedContext()"
+          [attr.title]="!hasSelectedContext() ? 'Sélectionnez une sous-traitance dans la liste à gauche.' : null"
+          (click)="runInitial()"
+        >
+          @if (busy) {
+            <span class="coach-btn-spinner"></span>
+            Analyse en cours…
+          } @else {
+            Obtenir mon analyse gratuite
+            <span class="btn-arrow" aria-hidden="true">→</span>
+          }
+        </button>
+        @if (!hasSelectedContext()) {
+          <p class="coach-select-hint">Choisissez une sous-traitance dans la liste pour activer l’analyse.</p>
+        }
+      </div>
+    </div>
+  }
+
+  @if (state === 'advanced' && wallet) {
+    <div class="coach-card coach-card-advanced">
+      <div class="coach-card-top">
+        <div class="coach-card-icon-wrap coach-card-icon-wrap--purple" aria-hidden="true">🔬</div>
+      </div>
+      <h4 class="coach-card-h">Coaching IA avancé</h4>
+      <p class="coach-sub">Analyse approfondie avec simulation What-if (coût : <strong>{{ advancedCost }}</strong> pts).</p>
+      <div class="coach-balance-row">
+        <span>Solde actuel : <strong>{{ wallet.balance }}</strong> pts</span>
+        <span class="coach-approx">~{{ approxAdvancedCount() }} analyse(s) à ce tarif</span>
+      </div>
+      <div class="coach-bar" role="presentation" [attr.aria-label]="'Progression solde vers ' + advancedCost + ' points'">
+        <div class="coach-bar-fill" [style.width.%]="Math.min(100, (wallet.balance / (advancedCost * 3)) * 100)"></div>
+      </div>
+      <button
+        type="button"
+        class="btn-coach-accent btn-coach-lg"
+        [disabled]="busy || !userId || !hasSelectedContext()"
+        [attr.title]="!hasSelectedContext() ? 'Sélectionnez une sous-traitance dans la liste à gauche.' : null"
+        (click)="runAdvanced()"
+      >
+        @if (busy) {
+          <span class="coach-btn-spinner"></span>
+          Analyse…
+        } @else {
+          Débloquer l’analyse avancée — {{ advancedCost }} pts
+        }
+      </button>
+      @if (!hasSelectedContext()) {
+        <p class="coach-select-hint">Choisissez une sous-traitance dans la liste pour activer l’analyse.</p>
+      }
+    </div>
+  }
+
+  @if (state === 'insufficient' && wallet) {
+    <div class="coach-card coach-card-warn">
+      <h4>Solde insuffisant</h4>
+      <p>
+        Votre solde actuel est de <strong>{{ wallet.balance }}</strong> pts. Le minimum requis est <strong>{{ insufficient?.requiredPoints ?? advancedCost }}</strong> pts.
+        @if (insufficient?.shortage != null) {
+          <span> Écart : <strong>{{ insufficient?.shortage }}</strong> pts.</span>
+        }
+      </p>
+      <p class="coach-sub">Vous pouvez envoyer une demande de recharge à l’administrateur.</p>
+      <label class="coach-label" for="recharge-msg">Message (optionnel)</label>
+      <textarea id="recharge-msg" class="coach-ta" rows="2" [(ngModel)]="rechargeMsg" placeholder="Ajoutez un contexte utile (priorité, mission concernée, délai)…"></textarea>
+      <button type="button" class="btn-coach-primary" [disabled]="busy" (click)="sendRechargeRequest()">
+        Envoyer la demande de recharge →
+      </button>
+    </div>
+  }
+
+  @if (insight) {
+    <article class="insight-card" aria-label="Résultat de l’analyse">
+      <header class="insight-head">
+        <span class="risk-badge" [ngClass]="riskLevelClass(insight.globalRisk?.level)">
+          {{ insight.globalRisk?.level }} · {{ insight.globalRisk?.score }}/100
+        </span>
+        <h4>{{ insight.globalRisk?.summary }}</h4>
+        <p class="insight-meta">
+          @if (insight.free === true) {
+            <span class="tag-free">Gratuit</span>
+          }
+          @if (insight.pointsSpent != null && insight.pointsSpent > 0) {
+            <span class="tag-paid">{{ insight.pointsSpent }} pts</span>
+          }
+        </p>
+      </header>
+
+      <section class="insight-section">
+        <h5>Pourquoi</h5>
+        <ul class="cause-list">
+          @for (c of insight.causes; track c.title) {
+            <li>
+              <div class="cause-title">{{ c.title }}</div>
+              <p class="cause-detail">{{ c.detail }}</p>
+              <div class="impact-bar"><span [style.width.%]="c.impact * 10"></span></div>
+              <span class="impact-lbl">Impact {{ c.impact }}/10</span>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="insight-section">
+        <h5>Que faire</h5>
+        <ul class="action-list">
+          @for (a of insight.actions; track a.title) {
+            <li>
+              <span class="pri-badge" [ngClass]="priorityClass(a.priority)">{{ a.priority }}</span>
+              <div class="action-title">{{ a.title }}</div>
+              <p class="action-detail">{{ a.detail }}</p>
+              <span class="risk-drop">−{{ a.expectedRiskReduction }} risque estimé</span>
+            </li>
+          }
+        </ul>
+      </section>
+
+      <section class="insight-section insight-plan">
+        <h5>Plan d’action freelancer (clair et exécutable)</h5>
+        <ul class="plan-list">
+          @for (step of freelancerActionPlan(); track step.title) {
+            <li>
+              <div class="plan-top">
+                <span class="plan-check">✓</span>
+                <div>
+                  <p class="plan-title">{{ step.title }}</p>
+                  <p class="plan-detail">{{ step.detail }}</p>
+                </div>
+              </div>
+              <div class="plan-meta">
+                <span class="plan-deadline">{{ step.deadline }}</span>
+                <span class="pri-badge" [ngClass]="priorityClass(step.priority)">{{ step.priority }}</span>
+              </div>
+            </li>
+          }
+        </ul>
+      </section>
+
+      @if (insight.expectedImpact) {
+        <section class="insight-impact">
+          <h5>Impact attendu</h5>
+          <div class="impact-kpis">
+            <article>
+              <span>Nouveau score</span>
+              <strong>{{ insight.expectedImpact.newEstimatedScore }}/100</strong>
+            </article>
+            <article>
+              <span>Réduction estimée</span>
+              <strong>~{{ insight.expectedImpact.riskReductionIfApplied }}</strong>
+            </article>
+            <article>
+              <span>Confiance</span>
+              <strong>{{ insight.expectedImpact.confidenceLevel }}</strong>
+            </article>
+          </div>
+        </section>
+      }
+
+      @if (insight.whatIf) {
+        <section class="insight-whatif">
+          <h5>What-if &amp; compléments</h5>
+          <div class="whatif-grid">
+            @for (row of whatIfEntries(); track row.label) {
+              <div class="whatif-row">
+                <span class="whatif-k">{{ row.label }}</span>
+                <span class="whatif-v">{{ row.value }}</span>
+              </div>
+            }
+          </div>
+        </section>
+      }
+
+      @if (insight.professionalTip) {
+        <aside class="tip-box">
+          <span class="tip-ico" aria-hidden="true">💡</span>
+          <div>
+            <strong>Astuce pro</strong>
+            <p>{{ insight.professionalTip }}</p>
+          </div>
+        </aside>
+      }
+
+      <section class="insight-section ready-message">
+        <h5>Message prêt à envoyer au client</h5>
+        <textarea class="ready-message-box" rows="8" readonly>{{ freelancerReadyMessage() }}</textarea>
+        <button type="button" class="btn-coach-primary" (click)="copyReadyMessage()">
+          {{ copiedPlanMessage ? 'Copié ✓' : 'Copier le message' }}
+        </button>
+      </section>
+
+      <footer class="insight-foot">
+        <span class="verdict">Verdict : <strong>{{ insight.urgencyVerdict }}</strong></span>
+        <span class="signature">{{ insight.coachSignature }}</span>
+      </footer>
+    </article>
+  }
+</section>

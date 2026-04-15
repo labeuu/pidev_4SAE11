@@ -21,6 +21,12 @@ public interface IProjectService {
 
     List<Project> getProjectsByClientId(Long clientId);
 
+    /** Projets publiés par ce client avec au moins une candidature acceptée (freelancer retenu). */
+    List<Project> getProjectsForClientWithAcceptedFreelancer(Long clientId);
+
+    /** Projets où ce freelancer a une candidature acceptée (travail en cours / mission gagnée). */
+    List<Project> getProjectsForFreelancer(Long freelancerId);
+
     /** Projets du client où le freelancer a candidaté (lien historique pour décision agrément). */
     JointProjectsResponse getJointProjects(Long clientId, Long freelancerId);
 

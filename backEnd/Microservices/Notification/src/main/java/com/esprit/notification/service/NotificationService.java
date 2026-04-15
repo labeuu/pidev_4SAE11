@@ -6,13 +6,17 @@ import com.google.cloud.firestore.DocumentReference;
 import com.google.cloud.firestore.DocumentSnapshot;
 import com.google.cloud.firestore.Firestore;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 
 import java.time.Instant;
 import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ExecutionException;
 import java.util.stream.Collectors;
 
@@ -22,7 +26,8 @@ public class NotificationService {
 
     private static final String COLLECTION = "notifications";
 
-    private final Firestore firestore;
+    private final ObjectProvider<Firestore> firestoreProvider;
+    private final Map<String, Map<String, Object>> inMemoryStore = new ConcurrentHashMap<>();
 
     public NotificationResponse create(NotificationRequest request) {
         Map<String, Object> data = new HashMap<>();
@@ -36,6 +41,13 @@ public class NotificationService {
             data.put("data", request.getData());
         }
 
+        Firestore firestore = firestoreProvider.getIfAvailable();
+        if (firestore == null) {
+            String id = UUID.randomUUID().toString();
+            inMemoryStore.put(id, data);
+            return toResponse(id, data);
+        }
+
         try {
             DocumentReference ref = firestore.collection(COLLECTION).add(data).get();
             DocumentSnapshot snap = ref.get().get();
@@ -47,6 +59,15 @@ public class NotificationService {
     }
 
     public List<NotificationResponse> findByUserId(String userId) {
+        Firestore firestore = firestoreProvider.getIfAvailable();
+        if (firestore == null) {
+            return new ArrayList<>(inMemoryStore.entrySet()).stream()
+                .filter(e -> userId.equals(e.getValue().get("userId")))
+                .map(e -> toResponse(e.getKey(), e.getValue()))
+                .sorted(Comparator.comparing(NotificationResponse::getCreatedAt).reversed())
+                .collect(Collectors.toList());
+        }
+
         try {
             return firestore.collection(COLLECTION)
                 .whereEqualTo("userId", userId)
@@ -64,6 +85,16 @@ public class NotificationService {
     }
 
     public NotificationResponse markRead(String id) {
+        Firestore firestore = firestoreProvider.getIfAvailable();
+        if (firestore == null) {
+            Map<String, Object> data = inMemoryStore.get(id);
+            if (data == null) {
+                throw new RuntimeException("Notification not found");
+            }
+            data.put("read", true);
+            return toResponse(id, data);
+        }
+
         try {
             DocumentReference ref = firestore.collection(COLLECTION).document(id);
             ref.update("read", true).get();
@@ -76,6 +107,12 @@ public class NotificationService {
     }
 
     public void delete(String id) {
+        Firestore firestore = firestoreProvider.getIfAvailable();
+        if (firestore == null) {
+            inMemoryStore.remove(id);
+            return;
+        }
+
         try {
             firestore.collection(COLLECTION).document(id).delete().get();
         } catch (InterruptedException | ExecutionException e) {

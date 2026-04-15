@@ -35,16 +35,213 @@ h2 { font-size: 1.5rem; margin-bottom: 16px; }
 
 .loading { text-align: center; padding: 40px; color: #6c757d; }
 
-.detail-panel { position: fixed; top: 0; right: 0; width: 480px; height: 100vh; background: #fff; box-shadow: -4px 0 20px rgba(0,0,0,0.15); z-index: 1000; overflow-y: auto; padding: 24px; }
-.detail-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-.detail-header h3 { margin: 0; font-size: 1.2rem; }
-.detail-header button { border: none; background: none; font-size: 1.4rem; cursor: pointer; }
-.detail-body p { margin-bottom: 8px; }
-.reason { color: #dc3545; font-style: italic; }
+.detail-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.35);
+  backdrop-filter: blur(2px);
+  z-index: 999;
+}
 
-h4 { margin: 16px 0 8px; font-size: 1rem; }
-.deliverable-card { display: flex; align-items: center; gap: 8px; padding: 8px; border: 1px solid #eee; border-radius: 6px; margin-bottom: 6px; }
-.deliverable-card.overdue { border-color: #dc3545; background: #fff5f5; }
-.del-title { flex: 1; font-weight: 500; }
-.del-deadline { font-size: 0.8rem; color: #6c757d; }
-.overdue-tag { font-size: 0.7rem; background: #dc3545; color: #fff; padding: 2px 6px; border-radius: 3px; }
+.detail-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: min(560px, 92vw);
+  height: 100vh;
+  background: #fff;
+  box-shadow: -12px 0 36px rgba(0, 0, 0, 0.18);
+  z-index: 1000;
+  overflow-y: auto;
+  padding: 24px;
+}
+
+.detail-panel-advanced {
+  border-left: 1px solid #e2e8f0;
+}
+
+.detail-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 14px;
+}
+
+.detail-title-wrap h3 {
+  margin: 2px 0 0;
+  font-size: 1.45rem;
+  line-height: 1.2;
+}
+
+.detail-kicker {
+  display: inline-block;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  font-size: 0.68rem;
+  color: #64748b;
+  font-weight: 700;
+}
+
+.detail-close-btn {
+  border: 1px solid #e2e8f0;
+  background: #fff;
+  width: 36px;
+  height: 36px;
+  border-radius: 10px;
+  font-size: 1.2rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.detail-close-btn:hover {
+  background: #f8fafc;
+}
+
+.detail-summary-card {
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 12px;
+  margin-bottom: 14px;
+  background: linear-gradient(180deg, #fafcff 0%, #fff 100%);
+}
+
+.detail-summary-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 10px;
+}
+
+.detail-budget {
+  font-weight: 700;
+  color: #0f172a;
+}
+
+.detail-progress small {
+  color: #64748b;
+}
+
+.detail-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.detail-info-item {
+  border: 1px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 10px;
+}
+
+.detail-info-item-full {
+  grid-column: 1 / -1;
+}
+
+.detail-label {
+  display: block;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #64748b;
+  margin-bottom: 4px;
+}
+
+.detail-info-item p {
+  margin: 0;
+  color: #1f2937;
+}
+
+.arrow {
+  color: #64748b;
+}
+
+.detail-warning {
+  border: 1px solid #fecaca;
+  background: #fff5f5;
+  border-radius: 10px;
+  padding: 10px;
+  margin-bottom: 10px;
+}
+
+.detail-warning strong {
+  color: #9f1239;
+}
+
+.detail-warning p {
+  margin: 4px 0 0;
+  color: #7f1d1d;
+}
+
+h4 {
+  margin: 16px 0 8px;
+  font-size: 1rem;
+}
+
+.deliverables-section {
+  margin-top: 8px;
+}
+
+.deliverables-empty {
+  border: 1px dashed #cbd5e1;
+  border-radius: 10px;
+  padding: 10px;
+  color: #64748b;
+  font-size: 0.88rem;
+}
+
+.deliverable-card {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 10px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  margin-bottom: 8px;
+  background: #fff;
+}
+
+.deliverable-card.overdue {
+  border-color: #fca5a5;
+  background: #fff5f5;
+}
+
+.deliverable-main {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.del-title {
+  font-weight: 600;
+  color: #111827;
+}
+
+.deliverable-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.del-deadline {
+  font-size: 0.8rem;
+  color: #64748b;
+}
+
+.overdue-tag {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.03em;
+  background: #dc2626;
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 999px;
+}
+
+@media (max-width: 700px) {
+  .detail-info-grid {
+    grid-template-columns: 1fr;
+  }
+}

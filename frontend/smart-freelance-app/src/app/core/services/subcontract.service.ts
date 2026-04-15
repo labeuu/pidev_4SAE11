@@ -5,7 +5,19 @@ import { environment } from '../../../environments/environment';
 
 const API = `${environment.apiGatewayUrl}/subcontracting/api/subcontracts`;
 
-export type SubcontractStatus = 'DRAFT' | 'PROPOSED' | 'ACCEPTED' | 'REJECTED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'CLOSED';
+export type SubcontractStatus =
+  | 'DRAFT'
+  | 'PROPOSED'
+  | 'COUNTER_OFFERED'
+  | 'AI_MEDIATION'
+  | 'NEGOTIATED'
+  | 'NEGOTIATION_IMPASSE'
+  | 'ACCEPTED'
+  | 'REJECTED'
+  | 'IN_PROGRESS'
+  | 'COMPLETED'
+  | 'CANCELLED'
+  | 'CLOSED';
 export type SubcontractCategory = 'DEVELOPMENT' | 'DESIGN' | 'TESTING' | 'CONTENT' | 'CONSULTING';
 export type DeliverableStatus = 'PENDING' | 'IN_PROGRESS' | 'SUBMITTED' | 'APPROVED' | 'REJECTED';
 
@@ -15,7 +27,8 @@ export interface Subcontract {
   mainFreelancerName: string;
   subcontractorId: number;
   subcontractorName: string;
-  projectId: number;
+  projectId: number | null;
+  offerId?: number | null;
   projectTitle: string;
   contractId: number | null;
   title: string;
@@ -28,6 +41,8 @@ export interface Subcontract {
   deadline: string;
   rejectionReason: string | null;
   cancellationReason: string | null;
+  negotiationRoundCount?: number | null;
+  negotiationStatus?: string | null;
   createdAt: string;
   updatedAt: string;
   statusChangedAt: string;
@@ -35,6 +50,9 @@ export interface Subcontract {
   approvedDeliverables: number;
   pendingDeliverables: number;
   deliverables: Deliverable[];
+  requiredSkills?: string[];
+  mediaUrl?: string | null;
+  mediaType?: 'VIDEO' | 'AUDIO' | string | null;
 }
 
 export interface Deliverable {
@@ -53,9 +71,19 @@ export interface Deliverable {
   overdue: boolean;
 }
 
+export interface SubcontractMessage {
+  id: number;
+  subcontractId: number;
+  senderUserId: number;
+  senderName: string;
+  message: string;
+  createdAt: string;
+}
+
 export interface SubcontractRequest {
   subcontractorId: number;
-  projectId: number;
+  projectId?: number;
+  offerId?: number;
   contractId?: number;
   title: string;
   scope?: string;
@@ -64,6 +92,38 @@ export interface SubcontractRequest {
   currency?: string;
   startDate?: string;
   deadline?: string;
+  requiredSkills?: string[];
+  mediaUrl?: string;
+  mediaType?: string;
+}
+
+export interface CounterOfferRequest {
+  proposedBudget: number;
+  proposedDurationDays: number;
+  note?: string;
+}
+
+export interface AiMediateRequest {
+  note?: string;
+}
+
+export interface NegotiationOfferPosition {
+  budget: number;
+  durationDays: number;
+}
+
+export interface NegotiationRoundResponse {
+  primaryOffer: NegotiationOfferPosition | null;
+  subcontractorOffer: NegotiationOfferPosition | null;
+  aiCompromise: NegotiationOfferPosition | null;
+  compromiseJustification: string | null;
+  roundNumber: number;
+  negotiationStatus: string;
+}
+
+export interface MediaUploadResponse {
+  mediaUrl: string;
+  mediaType: string;
 }
 
 export interface DeliverableRequest {
@@ -128,6 +188,151 @@ export interface FreelancerHistory {
   timeline: AuditTimelineEntry[];
 }
 
+export type MatchRecommendation = 'HIGHLY_RECOMMENDED' | 'RECOMMENDED' | 'POSSIBLE';
+
+export interface SubcontractMatchCandidate {
+  freelancerId: number;
+  fullName: string;
+  email: string;
+  matchScore: number;
+  matchReasons: string[];
+  trustScore: number;
+  previousCollaborations: number;
+  recommendation: MatchRecommendation | string;
+}
+
+export interface SubcontractMatchResponse {
+  candidates: SubcontractMatchCandidate[];
+}
+
+export type FinancialVerdict = 'EXCELLENT_CHOICE' | 'GOOD_CHOICE' | 'RISKY' | 'NOT_RECOMMENDED';
+
+export interface MissionFinanceRow {
+  subcontractId: number;
+  title: string;
+  budget: number | null;
+  status: string;
+  hadLateDeliverables: boolean | null;
+}
+
+export interface PaymentHistorySummary {
+  pastMissionsConsidered: number;
+  missionsWithLateDeliverables: number;
+  cancelledOrRejectedMissions: number;
+  refundLikeEvents: number;
+  recentMissions: MissionFinanceRow[];
+}
+
+export interface FinancialTimelineEntry {
+  date: string;
+  label: string;
+  amount: number | null;
+}
+
+/** Réponse GET .../ai/financial-analysis — analyse BI + IA */
+export interface SubcontractFinancialAnalysisResponse {
+  rentabilityScore: number;
+  verdict: FinancialVerdict | string;
+  marginRate: number | null;
+  estimatedRoi: number | null;
+  breakEvenThreshold: number | null;
+  recommendations: string[];
+  principalContractBudget: number | null;
+  subcontractBudget: number | null;
+  remainingMarginForPrincipal: number | null;
+  subcontractToPrincipalRatioPercent: number | null;
+  currency: string;
+  paymentHistorySummary: PaymentHistorySummary;
+  financialTimeline: FinancialTimelineEntry[];
+  otherSubcontractsOnContractTotal: number | null;
+}
+
+export interface SubcontractRiskCockpitRequest {
+  mainFreelancerId: number;
+  subcontractorId?: number;
+  projectId?: number;
+  offerId?: number;
+  budget?: number;
+  startDate?: string;
+  deadline?: string;
+  scope?: string;
+  requiredSkills?: string[];
+}
+
+export interface RiskGauge {
+  key: string;
+  label: string;
+  score: number;
+  level: string;
+  explanation: string;
+}
+
+export interface RiskRecommendationAction {
+  type: 'ADJUST_BUDGET' | 'ADJUST_DURATION' | 'REFINE_SCOPE' | 'OPEN_ALTERNATIVES' | 'NO_OP' | string;
+  budgetMultiplier?: number;
+  durationDeltaDays?: number;
+  suggestedSubcontractorId?: number;
+  scopeHint?: string;
+}
+
+export interface RiskRecommendation {
+  text: string;
+  action: RiskRecommendationAction;
+}
+
+export interface RiskAlternative {
+  label: string;
+  score: number;
+  changes: string;
+}
+
+export interface SubcontractRiskCockpitResponse {
+  totalRiskScore: number;
+  level: 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL' | string;
+  streamedNarrative: string;
+  gauges: RiskGauge[];
+  recommendations: RiskRecommendation[];
+  alternatives: RiskAlternative[];
+}
+
+export interface SubcontractorInsight {
+  name: string;
+  profitabilityScore: number;
+  riskScore: number;
+  note: string;
+}
+
+export interface MonthInsight {
+  month: string;
+  score: number;
+  rationale: string;
+}
+
+export interface RiskTrendPoint {
+  month: string;
+  avgRiskScore: number;
+}
+
+export interface PredictiveDashboardResponse {
+  narrativeSummary: string;
+  successRateByCategory: Record<string, number>;
+  topProfitableSubcontractors: SubcontractorInsight[];
+  topRiskySubcontractors: SubcontractorInsight[];
+  bestMonthsForSubcontracting: MonthInsight[];
+  riskTrend: RiskTrendPoint[];
+  nextIncidentPrediction: string;
+  monthlyReportHint: string;
+  generatedAt: string;
+}
+
+export interface MyCoachingProfileResponse {
+  strengths: string[];
+  weaknesses: string[];
+  patterns: string[];
+  personalizedTips: string[];
+  progressScore: number;
+}
+
 @Injectable({ providedIn: 'root' })
 export class SubcontractService {
 
@@ -180,6 +385,16 @@ export class SubcontractService {
 
   accept(id: number): Observable<Subcontract> {
     return this.http.patch<Subcontract>(`${API}/${id}/accept`, null);
+  }
+
+  counterOffer(id: number, subcontractorId: number, body: CounterOfferRequest): Observable<NegotiationRoundResponse> {
+    const params = new HttpParams().set('subcontractorId', String(subcontractorId));
+    return this.http.post<NegotiationRoundResponse>(`${API}/${id}/counter-offer`, body, { params });
+  }
+
+  aiMediate(id: number, mainFreelancerId: number, body?: AiMediateRequest): Observable<NegotiationRoundResponse> {
+    const params = new HttpParams().set('mainFreelancerId', String(mainFreelancerId));
+    return this.http.post<NegotiationRoundResponse>(`${API}/${id}/ai/mediate`, body ?? {}, { params });
   }
 
   reject(id: number, reason?: string): Observable<Subcontract> {
@@ -236,6 +451,16 @@ export class SubcontractService {
     return this.http.patch<Deliverable>(`${API}/${subcontractId}/deliverables/${deliverableId}/review`, body);
   }
 
+  getMessages(subcontractId: number, viewerUserId: number): Observable<SubcontractMessage[]> {
+    const params = new HttpParams().set('viewerUserId', String(viewerUserId));
+    return this.http.get<SubcontractMessage[]>(`${API}/${subcontractId}/messages`, { params });
+  }
+
+  sendMessage(subcontractId: number, senderUserId: number, message: string): Observable<SubcontractMessage> {
+    const params = new HttpParams().set('senderUserId', String(senderUserId));
+    return this.http.post<SubcontractMessage>(`${API}/${subcontractId}/messages`, { message }, { params });
+  }
+
   // ── Métier 3 — Score ──────────────────────────────
 
   getScore(subcontractorId: number): Observable<SubcontractorScore> {
@@ -256,5 +481,56 @@ export class SubcontractService {
 
   getFreelancerHistory(userId: number): Observable<FreelancerHistory> {
     return this.http.get<FreelancerHistory>(`${API}/history/freelancer/${userId}`);
+  }
+
+  /** Analyse financière IA (Claude) — agrégats + score / verdict / recommandations. */
+  getFinancialAnalysis(subcontractId: number, mainFreelancerId: number): Observable<SubcontractFinancialAnalysisResponse> {
+    const params = new HttpParams().set('mainFreelancerId', String(mainFreelancerId));
+    return this.http.get<SubcontractFinancialAnalysisResponse>(
+      `${API}/${subcontractId}/ai/financial-analysis`,
+      { params }
+    );
+  }
+
+  getRiskCockpit(body: SubcontractRiskCockpitRequest): Observable<SubcontractRiskCockpitResponse> {
+    return this.http.post<SubcontractRiskCockpitResponse>(`${API}/ai/risk-cockpit`, body);
+  }
+
+  getPredictiveDashboard(mainFreelancerId: number): Observable<PredictiveDashboardResponse> {
+    const params = new HttpParams().set('mainFreelancerId', String(mainFreelancerId));
+    return this.http.get<PredictiveDashboardResponse>(`${API}/ai/predictive-dashboard`, { params });
+  }
+
+  getMyCoachingProfile(mainFreelancerId: number): Observable<MyCoachingProfileResponse> {
+    const params = new HttpParams().set('mainFreelancerId', String(mainFreelancerId));
+    return this.http.get<MyCoachingProfileResponse>(`${API}/ai/my-coaching-profile`, { params });
+  }
+
+  auditRiskSimulation(mainFreelancerId: number, payload: SubcontractRiskCockpitResponse): Observable<{ recorded: boolean }> {
+    const params = new HttpParams().set('mainFreelancerId', String(mainFreelancerId));
+    return this.http.post<{ recorded: boolean }>(`${API}/ai/risk-cockpit/simulate`, payload, { params });
+  }
+
+  confirmRisk(subcontractId: number, mainFreelancerId: number, body: { totalRiskScore: number; selectedAlternativeLabel?: string; summary?: string }): Observable<{ recorded: boolean }> {
+    const params = new HttpParams().set('mainFreelancerId', String(mainFreelancerId));
+    return this.http.post<{ recorded: boolean }>(`${API}/${subcontractId}/ai/risk-confirm`, body, { params });
+  }
+
+  /** Matching IA (Claude) — compétences requises → tous les candidats avec score (tri décroissant). */
+  matchSubcontractor(mainFreelancerId: number, requiredSkills: string[]): Observable<SubcontractMatchResponse> {
+    const params = new HttpParams().set('mainFreelancerId', String(mainFreelancerId));
+    return this.http.post<SubcontractMatchResponse>(
+      `${API}/ai/match-subcontractor`,
+      { requiredSkills },
+      { params }
+    );
+  }
+
+  /** Upload présentation MP4 (vidéo) ou MP3 (audio). */
+  uploadPresentationMedia(mainFreelancerId: number, file: File): Observable<MediaUploadResponse> {
+    const fd = new FormData();
+    fd.append('file', file, file.name);
+    const params = new HttpParams().set('mainFreelancerId', String(mainFreelancerId));
+    return this.http.post<MediaUploadResponse>(`${API}/media/upload`, fd, { params });
   }
 }

@@ -1,6 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable, Subject, tap, timeout } from 'rxjs';
+import { environment } from '../../../environments/environment';
 
 // Mirrors the Java Domain enum — keep in sync with Domain.java
 export type Domain =
@@ -138,7 +139,7 @@ export interface SkillSuccessStat {
   providedIn: 'root'
 })
 export class PortfolioService {
-  private apiUrl = 'http://localhost:8078/portfolio/api'; // Gateway URL
+  private readonly apiUrl = `${environment.apiGatewayUrl}/portfolio/api`;
 
   public skillsUpdated$ = new Subject<void>();
 

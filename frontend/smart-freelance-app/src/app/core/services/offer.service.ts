@@ -62,8 +62,6 @@ export interface OfferRequest {
   tags?: string;
   imageUrl?: string;
   isFeatured?: boolean;
-  /** Réservé aux freelancers avec agrément fournisseur (client). */
-  requiresVendorApproval?: boolean;
 }
 
 export interface OfferFilterRequest {
@@ -229,6 +227,16 @@ export class OfferService {
         of({ content: [], totalElements: 0, totalPages: 0, size, number: page, first: true, last: true })
       )
     );
+  }
+
+  /**
+   * Candidatures acceptées sur les offres publiées par ce freelancer
+   * (le client a postulé, le freelancer a accepté).
+   */
+  getAcceptedApplicationsForFreelancerOffers(freelancerId: number): Observable<OfferApplication[]> {
+    return this.http
+      .get<OfferApplication[]>(`${APPLICATION_API}/freelancer/${freelancerId}/accepted`)
+      .pipe(catchError(() => of([])));
   }
 
   acceptApplication(id: number, freelancerId: number): Observable<OfferApplication> {

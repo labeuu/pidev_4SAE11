@@ -34,4 +34,10 @@ public interface IOfferApplicationService {
     List<OfferApplicationResponse> getApplicationsByOfferAndStatus(Long offerId, ApplicationStatus status);
     Long countPendingApplications(Long offerId);
     List<OfferApplicationResponse> getRecentApplications();
+
+    /**
+     * Candidatures acceptées sur les offres publiées par ce freelancer
+     * (le client a postulé, le freelancer a accepté).
+     */
+    List<OfferApplicationResponse> listAcceptedApplicationsForFreelancerOwnedOffers(Long freelancerId);
 }

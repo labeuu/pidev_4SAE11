@@ -20,7 +20,7 @@ IDs and references are aligned across services (e.g. user 1–10 in userdb, same
 
 ### Prerequisites
 
-1. **MySQL** running (e.g. on `localhost:3306`).
+1. **MySQL** running (e.g. on `localhost:3307`).
 2. **Schema already created**: run each microservice at least once with `spring.jpa.hibernate.ddl-auto=update` so tables exist.
 3. **Empty or resettable tables**: script does not truncate; if you run it multiple times you will get duplicate key errors unless you clear tables first.
 

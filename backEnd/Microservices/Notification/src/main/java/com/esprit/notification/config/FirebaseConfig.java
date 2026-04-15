@@ -6,6 +6,7 @@ import com.google.firebase.FirebaseApp;
 import com.google.firebase.FirebaseOptions;
 import com.google.firebase.cloud.FirestoreClient;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -18,6 +19,7 @@ import java.io.InputStream;
 
 @Configuration
 @Profile("!test")
+@ConditionalOnProperty(name = "notification.firebase.enabled", havingValue = "true")
 public class FirebaseConfig {
 
     @Value("${notification.firebase.credentials-path:}")

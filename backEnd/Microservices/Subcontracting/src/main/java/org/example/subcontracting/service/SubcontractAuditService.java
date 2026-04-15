@@ -113,6 +113,8 @@ public class SubcontractAuditService {
             case "PROPOSED" -> "Proposition envoyée";
             case "ACCEPTED" -> "Proposition acceptée";
             case "REJECTED" -> "Proposition refusée";
+            case "COUNTER_OFFERED" -> "Contre-offre proposée";
+            case "AI_MEDIATED" -> "Médiation IA";
             case "STARTED" -> "Travail démarré";
             case "COMPLETED" -> "Travail complété";
             case "CANCELLED" -> "Sous-traitance annulée";
@@ -135,6 +137,8 @@ public class SubcontractAuditService {
             case "PROPOSED" -> "send";
             case "ACCEPTED" -> "check";
             case "REJECTED" -> "close";
+            case "COUNTER_OFFERED" -> "refresh-ccw";
+            case "AI_MEDIATED" -> "cpu";
             case "STARTED" -> "play";
             case "COMPLETED" -> "flag";
             case "CANCELLED" -> "ban";
@@ -153,6 +157,8 @@ public class SubcontractAuditService {
             case "PROPOSED", "DELIVERABLE_SUBMITTED" -> "#17a2b8";
             case "ACCEPTED", "COMPLETED", "DELIVERABLE_APPROVED" -> "#28a745";
             case "REJECTED", "CANCELLED", "DELIVERABLE_REJECTED" -> "#dc3545";
+            case "COUNTER_OFFERED" -> "#f97316";
+            case "AI_MEDIATED" -> "#6366f1";
             case "CLOSED" -> "#6c757d";
             case "STARTED" -> "#ffc107";
             default -> "#495057";

@@ -82,6 +82,8 @@
 				<groupId>org.springframework.boot</groupId>
 				<artifactId>spring-boot-maven-plugin</artifactId>
 				<configuration>
+					<!-- Limite le tas pour éviter les échecs mmap / fichier de pagination (Windows 1455) sur machines chargées -->
+					<jvmArguments>-Xms128m -Xmx512m -XX:MaxMetaspaceSize=128m</jvmArguments>
 					<excludes>
 						<exclude>
 							<groupId>org.projectlombok</groupId>

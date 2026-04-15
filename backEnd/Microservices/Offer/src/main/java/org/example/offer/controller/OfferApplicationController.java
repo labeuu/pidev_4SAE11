@@ -32,6 +32,19 @@ public class OfferApplicationController {
     }
 
     /**
+     * READ - Candidatures acceptées sur les offres publiées par ce freelancer
+     * (client ayant postulé, acceptation par le freelancer).
+     * GET /api/applications/freelancer/{freelancerId}/accepted
+     */
+    @GetMapping("/freelancer/{freelancerId}/accepted")
+    public ResponseEntity<List<OfferApplicationResponse>> listAcceptedForFreelancerOwnedOffers(
+            @PathVariable Long freelancerId) {
+        List<OfferApplicationResponse> response =
+                applicationService.listAcceptedApplicationsForFreelancerOwnedOffers(freelancerId);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
      * READ - Récupérer une candidature par ID
      * GET /api/applications/{id}
      */

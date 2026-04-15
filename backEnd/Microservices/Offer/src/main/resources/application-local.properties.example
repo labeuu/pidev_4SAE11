@@ -2,7 +2,7 @@
 # Ce fichier surcharge OFFER.properties charge depuis le Config Server.
 
 # MySQL (port / mot de passe)
-# spring.datasource.url=jdbc:mysql://localhost:3306/gestion_offre_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
+# spring.datasource.url=jdbc:mysql://localhost:3307/gestion_offre_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
 # spring.datasource.password=votre_mot_de_passe
 
 # OpenAI (chat assistant)

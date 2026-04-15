@@ -36,14 +36,13 @@
     <table class="sc-table">
       <thead>
         <tr>
-          <th>#</th><th>Titre</th><th>Freelancer principal</th><th>Sous-traitant</th>
+          <th>Titre</th><th>Freelancer principal</th><th>Sous-traitant</th>
           <th>Catégorie</th><th>Statut</th><th>Budget</th><th>Avancement</th><th>Deadline</th>
         </tr>
       </thead>
       <tbody>
         @for (s of filtered; track s.id) {
           <tr (click)="select(s)" class="clickable">
-            <td>{{ s.id }}</td>
             <td>{{ s.title }}</td>
             <td>{{ s.mainFreelancerName }}</td>
             <td>{{ s.subcontractorName }}</td>
@@ -65,29 +64,79 @@
 
   <!-- Detail panel -->
   @if (selectedSubcontract) {
-    <div class="detail-panel">
-      <div class="detail-header">
-        <h3>{{ selectedSubcontract.title }}</h3>
-        <button (click)="closeDetail()">✕</button>
-      </div>
-      <div class="detail-body">
-        <p><strong>Projet:</strong> {{ selectedSubcontract.projectTitle }}</p>
-        <p><strong>Freelancer:</strong> {{ selectedSubcontract.mainFreelancerName }} → {{ selectedSubcontract.subcontractorName }}</p>
-        <p><strong>Scope:</strong> {{ selectedSubcontract.scope || 'Non défini' }}</p>
-        <p><strong>Statut:</strong> <span class="badge" [class]="statusClass(selectedSubcontract.status)">{{ selectedSubcontract.status }}</span></p>
-        @if (selectedSubcontract.rejectionReason) { <p class="reason"><strong>Raison rejet:</strong> {{ selectedSubcontract.rejectionReason }}</p> }
-        @if (selectedSubcontract.cancellationReason) { <p class="reason"><strong>Raison annulation:</strong> {{ selectedSubcontract.cancellationReason }}</p> }
+    <div class="detail-backdrop" (click)="closeDetail()"></div>
+    <aside class="detail-panel detail-panel-advanced" (click)="$event.stopPropagation()">
+      <header class="detail-header">
+        <div class="detail-title-wrap">
+          <span class="detail-kicker">Notification mission</span>
+          <h3>{{ selectedSubcontract.title }}</h3>
+        </div>
+        <button class="detail-close-btn" (click)="closeDetail()" aria-label="Fermer">✕</button>
+      </header>
 
-        <h4>Livrables ({{ selectedSubcontract.deliverables.length }})</h4>
-        @for (d of selectedSubcontract.deliverables; track d.id) {
-          <div class="deliverable-card" [class.overdue]="d.overdue">
-            <span class="del-title">{{ d.title }}</span>
-            <span class="badge" [class]="statusClass(d.status)">{{ d.status }}</span>
-            @if (d.deadline) { <span class="del-deadline">📅 {{ d.deadline }}</span> }
-            @if (d.overdue) { <span class="overdue-tag">EN RETARD</span> }
+      <section class="detail-summary-card">
+        <div class="detail-summary-head">
+          <span class="badge" [class]="statusClass(selectedSubcontract.status)">{{ selectedSubcontract.status }}</span>
+          <span class="detail-budget">{{ selectedSubcontract.budget }} {{ selectedSubcontract.currency }}</span>
+        </div>
+
+        <div class="detail-progress">
+          <div class="progress-bar">
+            <div class="progress-fill" [style.width.%]="progressPercent(selectedSubcontract)"></div>
           </div>
+          <small>{{ selectedSubcontract.approvedDeliverables }}/{{ selectedSubcontract.totalDeliverables }} livrables validés</small>
+        </div>
+      </section>
+
+      <section class="detail-info-grid">
+        <article class="detail-info-item">
+          <span class="detail-label">Projet</span>
+          <p>{{ selectedSubcontract.projectTitle }}</p>
+        </article>
+        <article class="detail-info-item">
+          <span class="detail-label">Freelancer</span>
+          <p>{{ selectedSubcontract.mainFreelancerName }} <span class="arrow">→</span> {{ selectedSubcontract.subcontractorName }}</p>
+        </article>
+        <article class="detail-info-item detail-info-item-full">
+          <span class="detail-label">Scope</span>
+          <p>{{ selectedSubcontract.scope || 'Non défini' }}</p>
+        </article>
+      </section>
+
+      @if (selectedSubcontract.rejectionReason) {
+        <section class="detail-warning">
+          <strong>Raison de rejet</strong>
+          <p>{{ selectedSubcontract.rejectionReason }}</p>
+        </section>
+      }
+      @if (selectedSubcontract.cancellationReason) {
+        <section class="detail-warning">
+          <strong>Raison d'annulation</strong>
+          <p>{{ selectedSubcontract.cancellationReason }}</p>
+        </section>
+      }
+
+      <section class="deliverables-section">
+        <h4>Livrables ({{ selectedSubcontract.deliverables.length }})</h4>
+        @if (selectedSubcontract.deliverables.length === 0) {
+          <div class="deliverables-empty">
+            Aucun livrable défini pour cette sous-traitance.
+          </div>
+        } @else {
+          @for (d of selectedSubcontract.deliverables; track d.id) {
+            <article class="deliverable-card" [class.overdue]="d.overdue">
+              <div class="deliverable-main">
+                <span class="del-title">{{ d.title }}</span>
+                <span class="badge" [class]="statusClass(d.status)">{{ d.status }}</span>
+              </div>
+              <div class="deliverable-meta">
+                @if (d.deadline) { <span class="del-deadline">📅 {{ d.deadline }}</span> }
+                @if (d.overdue) { <span class="overdue-tag">EN RETARD</span> }
+              </div>
+            </article>
+          }
         }
-      </div>
-    </div>
+      </section>
+    </aside>
   }
 </div>

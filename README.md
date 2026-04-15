@@ -70,7 +70,7 @@ A microservices-based platform connecting freelancers and clients for project co
 - **Java 17**
 - **Maven 3.8+**
 - **Node.js 18+** and **npm**
-- **MySQL 8** — repos use `localhost:3306` and/or `3307` depending on the service (see [Documentation/services-and-ports.md](Documentation/services-and-ports.md))
+- **MySQL 8** — repos use `localhost:3307` (see [Documentation/services-and-ports.md](Documentation/services-and-ports.md))
 - **Keycloak** (standalone) on `localhost:8080` with realm `smart-freelance`
 
 ### Service Ports
