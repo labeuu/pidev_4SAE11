@@ -80,6 +80,7 @@ spring:
             - Path=/planning/**
           filters:
             - StripPrefix=1
+            - SetRequestHeader=X-Internal-Gateway,true
           metadata:
             response-timeout: 30000
             connect-timeout: 5000
@@ -178,6 +179,7 @@ spring:
             - Path=/task/api/tasks/ai/**
           filters:
             - StripPrefix=1
+            - SetRequestHeader=X-Internal-Gateway,true
           metadata:
             response-timeout: 14400000
             connect-timeout: 30000
@@ -189,6 +191,7 @@ spring:
             - Path=/task/**
           filters:
             - StripPrefix=1
+            - SetRequestHeader=X-Internal-Gateway,true
 
         # AImodel (local IntelliJ default 8095; use lb://AIMODEL if you prefer Eureka-only)
         - id: aimodel
