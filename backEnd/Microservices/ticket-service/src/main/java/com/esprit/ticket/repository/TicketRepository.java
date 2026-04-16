@@ -1,35 +1,16 @@
 package com.esprit.ticket.repository;
 
-import com.esprit.ticket.domain.TicketPriority;
 import com.esprit.ticket.domain.TicketStatus;
 import com.esprit.ticket.entity.Ticket;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.jpa.repository.Query;
-import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-public interface TicketRepository extends JpaRepository<Ticket, Long> {
-
-    @Query(
-            """
-            SELECT t FROM Ticket t
-            WHERE (:priority IS NULL OR t.priority = :priority)
-            ORDER BY CASE WHEN t.reopenCount > 0 THEN 0 ELSE 1 END ASC,
-                     COALESCE(t.lastReopenedAt, t.lastActivityAt) DESC
-            """)
-    List<Ticket> findAllForAdmin(@Param("priority") TicketPriority priority);
-
-    @Query(
-            """
-            SELECT t FROM Ticket t
-            WHERE t.userId = :userId AND (:priority IS NULL OR t.priority = :priority)
-            ORDER BY CASE WHEN t.reopenCount > 0 THEN 0 ELSE 1 END ASC,
-                     COALESCE(t.lastReopenedAt, t.lastActivityAt) DESC
-            """)
-    List<Ticket> findByUserIdForList(@Param("userId") Long userId, @Param("priority") TicketPriority priority);
+public interface TicketRepository extends JpaRepository<Ticket, Long>, JpaSpecificationExecutor<Ticket> {
 
     List<Ticket> findByStatusAndLastActivityAtBefore(TicketStatus status, LocalDateTime before);
 

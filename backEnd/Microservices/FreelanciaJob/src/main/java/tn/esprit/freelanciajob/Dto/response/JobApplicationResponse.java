@@ -12,6 +12,9 @@ public class JobApplicationResponse {
     private Long jobId;
     private String jobTitle;
     private Long freelancerId;
+    /** Resolved via USER service for client-facing lists (may be null if user service unavailable). */
+    private String freelancerFirstName;
+    private String freelancerLastName;
     private String proposalMessage;
     private BigDecimal expectedRate;
     private LocalDate availabilityStart;

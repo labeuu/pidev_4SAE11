@@ -28,7 +28,7 @@ public interface JobRepository extends JpaRepository<Job, Long>, JpaSpecificatio
     List<Job> searchJobs(
         @Param("keyword") String keyword,
         @Param("category") String category,
-        @Param("locationType") String locationType,
+        @Param("locationType") tn.esprit.freelanciajob.Entity.Enums.LocationType locationType,
         @Param("budgetMin") java.math.BigDecimal budgetMin,
         @Param("budgetMax") java.math.BigDecimal budgetMax
     );

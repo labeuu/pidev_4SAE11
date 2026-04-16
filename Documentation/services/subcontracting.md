@@ -4,7 +4,7 @@
 
 - **Folder**: `backEnd/Microservices/Subcontracting`
 - **Application name**: `SUBCONTRACTING`
-- **Port**: `8099` (from Config Server)
+- **Port**: `8110` (from Config Server)
 - **Gateway prefix**: `/subcontracting`
 - **Primary datastore**: MySQL `gestion_subcontracting_db`
 
@@ -20,7 +20,7 @@ This service handles subcontracting workflows and communicates with other servic
 
 1. Start Eureka (`8420`)
 2. Start Config Server (`8888`)
-3. Start Subcontracting service (`8099`)
+3. Start Subcontracting service (`8110`)
 4. Access through Gateway: `http://localhost:8078/subcontracting/...`
 
 ## Related docs

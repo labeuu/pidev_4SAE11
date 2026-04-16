@@ -6,15 +6,26 @@
           <span class="ticket-detail-meta__label">Requester</span>
           {{ ownerLabel }}
         </div>
+        <div class="ticket-detail-meta" *ngIf="t.assignedAdminId">
+          <span class="ticket-detail-meta__label">Assigned to</span>
+          {{ t.assignedAdminName || ('Admin #' + t.assignedAdminId) }}
+        </div>
         <h1 class="ticket-detail-title">{{ t.subject }}</h1>
         <div class="ticket-detail-badges">
           <span [ngClass]="badgeStatusClasses(t.status)">{{ t.status }}</span>
           <span [ngClass]="badgePriorityClasses(t.priority)">{{ t.priority }}</span>
           <span class="ticket-detail-activity">Last activity: {{ t.lastActivityAt | date : 'medium' }}</span>
+          <span class="ticket-detail-activity" *ngIf="lastUpdatedAt">Live updated: {{ lastUpdatedAt | date : 'shortTime' }}</span>
+        </div>
+        <div class="ticket-detail-meta">
+          <span class="ticket-detail-meta__label">Next action</span>
+          {{ adminNextAction(t) }}
         </div>
       </div>
       <div class="ticket-detail-hero__actions">
         <a class="ticket-detail-btn-secondary" routerLink="/admin/tickets">Back</a>
+        <button type="button" class="ticket-detail-btn-secondary" *ngIf="!t.assignedAdminId" (click)="assignToMe()">Claim</button>
+        <button type="button" class="ticket-detail-btn-secondary" *ngIf="t.assignedAdminId" (click)="unassign()">Unassign</button>
         <button
           type="button"
           class="ticket-detail-btn-secondary"
@@ -75,6 +86,22 @@
           </div>
         </div>
         <p *ngIf="replies.length === 0" class="ticket-detail-chat__empty">No replies yet.</p>
+      </div>
+    </section>
+
+    <section class="ticket-detail-chat" aria-label="Ticket timeline">
+      <div class="ticket-detail-chat__head">
+        <span class="ticket-detail-chat__label">Timeline</span>
+      </div>
+      <div class="ticket-detail-chat__body">
+        <div *ngFor="let event of timeline(t)" class="ticket-bubble-row">
+          <div class="ticket-bubble">
+            <div class="ticket-bubble__meta">
+              <span class="ticket-bubble__sender">{{ event.label }}</span>
+              <span class="ticket-bubble__time">{{ event.date ? (event.date | date : 'short') : 'Not yet' }}</span>
+            </div>
+          </div>
+        </div>
       </div>
     </section>
 

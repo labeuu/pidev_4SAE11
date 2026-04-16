@@ -6,6 +6,7 @@ import com.esprit.ticket.domain.TicketPriority;
 import com.esprit.ticket.domain.TicketStatus;
 import com.esprit.ticket.dto.ticket.CreateTicketRequest;
 import com.esprit.ticket.dto.ticket.MonthlyTicketCount;
+import com.esprit.ticket.dto.ticket.TicketPageResponse;
 import com.esprit.ticket.dto.ticket.TicketResponse;
 import com.esprit.ticket.dto.ticket.TicketStatsResponse;
 import com.esprit.ticket.dto.ticket.TicketUnreadCountEntry;
@@ -18,6 +19,11 @@ import com.esprit.ticket.repository.TicketRepository;
 import com.esprit.ticket.security.CurrentUserService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -26,6 +32,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 
 import static org.springframework.http.HttpStatus.*;
 
@@ -88,8 +95,23 @@ public class TicketService {
 
     @PreAuthorize("hasRole('ADMIN')")
     @Transactional(readOnly = true)
-    public List<TicketResponse> getAll(TicketPriority priority) {
-        return ticketRepository.findAllForAdmin(priority).stream().map(this::toResponse).toList();
+    public TicketPageResponse getAll(
+            TicketPriority priority,
+            TicketStatus status,
+            String q,
+            String sortBy,
+            String sortDir,
+            int page,
+            int size) {
+        Pageable pageable = buildPageable(sortBy, sortDir, page, size);
+        Specification<Ticket> spec = buildListSpecification(null, priority, status, q);
+        Page<Ticket> result = ticketRepository.findAll(spec, pageable);
+        return new TicketPageResponse(
+                result.getContent().stream().map(this::toResponse).toList(),
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalPages(),
+                result.getTotalElements());
     }
 
     @Transactional(readOnly = true)
@@ -100,12 +122,28 @@ public class TicketService {
     }
 
     @Transactional(readOnly = true)
-    public List<TicketResponse> getByUserId(Long userId, TicketPriority priority) {
+    public TicketPageResponse getByUserId(
+            Long userId,
+            TicketPriority priority,
+            TicketStatus status,
+            String q,
+            String sortBy,
+            String sortDir,
+            int page,
+            int size) {
         Long currentUserId = currentUserService.requireCurrentUserId();
         if (!currentUserService.isAdmin() && !currentUserId.equals(userId)) {
             throw new ResponseStatusException(FORBIDDEN, "Not allowed");
         }
-        return ticketRepository.findByUserIdForList(userId, priority).stream().map(this::toResponse).toList();
+        Pageable pageable = buildPageable(sortBy, sortDir, page, size);
+        Specification<Ticket> spec = buildListSpecification(userId, priority, status, q);
+        Page<Ticket> result = ticketRepository.findAll(spec, pageable);
+        return new TicketPageResponse(
+                result.getContent().stream().map(this::toResponse).toList(),
+                result.getNumber(),
+                result.getSize(),
+                result.getTotalPages(),
+                result.getTotalElements());
     }
 
     @Transactional
@@ -171,6 +209,30 @@ public class TicketService {
         t = ticketRepository.save(t);
         ticketNotificationService.notifyTicketReopened(t);
         return toResponse(t);
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public TicketResponse assignToCurrentAdmin(Long id) {
+        Ticket t = ticketRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Ticket", id));
+        Long adminId = currentUserService.requireCurrentUserId();
+        String adminEmail = currentUserService.requireCurrentEmail();
+        t.setAssignedAdminId(adminId);
+        t.setAssignedAdminName(adminEmail);
+        t.setAssignedAt(LocalDateTime.now());
+        t.setLastActivityAt(LocalDateTime.now());
+        return toResponse(ticketRepository.save(t));
+    }
+
+    @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
+    public TicketResponse unassign(Long id) {
+        Ticket t = ticketRepository.findById(id).orElseThrow(() -> new EntityNotFoundException("Ticket", id));
+        t.setAssignedAdminId(null);
+        t.setAssignedAdminName(null);
+        t.setAssignedAt(null);
+        t.setLastActivityAt(LocalDateTime.now());
+        return toResponse(ticketRepository.save(t));
     }
 
     @Transactional
@@ -259,6 +321,44 @@ public class TicketService {
         return TicketPriority.MEDIUM;
     }
 
+    private Pageable buildPageable(String sortBy, String sortDir, int page, int size) {
+        int safePage = Math.max(page, 0);
+        int safeSize = Math.min(Math.max(size, 1), 100);
+        String normalizedSortBy = sortBy == null ? "lastActivityAt" : sortBy.trim();
+        String sortField = switch (normalizedSortBy) {
+            case "createdAt" -> "createdAt";
+            case "updatedAt", "lastActivityAt" -> "lastActivityAt";
+            case "priority" -> "priority";
+            default -> "lastActivityAt";
+        };
+        Sort.Direction direction = "asc".equalsIgnoreCase(sortDir) ? Sort.Direction.ASC : Sort.Direction.DESC;
+        return PageRequest.of(safePage, safeSize, Sort.by(direction, sortField));
+    }
+
+    private Specification<Ticket> buildListSpecification(
+            Long userId,
+            TicketPriority priority,
+            TicketStatus status,
+            String q) {
+        return (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            if (userId != null) {
+                predicates.add(cb.equal(root.get("userId"), userId));
+            }
+            if (priority != null) {
+                predicates.add(cb.equal(root.get("priority"), priority));
+            }
+            if (status != null) {
+                predicates.add(cb.equal(root.get("status"), status));
+            }
+            if (q != null && !q.trim().isEmpty()) {
+                String like = "%" + q.toLowerCase(Locale.ROOT) + "%";
+                predicates.add(cb.like(cb.lower(root.get("subject")), like));
+            }
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+    }
+
     private TicketResponse toResponse(Ticket t) {
         boolean canReopen = t.getStatus() == TicketStatus.CLOSED && t.getReopenCount() < 1;
         return new TicketResponse(
@@ -267,6 +367,9 @@ public class TicketService {
                 t.getSubject(),
                 t.getStatus(),
                 t.getPriority(),
+                t.getAssignedAdminId(),
+                t.getAssignedAdminName(),
+                t.getAssignedAt(),
                 t.getCreatedAt(),
                 t.getLastActivityAt(),
                 t.getFirstResponseAt(),

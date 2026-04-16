@@ -4,7 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import tn.esprit.gamification.client.NotificationClient;
-import tn.esprit.gamification.dto.NotificationRequestDto;
+import tn.esprit.gamification.Dto.NotificationRequestDto;
 
 import java.util.Map;
 

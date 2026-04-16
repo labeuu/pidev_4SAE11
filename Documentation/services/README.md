@@ -18,7 +18,7 @@ Naming in the first column matches the product/feature name; the **Doc** column 
 | Gamification | [gamification.md](gamification.md) | 8088 | `/gamification` |
 | Vendor | [vendor.md](vendor.md) | 8093 | `/vendor` |
 | Ticket service | [ticket-service.md](ticket-service.md) | 8094 | `/ticket` |
-| Subcontracting | [subcontracting.md](subcontracting.md) | 8099 | `/subcontracting` |
+| Subcontracting | [subcontracting.md](subcontracting.md) | 8110 | `/subcontracting` |
 | AImodel (Spring Boot + Ollama) | [AImodel.md](AImodel.md) | 8095 | `/aimodel` |
 | FreelanciaJob | [freelanciajob.md](freelanciajob.md) | 8097 | _No gateway route configured_ |
 | Chat | [chat.md](chat.md) | 8096 | _No gateway route configured_ |

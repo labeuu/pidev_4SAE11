@@ -5,11 +5,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import lombok.extern.slf4j.Slf4j;
+import tn.esprit.meeting.client.ContractClient;
+import tn.esprit.meeting.client.ProjectClient;
 import tn.esprit.meeting.dto.*;
 import tn.esprit.meeting.enums.MeetingStatus;
 import tn.esprit.meeting.service.MeetingService;
 
+import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * All endpoints receive the caller's identity via the X-User-Id header,
@@ -18,9 +24,12 @@ import java.util.List;
 @RestController
 @RequestMapping("/api/meetings")
 @RequiredArgsConstructor
+@Slf4j
 public class MeetingController {
 
     private final MeetingService meetingService;
+    private final ProjectClient projectClient;
+    private final ContractClient contractClient;
 
     // ── Create ────────────────────────────────────────────────────────────────
 
@@ -57,6 +66,54 @@ public class MeetingController {
             @RequestHeader("X-User-Id") Long userId,
             @RequestParam MeetingStatus status) {
         return ResponseEntity.ok(meetingService.getMeetingsByStatus(userId, status));
+    }
+
+    @GetMapping("/stats")
+    public ResponseEntity<?> getStats(
+            @RequestHeader("X-User-Id") Long userId) {
+        return ResponseEntity.ok(meetingService.getMeetingStats(userId));
+    }
+
+    @GetMapping("/my-projects")
+    public ResponseEntity<List<ProjectDto>> getMyProjects(
+            @RequestHeader("X-User-Id") Long userId) {
+        Map<Long, ProjectDto> byId = new LinkedHashMap<>();
+        try {
+            for (ProjectDto p : projectClient.getProjectsByClient(userId)) {
+                if (p != null && p.getId() != null) {
+                    byId.putIfAbsent(p.getId(), p);
+                }
+            }
+        } catch (Exception e) {
+            log.error("[MeetingService] Failed to fetch projects (client) for userId={}: {}", userId, e.getMessage());
+        }
+        try {
+            for (ProjectDto p : projectClient.getProjectsByFreelancer(userId)) {
+                if (p != null && p.getId() != null) {
+                    byId.putIfAbsent(p.getId(), p);
+                }
+            }
+        } catch (Exception e) {
+            log.error("[MeetingService] Failed to fetch projects (freelancer) for userId={}: {}", userId, e.getMessage());
+        }
+        return ResponseEntity.ok(new ArrayList<>(byId.values()));
+    }
+
+    @GetMapping("/my-contracts")
+    public ResponseEntity<List<ContractDto>> getMyContracts(
+            @RequestHeader("X-User-Id") Long userId) {
+        List<ContractDto> result = new ArrayList<>();
+        try {
+            result.addAll(contractClient.getContractsByClient(userId));
+        } catch (Exception e) {
+            log.error("[MeetingService] Failed to fetch contracts (client) for userId={}: {}", userId, e.getMessage());
+        }
+        try {
+            result.addAll(contractClient.getContractsByFreelancer(userId));
+        } catch (Exception e) {
+            log.error("[MeetingService] Failed to fetch contracts (freelancer) for userId={}: {}", userId, e.getMessage());
+        }
+        return ResponseEntity.ok(result);
     }
 
     // ── Update ────────────────────────────────────────────────────────────────

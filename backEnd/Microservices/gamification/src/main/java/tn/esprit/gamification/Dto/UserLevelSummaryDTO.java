@@ -30,4 +30,5 @@ public class UserLevelSummaryDTO {
 
     private boolean isTopFreelancer;
     private int fastResponderStreak;
+    private int activeStreak; // 🆕
 }

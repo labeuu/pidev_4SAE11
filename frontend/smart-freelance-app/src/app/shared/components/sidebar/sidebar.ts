@@ -1,5 +1,5 @@
-import { Component, Input, signal, inject } from '@angular/core';
-import { RouterLink, RouterLinkActive, Router } from '@angular/router';
+import { Component, Input } from '@angular/core';
+import { RouterLink, RouterLinkActive } from '@angular/router';
 import { CommonModule } from '@angular/common';
 import { AuthService } from '../../../core/services/auth.service';
 
@@ -106,6 +106,7 @@ export class Sidebar {
           { label: 'Evaluations',    route: '/admin/evaluations',    icon: 'evaluations'    },
           { label: 'Reviews',        route: '/admin/reviews',        icon: 'reviews'        },
           { label: 'Contract Stats', route: '/admin/contract-stats', icon: 'contract-stats' },
+          { label: 'Job Stats',      route: '/admin/job-stats',      icon: 'skill-stats'    },
         ]
       },
       {
@@ -129,16 +130,20 @@ export class Sidebar {
         ...commonItems,
         { label: 'Browse Freelancers',    route: '/dashboard/browse-freelancers',    icon: 'search'    },
         { label: 'Browse Offers',         route: '/dashboard/browse-offers',         icon: 'offers'    },
+        { label: 'Browse Freelancia Jobs', route: '/dashboard/browse-freelancia-jobs', icon: 'offers' },
         { label: 'My Offer Applications', route: '/dashboard/my-offer-applications', icon: 'contracts' },
         { label: 'Post a Job',            route: '/dashboard/post-job',              icon: 'add'       },
+        { label: 'My Freelancia Jobs',    route: '/dashboard/my-jobs',               icon: 'folder'    },
+        { label: 'Post Freelancia Job',   route: '/dashboard/my-jobs/add',           icon: 'add'       },
         { label: 'My Projects',           route: '/dashboard/my-projects',           icon: 'folder'    },
         { label: 'My Reviews',            route: '/dashboard/reviews',               icon: 'star'      },
         { label: 'Reviews about me',      route: '/dashboard/reviews/about-me',      icon: 'chat'      },
         { label: 'My Contracts',          route: '/dashboard/my-contracts',          icon: 'contracts' },
         { label: 'Track Progress',        route: '/dashboard/track-progress',        icon: 'chart'     },
-          { label: 'Messages',              route: '/dashboard/messages',              icon: 'chat'      },
-          { label: 'Support',               route: '/dashboard/tickets',               icon: 'support'   },
-          { label: 'Notifications',         route: '/dashboard/notifications',         icon: 'bell'      },
+        { label: 'Meetings',              route: '/dashboard/meetings',              icon: 'planning'  },
+        { label: 'Chat',                  route: '/dashboard/messages',              icon: 'chat'      },
+        { label: 'Support',               route: '/dashboard/tickets',               icon: 'support'   },
+        { label: 'Notifications',         route: '/dashboard/notifications',         icon: 'bell'      },
         { label: 'Profile',               route: '/dashboard/profile',               icon: 'user'      },
         { label: 'Settings',              route: '/dashboard/settings',              icon: 'settings'  },
       ];
@@ -148,8 +153,10 @@ export class Sidebar {
       return [
         ...commonItems,
         { label: 'My Offers',          route: '/dashboard/my-offers',         icon: 'offers'     },
-        { label: 'Browse Jobs',        route: '/dashboard/browse-jobs',       icon: 'search'     },
+        { label: 'Browse Projects',    route: '/dashboard/browse-jobs',       icon: 'search'     },
+        { label: 'Browse Freelancia Jobs', route: '/dashboard/browse-freelancia-jobs', icon: 'offers' },
         { label: 'My Applications',    route: '/dashboard/my-applications',   icon: 'contracts'  },
+        { label: 'My Job Applications', route: '/dashboard/my-job-applications', icon: 'contracts' },
         { label: 'My Reviews',         route: '/dashboard/reviews',           icon: 'star'       },
         { label: 'Reviews about me',   route: '/dashboard/reviews/about-me', icon: 'chat'       },
         { label: 'My Contracts',       route: '/dashboard/my-contracts',     icon: 'contracts'  },
@@ -157,7 +164,8 @@ export class Sidebar {
         { label: 'Subcontractor Work', route: '/dashboard/subcontractor-work', icon: 'subcontracts' },
         { label: 'My Progress Updates',route: '/dashboard/progress-updates', icon: 'chart'      },
         { label: 'My Portfolio',       route: '/dashboard/my-portfolio',     icon: 'portfolio'  },
-        { label: 'Messages',           route: '/dashboard/messages',         icon: 'chat'       },
+        { label: 'Meetings',           route: '/dashboard/meetings',         icon: 'planning'   },
+        { label: 'Chat',               route: '/dashboard/messages',         icon: 'chat'       },
         { label: 'Support',            route: '/dashboard/tickets',          icon: 'support'    },
         { label: 'Notifications',      route: '/dashboard/notifications',    icon: 'bell'       },
         { label: 'Profile',            route: '/dashboard/profile',          icon: 'user'       },

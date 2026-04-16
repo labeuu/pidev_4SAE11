@@ -35,4 +35,7 @@ public interface IProjectService {
 
     Map<String, Object> getProjectStatistics();
     byte[] exportProjectsToPdf();
+
+    long countCompletedProjectsByFreelancer(Long freelancerId);
+    long countCreatedProjectsByClient(Long clientId);
 }

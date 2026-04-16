@@ -1,4 +1,4 @@
-import { Component, ChangeDetectorRef, OnInit } from '@angular/core';
+import { Component, ChangeDetectorRef, OnDestroy, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
@@ -10,6 +10,7 @@ import { ToastService } from '../../../../core/services/toast.service';
 import { toastSuccessWithOptionalFilterNote } from '../../../../core/utils/content-sanitized-notice.util';
 import { messageFromHttpError } from '../../../../core/utils/http-error.util';
 import { finalize } from 'rxjs/operators';
+import { Subscription, interval } from 'rxjs';
 
 @Component({
   selector: 'app-ticket-detail',
@@ -18,7 +19,7 @@ import { finalize } from 'rxjs/operators';
   templateUrl: './ticket-detail.html',
   styleUrl: './ticket-detail.scss',
 })
-export class TicketDetail implements OnInit {
+export class TicketDetail implements OnInit, OnDestroy {
   ticket: Ticket | null = null;
   replies: TicketReply[] = [];
   loading = true;
@@ -31,16 +32,18 @@ export class TicketDetail implements OnInit {
   editForm: FormGroup;
   savingEdit = false;
   deletingReplyId: number | null = null;
+  lastUpdatedAt: Date | null = null;
+  private pollSub?: Subscription;
 
   constructor(
-    private route: ActivatedRoute,
-    private router: Router,
-    private fb: FormBuilder,
-    private ticketService: TicketService,
-    private replyService: ReplyService,
-    private auth: AuthService,
-    private toast: ToastService,
-    private cdr: ChangeDetectorRef
+    private readonly route: ActivatedRoute,
+    private readonly router: Router,
+    private readonly fb: FormBuilder,
+    private readonly ticketService: TicketService,
+    private readonly replyService: ReplyService,
+    private readonly auth: AuthService,
+    private readonly toast: ToastService,
+    private readonly cdr: ChangeDetectorRef
   ) {
     this.replyForm = this.fb.group({
       message: ['', [Validators.required, Validators.maxLength(2000)]],
@@ -57,10 +60,21 @@ export class TicketDetail implements OnInit {
       return;
     }
     this.load(id);
+    this.pollSub = interval(8000).subscribe(() => {
+      if (!document.hidden && this.ticket?.id) {
+        this.load(this.ticket.id, false);
+      }
+    });
   }
 
-  load(id: number): void {
-    this.loading = true;
+  ngOnDestroy(): void {
+    this.pollSub?.unsubscribe();
+  }
+
+  load(id: number, showLoading = true): void {
+    if (showLoading) {
+      this.loading = true;
+    }
     this.errorMessage = '';
     this.ticketService.getById(id).subscribe({
       next: (t) => {
@@ -87,6 +101,7 @@ export class TicketDetail implements OnInit {
           .pipe(
             finalize(() => {
               this.loading = false;
+              this.lastUpdatedAt = new Date();
               this.updateReplyFormDisabledState();
               this.cdr.detectChanges();
             })
@@ -109,7 +124,7 @@ export class TicketDetail implements OnInit {
         this.ticket = t;
         this.updateReplyFormDisabledState();
         this.toast.success('Ticket reopened.');
-        this.load(this.ticket.id);
+        this.load(this.ticket.id, false);
       },
       error: (err: unknown) => {
         this.errorMessage = messageFromHttpError(err, 'Could not reopen ticket.');
@@ -134,7 +149,7 @@ export class TicketDetail implements OnInit {
         this.replyForm.reset({ message: '' });
         this.updateReplyFormDisabledState();
         toastSuccessWithOptionalFilterNote(this.toast, msg, reply.message, 'Reply sent.');
-        this.load(this.ticket!.id);
+        this.load(this.ticket!.id, false);
       },
       error: (err: unknown) => {
         this.sending = false;
@@ -184,7 +199,7 @@ export class TicketDetail implements OnInit {
         this.savingEdit = false;
         this.editingReplyId = null;
         toastSuccessWithOptionalFilterNote(this.toast, msg, updated.message, 'Reply updated.');
-        if (this.ticket?.id) this.load(this.ticket.id);
+        if (this.ticket?.id) this.load(this.ticket.id, false);
       },
       error: (err: unknown) => {
         this.savingEdit = false;
@@ -202,7 +217,7 @@ export class TicketDetail implements OnInit {
       next: () => {
         this.deletingReplyId = null;
         this.toast.success('Reply deleted.');
-        if (this.ticket?.id) this.load(this.ticket.id);
+        if (this.ticket?.id) this.load(this.ticket.id, false);
       },
       error: (err: unknown) => {
         this.deletingReplyId = null;
@@ -233,5 +248,22 @@ export class TicketDetail implements OnInit {
   isMine(r: TicketReply): boolean {
     const myId = this.auth.getUserId();
     return myId != null && r.authorUserId === myId;
+  }
+
+  timeline(t: Ticket): Array<{ label: string; date?: string | null }> {
+    return [
+      { label: 'Created', date: t.createdAt },
+      { label: 'First support response', date: t.firstResponseAt },
+      { label: 'Last activity', date: t.lastActivityAt },
+      { label: 'Resolved', date: t.resolvedAt },
+    ];
+  }
+
+  userNextAction(t: Ticket): string {
+    if (t.status === 'CLOSED') {
+      return t.canReopen ? 'Reopen this ticket if your issue is still unresolved.' : 'This thread is closed.';
+    }
+    if (!t.firstResponseAt) return 'Support has not replied yet. Add more details if needed.';
+    return 'Reply with extra details if support requested more information.';
   }
 }

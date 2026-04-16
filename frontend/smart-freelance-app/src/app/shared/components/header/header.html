@@ -43,7 +43,15 @@
                 </a>
                 <a routerLink="/dashboard/browse-jobs" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
                   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><circle cx="9" cy="9" r="5" stroke="currentColor" stroke-width="1.4"/><path d="M16 16l-3-3" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
-                  Browse Jobs
+                  Browse Projects
+                </a>
+                <a routerLink="/dashboard/browse-freelancia-jobs" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 4h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2zM8 4V2m4 2V2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  Browse Freelancia Jobs
+                </a>
+                <a routerLink="/dashboard/my-job-applications" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 4h12a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 8h6M7 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  My Job Applications
                 </a>
                 <a routerLink="/dashboard/my-applications" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
                   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M4 4h12a1 1 0 011 1v10a1 1 0 01-1 1H4a1 1 0 01-1-1V5a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 8h6M7 11h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
@@ -138,6 +146,10 @@
                   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 4h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
                   Browse Offers
                 </a>
+                <a routerLink="/dashboard/browse-freelancia-jobs" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 4h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2zM8 4V2m4 2V2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  Browse Freelancia Jobs
+                </a>
               </div>
             }
           </div>
@@ -156,6 +168,14 @@
             </button>
             @if (activeDropdown() === 'manage') {
               <div class="nav-dropdown" role="menu" aria-label="Manage menu">
+                <a routerLink="/dashboard/my-jobs" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M6 4h8a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V6a2 2 0 012-2zM8 4V2m4 2V2" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/><path d="M7 9h6M7 12h4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  My Freelancia Jobs
+                </a>
+                <a routerLink="/dashboard/my-jobs/add" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
+                  <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M10 4v12M4 10h12" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg>
+                  Post Freelancia Job
+                </a>
                 <a routerLink="/dashboard/my-projects" class="dropdown-link" role="menuitem" (click)="closeDropdown()">
                   <svg viewBox="0 0 20 20" fill="none" aria-hidden="true"><path d="M3 7h14a1 1 0 011 1v8a1 1 0 01-1 1H3a1 1 0 01-1-1V8a1 1 0 011-1z" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"/><path d="M1 7l3-4h12l3 4" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"/></svg>
                   My Projects
@@ -195,6 +215,16 @@
         }
 
         @if (auth.isClient() || auth.isFreelancer()) {
+          <a routerLink="/dashboard/meetings"
+             class="nav-direct"
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{ exact: false }"
+             (click)="closeDropdown()">Meetings</a>
+          <a routerLink="/dashboard/messages"
+             class="nav-direct"
+             routerLinkActive="active"
+             [routerLinkActiveOptions]="{ exact: false }"
+             (click)="closeDropdown()">Chat</a>
           <a routerLink="/dashboard/tickets"
              class="nav-direct"
              routerLinkActive="active"
@@ -467,7 +497,9 @@
           <div class="mobile-section">
             <span class="mobile-section-label">My Work</span>
             <a routerLink="/dashboard/my-offers"       routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Offers</a>
-            <a routerLink="/dashboard/browse-jobs"      routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Browse Jobs</a>
+            <a routerLink="/dashboard/browse-jobs"      routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Browse Projects</a>
+            <a routerLink="/dashboard/browse-freelancia-jobs" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Browse Freelancia Jobs</a>
+            <a routerLink="/dashboard/my-job-applications" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Job Applications</a>
             <a routerLink="/dashboard/my-applications"  routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Applications</a>
             <a routerLink="/dashboard/my-contracts"     routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Contracts</a>
             <a routerLink="/dashboard/my-subcontracts"  routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Subcontracts</a>
@@ -489,9 +521,12 @@
             <span class="mobile-section-label">Find Talent</span>
             <a routerLink="/dashboard/freelancer-search"    routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Search Freelancers</a>
             <a routerLink="/dashboard/browse-offers"        routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Browse Offers</a>
+            <a routerLink="/dashboard/browse-freelancia-jobs" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Browse Freelancia Jobs</a>
           </div>
           <div class="mobile-section">
             <span class="mobile-section-label">Manage</span>
+            <a routerLink="/dashboard/my-jobs"              routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Freelancia Jobs</a>
+            <a routerLink="/dashboard/my-jobs/add"          routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Post Freelancia Job</a>
             <a routerLink="/dashboard/my-projects"          routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Projects</a>
             <a routerLink="/dashboard/my-contracts"         routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">My Contracts</a>
             <a routerLink="/dashboard/project-tasks"        routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Project Tasks</a>
@@ -505,6 +540,8 @@
         <div class="mobile-section">
           <span class="mobile-section-label">Community</span>
           @if (auth.isClient() || auth.isFreelancer()) {
+            <a routerLink="/dashboard/meetings" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Meetings</a>
+            <a routerLink="/dashboard/messages" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Chat</a>
             <a routerLink="/dashboard/tickets" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Support</a>
           }
           <a routerLink="/dashboard/reviews" routerLinkActive="active" class="mobile-nav-item" (click)="dashboardMobileOpen.set(false)">Reviews</a>

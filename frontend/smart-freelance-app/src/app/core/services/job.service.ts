@@ -147,10 +147,7 @@ export class JobService {
   }
 
   createJob(job: Partial<Job>): Observable<Job | null> {
-    return this.http.post<Job>(`${JOB_API}/add`, job).pipe(
-      timeout(REQUEST_TIMEOUT_MS),
-      catchError(() => of(null))
-    );
+    return this.http.post<Job>(`${JOB_API}/add`, job).pipe(timeout(REQUEST_TIMEOUT_MS));
   }
 
   updateJob(id: number, job: Partial<Job>): Observable<Job | null> {
@@ -175,10 +172,7 @@ export class JobService {
   }
 
   generateJobDraft(prompt: string): Observable<GeneratedJobDraft | null> {
-    return this.http.post<GeneratedJobDraft>(`${JOB_API}/generate`, { prompt }).pipe(
-      timeout(30_000),
-      catchError(() => of(null))
-    );
+    return this.http.post<GeneratedJobDraft>(`${JOB_API}/generate`, { prompt }).pipe(timeout(30_000));
   }
 
   /** Server-side filter + pagination via POST /jobs/filter */

@@ -11,9 +11,7 @@
         <module name="Offer" />
         <module name="Portfolio" />
         <module name="apiGateway" />
-        <module name="Subcontracting" />
         <module name="ConfigServer" />
-        <module name="Vendor" />
         <module name="Eureka" />
         <module name="Contract" />
       </profile>
@@ -35,20 +33,7 @@
         </processorPath>
         <module name="meeting" />
       </profile>
-      <profile name="Annotation profile for ticket" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
-        </processorPath>
-        <module name="notification" />
-        <module name="task" />
-        <module name="ticket" />
-        <module name="aimodel" />
-        <module name="review" />
-      </profile>
-      <profile name="Annotation profile for user" enabled="true">
+      <profile name="Annotation profile for gamification" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
@@ -60,6 +45,19 @@
         <module name="KeyCloak" />
         <module name="user" />
         <module name="chat" />
+      </profile>
+      <profile name="Annotation profile for task" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
+        </processorPath>
+        <module name="notification" />
+        <module name="task" />
+        <module name="ticket" />
+        <module name="aimodel" />
+        <module name="review" />
       </profile>
     </annotationProcessing>
   </component>
@@ -74,7 +72,6 @@
       <module name="Portfolio" options="-parameters" />
       <module name="Project" options="-parameters" />
       <module name="Subcontracting" options="-parameters" />
-      <module name="Vendor" options="-parameters" />
       <module name="aimodel" options="-parameters" />
       <module name="apiGateway" options="-parameters" />
       <module name="chat" options="-parameters" />

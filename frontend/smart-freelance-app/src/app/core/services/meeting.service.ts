@@ -4,6 +4,12 @@ import { Observable, catchError, of } from 'rxjs';
 import { environment } from '../../../environments/environment';
 import {
   Meeting,
+  MeetingComment,
+  MeetingStats,
+  MeetingTranscript,
+  MeetingSummary,
+  ProjectDto,
+  ContractDto,
   CreateMeetingRequest,
   UpdateMeetingRequest,
   StatusUpdateRequest,
@@ -64,5 +70,57 @@ export class MeetingService {
 
   complete(id: number): Observable<Meeting> {
     return this.updateStatus(id, { status: 'COMPLETED' });
+  }
+
+  getStats(): Observable<MeetingStats> {
+    return this.http.get<MeetingStats>(`${API}/stats`).pipe(
+      catchError(() => of({ total: 0, pending: 0, accepted: 0, declined: 0, cancelled: 0, completed: 0 }))
+    );
+  }
+
+  // ── Transcript & AI Summary ───────────────────────────────────────────────
+
+  saveTranscript(meetingId: number, content: string): Observable<MeetingTranscript> {
+    return this.http.post<MeetingTranscript>(`${API}/${meetingId}/transcript`, { content });
+  }
+
+  getTranscripts(meetingId: number): Observable<MeetingTranscript[]> {
+    return this.http.get<MeetingTranscript[]>(`${API}/${meetingId}/transcripts`).pipe(catchError(() => of([])));
+  }
+
+  generateSummary(meetingId: number): Observable<MeetingSummary> {
+    return this.http.post<MeetingSummary>(`${API}/${meetingId}/summarize`, {});
+  }
+
+  getSummary(meetingId: number): Observable<MeetingSummary | null> {
+    return this.http.get<MeetingSummary>(`${API}/${meetingId}/summary`).pipe(catchError(() => of(null)));
+  }
+
+  // ── Projects & Contracts (for schedule form dropdowns) ────────────────────
+
+  getMyProjects(): Observable<ProjectDto[]> {
+    return this.http.get<ProjectDto[]>(`${API}/my-projects`).pipe(catchError(() => of([])));
+  }
+
+  getMyContracts(): Observable<ContractDto[]> {
+    return this.http.get<ContractDto[]>(`${API}/my-contracts`).pipe(catchError(() => of([])));
+  }
+
+  // ── Comments ──────────────────────────────────────────────────────────────
+
+  getComments(meetingId: number): Observable<MeetingComment[]> {
+    return this.http.get<MeetingComment[]>(`${API}/${meetingId}/comments`).pipe(catchError(() => of([])));
+  }
+
+  addComment(meetingId: number, userId: number, userName: string, content: string): Observable<MeetingComment> {
+    return this.http.post<MeetingComment>(`${API}/${meetingId}/comments`, { userId, userName, content });
+  }
+
+  updateComment(commentId: number, content: string): Observable<MeetingComment> {
+    return this.http.put<MeetingComment>(`${API}/comments/${commentId}`, { content });
+  }
+
+  deleteComment(commentId: number): Observable<void> {
+    return this.http.delete<void>(`${API}/comments/${commentId}`);
   }
 }

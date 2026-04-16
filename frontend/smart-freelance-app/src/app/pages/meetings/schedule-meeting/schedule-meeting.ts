@@ -2,9 +2,13 @@ import { Component, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { ActivatedRoute, Router, RouterLink } from '@angular/router';
+import { forkJoin, of, catchError } from 'rxjs';
 import { MeetingService } from '../../../core/services/meeting.service';
 import { UserService, User } from '../../../core/services/user.service';
-import { MeetingType } from '../../../core/models/meeting.models';
+import { AuthService } from '../../../core/services/auth.service';
+import { ProjectService } from '../../../core/services/project.service';
+import { ContractService } from '../../../core/services/contract.service';
+import { MeetingType, ProjectDto, ContractDto } from '../../../core/models/meeting.models';
 
 @Component({
   selector: 'app-schedule-meeting',
@@ -15,6 +19,8 @@ import { MeetingType } from '../../../core/models/meeting.models';
 })
 export class ScheduleMeeting implements OnInit {
   freelancers = signal<User[]>([]);
+  projects = signal<ProjectDto[]>([]);
+  contracts = signal<ContractDto[]>([]);
   loading = signal(false);
   submitting = signal(false);
   error = signal<string | null>(null);
@@ -42,6 +48,11 @@ export class ScheduleMeeting implements OnInit {
     contractId: null as number | null,
   };
 
+  get linkedContractTitle(): string {
+    const c = this.contracts().find(c => c.id === this.form.contractId);
+    return c ? c.title : `Contract #${this.form.contractId}`;
+  }
+
   meetingTypes: { value: MeetingType; label: string; icon: string }[] = [
     { value: 'VIDEO_CALL', label: 'Video Call', icon: '📹' },
     { value: 'VOICE_CALL', label: 'Voice Call', icon: '📞' },
@@ -51,6 +62,9 @@ export class ScheduleMeeting implements OnInit {
   constructor(
     private meetingService: MeetingService,
     private userService: UserService,
+    private auth: AuthService,
+    private projectService: ProjectService,
+    private contractService: ContractService,
     private router: Router,
     private route: ActivatedRoute,
   ) {}
@@ -68,6 +82,44 @@ export class ScheduleMeeting implements OnInit {
       this.freelancers.set(users.filter(u => u.role === 'FREELANCER' && u.isActive));
       this.loading.set(false);
     });
+    // Load via Project/Contract APIs through the gateway (same as My Projects / My Contracts pages).
+    // Meeting microservice Feign → Eureka often returns empty when services are not discovered locally.
+    const uid = this.auth.getUserId();
+    if (uid == null) {
+      this.projects.set([]);
+      this.contracts.set([]);
+    } else {
+      forkJoin({
+        asClient: this.projectService.getByClientId(uid).pipe(catchError(() => of([]))),
+        asFreelancer: this.projectService.getProjectsForFreelancer(uid).pipe(catchError(() => of([]))),
+        contractsClient: this.contractService.getByClient(uid).pipe(catchError(() => of([]))),
+        contractsFreelancer: this.contractService.getByFreelancer(uid).pipe(catchError(() => of([]))),
+      }).subscribe(({ asClient, asFreelancer, contractsClient, contractsFreelancer }) => {
+        const projectMap = new Map<number, ProjectDto>();
+        for (const p of [...asClient, ...asFreelancer]) {
+          if (p?.id != null) {
+            projectMap.set(p.id, {
+              id: p.id,
+              title: p.title?.trim() || `Project #${p.id}`,
+              clientId: p.clientId ?? 0,
+            });
+          }
+        }
+        this.projects.set([...projectMap.values()]);
+        const contractMap = new Map<number, ContractDto>();
+        for (const c of [...contractsClient, ...contractsFreelancer]) {
+          if (c?.id != null) {
+            contractMap.set(c.id, {
+              id: c.id,
+              title: c.title?.trim() || `Contract #${c.id}`,
+              clientId: c.clientId,
+              freelancerId: c.freelancerId,
+            });
+          }
+        }
+        this.contracts.set([...contractMap.values()]);
+      });
+    }
   }
 
   minStart(): string {

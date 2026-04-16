@@ -11,6 +11,9 @@ export interface JobApplication {
   jobId: number;
   jobTitle?: string;
   freelancerId: number;
+  /** Set by API when listing applications for a job (from USER service). */
+  freelancerFirstName?: string;
+  freelancerLastName?: string;
   proposalMessage?: string;
   expectedRate?: number;
   availabilityStart?: string;
@@ -130,7 +133,7 @@ export class JobApplicationService {
         }),
         filter(event => event.type === HttpEventType.Response),
         map(event => (event as HttpResponse<ApplyJobResponse>).body),
-        catchError(() => of(null))
+        timeout(REQUEST_TIMEOUT_MS)
       );
   }
 

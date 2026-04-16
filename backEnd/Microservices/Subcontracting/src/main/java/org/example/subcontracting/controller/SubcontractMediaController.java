@@ -20,7 +20,7 @@ public class SubcontractMediaController {
 
     private final SubcontractMediaStorageService storageService;
 
-    @Value("${app.subcontract.media.download-base-url:http://localhost:8094}")
+    @Value("${app.subcontract.media.download-base-url:http://localhost:8110}")
     private String downloadBaseUrl;
 
     /**

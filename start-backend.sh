@@ -176,7 +176,7 @@ start_service "$BACK/Microservices/Subcontracting" "Subcontracting" "Subcontract
 
 wait_for_port 8081 "planning" 120
 wait_for_port 8093 "Vendor" 120
-wait_for_port 8099 "Subcontracting" 120
+wait_for_port 8110 "Subcontracting" 120
 
 wave_banner "Wave C — task (after AI + config peers)"
 start_service "$BACK/Microservices/task" "task" "task.log"

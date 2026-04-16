@@ -12,6 +12,51 @@
     }
   </div>
 
+  <!-- Stats -->
+  @if (stats(); as s) {
+    <div class="stats-section">
+      <!-- Doughnut chart -->
+      <div class="chart-card">
+        <h3 class="chart-title">Meetings by Status</h3>
+        <div class="chart-wrapper">
+          <canvas baseChart
+            [data]="doughnutData"
+            [options]="doughnutOptions"
+            type="doughnut">
+          </canvas>
+          <div class="chart-center-label">
+            <span class="chart-total-num">{{ s.total }}</span>
+            <span class="chart-total-text">Total</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stat cards -->
+      <div class="stats-grid">
+        <div class="stat-card stat-pending" (click)="activeTab.set('PENDING')">
+          <div class="stat-value">{{ s.pending }}</div>
+          <div class="stat-label">⏳ Pending</div>
+        </div>
+        <div class="stat-card stat-accepted" (click)="activeTab.set('ACCEPTED')">
+          <div class="stat-value">{{ s.accepted }}</div>
+          <div class="stat-label">✅ Accepted</div>
+        </div>
+        <div class="stat-card stat-completed" (click)="activeTab.set('COMPLETED')">
+          <div class="stat-value">{{ s.completed }}</div>
+          <div class="stat-label">✔ Completed</div>
+        </div>
+        <div class="stat-card stat-cancelled" (click)="activeTab.set('CANCELLED')">
+          <div class="stat-value">{{ s.cancelled }}</div>
+          <div class="stat-label">🚫 Cancelled</div>
+        </div>
+        <div class="stat-card stat-declined" (click)="activeTab.set('DECLINED')">
+          <div class="stat-value">{{ s.declined }}</div>
+          <div class="stat-label">❌ Declined</div>
+        </div>
+      </div>
+    </div>
+  }
+
   <!-- Tabs -->
   <div class="tab-bar">
     @for (tab of tabs; track tab.value) {

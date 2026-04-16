@@ -1,4 +1,4 @@
-package tn.esprit.gamification.dto;
+package tn.esprit.gamification.Dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;

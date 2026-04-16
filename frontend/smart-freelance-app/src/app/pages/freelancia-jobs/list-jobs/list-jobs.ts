@@ -2,8 +2,8 @@ import { Component, OnInit, OnDestroy } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router, RouterModule } from '@angular/router';
-import { Subject, Subscription } from 'rxjs';
-import { debounceTime, distinctUntilChanged, switchMap } from 'rxjs/operators';
+import { Subject, Subscription, asyncScheduler } from 'rxjs';
+import { debounceTime, distinctUntilChanged, observeOn, switchMap } from 'rxjs/operators';
 import {
   JobService, Job, JobSearchRequest, JobPage, JobStats
 } from '../../../core/services/job.service';
@@ -147,6 +147,7 @@ export class ListJobs implements OnInit, OnDestroy {
     // Main filter stream: switchMap cancels in-flight requests on rapid changes
     this.subscriptions.add(
       this.triggerFilter$.pipe(
+        observeOn(asyncScheduler),
         switchMap(req => {
           this.isLoading = true;
           this.errorMessage = null;

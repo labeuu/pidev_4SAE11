@@ -32,7 +32,7 @@ spring:
           filters: [StripPrefix=1]
 
         - id: user
-          uri: http://user:8090
+          uri: lb://user
           predicates: [Path=/user/**]
           filters: [StripPrefix=1]
 
@@ -42,23 +42,23 @@ spring:
           filters: [StripPrefix=1]
 
         - id: planning
-          uri: http://planning:8081
+          uri: lb://planning
           predicates: [Path=/planning/**]
           filters: [StripPrefix=1]
           metadata: {response-timeout: 30000, connect-timeout: 5000}
 
         - id: review
-          uri: http://review:8085
+          uri: lb://review
           predicates: [Path=/review/**]
           filters: [StripPrefix=1]
 
         - id: project
-          uri: http://project:8084
+          uri: lb://Project
           predicates: [Path=/project/**]
           filters: [StripPrefix=1]
 
         - id: gamification
-          uri: http://gamification:8088
+          uri: lb://gamification
           predicates: [Path=/gamification/**]
           filters: [StripPrefix=1]
 
@@ -68,44 +68,44 @@ spring:
           filters: [StripPrefix=1]
 
         - id: contract
-          uri: http://contract:8083
+          uri: lb://Contract
           predicates: [Path=/contract/**]
           filters: [StripPrefix=1]
 
         - id: notification
-          uri: http://notification:8087
+          uri: lb://notification
           predicates: [Path=/notification/**]
           filters: [StripPrefix=1]
 
         - id: task-ai
-          uri: http://task:8091
+          uri: lb://task
           order: -1
           predicates: [Path=/task/api/tasks/ai/**]
           filters: [StripPrefix=1]
           metadata: {response-timeout: 14400000, connect-timeout: 30000}
 
         - id: task
-          uri: http://task:8091
+          uri: lb://task
           predicates: [Path=/task/**]
           filters: [StripPrefix=1]
 
         - id: meeting
-          uri: http://meeting:8101
+          uri: lb://meeting
           predicates: [Path=/meeting/**]
           filters: [StripPrefix=1]
 
         - id: freelancia-job
-          uri: http://freelancia-job:8097
+          uri: lb://FreelanciaJob
           predicates: [Path=/freelancia-job/**]
           filters: [StripPrefix=1]
 
         - id: chat
-          uri: http://chat:8093
+          uri: lb://chat
           predicates: [Path=/chat/**]
           filters: [StripPrefix=1]
 
         - id: vendor
-          uri: http://vendor:8092
+          uri: lb://vendor
           predicates: [Path=/vendor/**]
           filters: [StripPrefix=1]
           metadata: {response-timeout: 14400000, connect-timeout: 30000}
