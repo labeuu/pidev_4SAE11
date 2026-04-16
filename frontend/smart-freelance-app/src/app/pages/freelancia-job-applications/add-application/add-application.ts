@@ -1,11 +1,14 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { HttpErrorResponse } from '@angular/common/http';
 import { FormBuilder, FormGroup, ReactiveFormsModule, Validators } from '@angular/forms';
 import { ActivatedRoute, Router, RouterModule } from '@angular/router';
 import { JobApplicationService } from '../../../core/services/job-application.service';
-import { JobService, Job } from '../../../core/services/job.service';
+import { JobService, Job, FitScoreResult } from '../../../core/services/job.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
+import { asyncScheduler } from 'rxjs';
+import { observeOn } from 'rxjs/operators';
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -54,6 +57,11 @@ export class AddApplication implements OnInit {
   uploadProgress = 0;
   fileError: string | null = null;
 
+  /** AI profile vs job skills (same API as job details page). */
+  fitScore: FitScoreResult | null = null;
+  isScoringLoading = false;
+  scoringError: string | null = null;
+
   constructor(
     private fb:          FormBuilder,
     private route:       ActivatedRoute,
@@ -73,7 +81,7 @@ export class AddApplication implements OnInit {
       availabilityStart: [''],
     });
 
-    this.jobService.getById(this.jobId).subscribe({
+    this.jobService.getById(this.jobId).pipe(observeOn(asyncScheduler)).subscribe({
       next:  job => { this.job = job; this.isLoading = false; },
       error: ()  => { this.isLoading = false; },
     });
@@ -178,9 +186,21 @@ export class AddApplication implements OnInit {
             this.submitError = 'Failed to submit application. You may have already applied to this job.';
           }
         },
-        error: () => {
+        error: (error: HttpErrorResponse) => {
           this.isSubmitting = false;
-          this.submitError  = 'Failed to submit application. You may have already applied to this job.';
+          if (error.status === 409) {
+            this.submitError = 'You have already applied to this job.';
+            return;
+          }
+          if (error.status === 400) {
+            this.submitError = 'Please check your proposal and optional fields, then try again.';
+            return;
+          }
+          if (error.status === 404) {
+            this.submitError = 'This job was not found or is no longer available.';
+            return;
+          }
+          this.submitError = 'Failed to submit application. Please try again.';
         },
       });
   }
@@ -199,5 +219,30 @@ export class AddApplication implements OnInit {
     if (bytes < 1_024)        return `${bytes} B`;
     if (bytes < 1_048_576)    return `${(bytes / 1_024).toFixed(1)} KB`;
     return `${(bytes / 1_048_576).toFixed(1)} MB`;
+  }
+
+  tierLabel(tier: string): string {
+    return tier?.replaceAll('_', ' ') ?? '';
+  }
+
+  analyzeMyFit(): void {
+    if (!this.job?.id || !this.userId || this.isScoringLoading) return;
+    this.isScoringLoading = true;
+    this.scoringError = null;
+    this.fitScore = null;
+
+    this.jobService.getFitScore(this.job.id, this.userId).subscribe({
+      next: result => {
+        this.fitScore = result;
+        this.isScoringLoading = false;
+        if (!result) {
+          this.scoringError = 'Could not analyse your profile. Please try again.';
+        }
+      },
+      error: () => {
+        this.isScoringLoading = false;
+        this.scoringError = 'Could not analyse your profile. Please try again.';
+      },
+    });
   }
 }

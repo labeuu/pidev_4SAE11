@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
  * Feign client for the User microservice.
  * Used to fetch user email when sending review response notifications.
  */
-@FeignClient(name = "user", url = "${user.service.url:http://localhost:8090}", path = "/api/users")
+@FeignClient(name = "user", path = "/api/users")
 public interface UserClient {
 
     @GetMapping("/{id}")

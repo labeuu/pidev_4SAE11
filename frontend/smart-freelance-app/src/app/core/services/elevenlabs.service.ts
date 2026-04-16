@@ -11,9 +11,14 @@ export class ElevenLabsService {
    * which injects Authorization: Bearer <JWT> — a header ElevenLabs rejects.
    */
   transcribe(audioBlob: Blob): Observable<string> {
+    if (!environment.elevenLabsApiKey?.trim()) {
+      return from(Promise.reject(new Error('ElevenLabs is not configured (set elevenLabsApiKey at build time).')));
+    }
     // ElevenLabs expects the field name "file", not "audio"
     const mimeType = audioBlob.type || 'audio/webm';
-    const ext = mimeType.includes('mp4') ? 'mp4' : mimeType.includes('ogg') ? 'ogg' : 'webm';
+    let ext = 'webm';
+    if (mimeType.includes('mp4')) ext = 'mp4';
+    else if (mimeType.includes('ogg')) ext = 'ogg';
     const file = new File([audioBlob], `recording.${ext}`, { type: mimeType });
 
     const formData = new FormData();

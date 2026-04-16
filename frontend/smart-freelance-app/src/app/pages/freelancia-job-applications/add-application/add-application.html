@@ -1,45 +1,164 @@
-<div class="container py-4" style="max-width:700px">
-  <div class="card border-0 shadow-sm">
+<div class="add-application-page">
 
-    <!-- ── Header ── -->
-    <div class="card-header bg-white border-bottom py-3">
-      <h4 class="fw-bold mb-0">
-        <i class="bi bi-send-fill me-2 text-success"></i>Apply for Job
-      </h4>
+  <!-- Page header -->
+  <div class="page-header">
+    <div class="page-header__text">
+      <a routerLink="/dashboard/browse-freelancia-jobs" class="back-link">
+        <svg viewBox="0 0 20 20" fill="none" aria-hidden="true">
+          <path d="M12 4L6 10l6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+        Back to jobs
+      </a>
+      <h1 class="page-title">Apply for this job</h1>
+      <p class="page-subtitle">Review the role, check how your profile matches, then send your proposal.</p>
     </div>
+  </div>
 
-    <div class="card-body p-4">
+  <!-- Loading -->
+  <div *ngIf="isLoading" class="loading-state">
+    <div class="spinner"></div>
+    <p>Loading job…</p>
+  </div>
 
-      <!-- Loading -->
-      <div *ngIf="isLoading" class="text-center py-4">
-        <div class="spinner-border text-primary"></div>
+  <div *ngIf="!isLoading && !job" class="error-state">We could not load this job. It may have been removed.</div>
+
+  <ng-container *ngIf="!isLoading && job">
+
+    <!-- Job summary -->
+    <section class="job-snippet-card">
+      <div class="job-snippet-card__top">
+        <div class="job-snippet-card__titles">
+          <span *ngIf="job.clientType === 'COMPANY'" class="badge badge--company">
+            {{ job.companyName || 'Company' }}
+          </span>
+          <span *ngIf="job.clientType !== 'COMPANY'" class="badge badge--individual">Individual client</span>
+          <h2 class="job-snippet-card__title">{{ job.title }}</h2>
+        </div>
+        <a class="btn-ghost btn-ghost--compact" [routerLink]="['/dashboard/browse-freelancia-jobs', jobId, 'show']">
+          Full details
+        </a>
+      </div>
+      <div class="job-snippet-card__meta">
+        <span *ngIf="job.category" class="meta-tag">📂 {{ job.category }}</span>
+        <span *ngIf="job.locationType" class="meta-tag">📍 {{ job.locationType }}</span>
+        <span *ngIf="job.budgetMin != null || job.budgetMax != null" class="meta-tag meta-tag--budget">
+          💰 {{ job.budgetMin | number }} – {{ job.budgetMax | number }} {{ job.currency || 'USD' }}
+        </span>
+      </div>
+      <div *ngIf="job.skills?.length" class="job-snippet-card__skills">
+        <span *ngFor="let skill of job.skills" class="skill-pill">{{ skill.name }}</span>
+      </div>
+    </section>
+
+    <!-- Profile match -->
+    <section *ngIf="userId" class="match-card" aria-labelledby="match-heading">
+      <div class="match-card__intro">
+        <div class="match-card__icon-wrap" aria-hidden="true">
+          <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="11" cy="11" r="8"/>
+            <path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/>
+          </svg>
+        </div>
+        <div>
+          <h2 id="match-heading" class="match-card__title">Profile match</h2>
+          <p class="match-card__desc">
+            Compare your portfolio skills and experience to this posting before you write your proposal.
+          </p>
+        </div>
       </div>
 
-      <ng-container *ngIf="!isLoading">
+      <button
+        type="button"
+        class="btn-analyse"
+        (click)="analyzeMyFit()"
+        [disabled]="isScoringLoading">
+        <svg *ngIf="!isScoringLoading" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+          <circle cx="11" cy="11" r="8"/><path d="M21 21l-4.35-4.35M11 8v6M8 11h6"/>
+        </svg>
+        <span *ngIf="!isScoringLoading">Check how I match</span>
+        <span *ngIf="isScoringLoading" class="score-spinner">Analysing your profile…</span>
+      </button>
 
-        <!-- Job summary -->
-        <div *ngIf="job" class="alert alert-light border mb-4">
-          <strong>{{ job.title }}</strong>
-          <span *ngIf="job.clientType === 'COMPANY'" class="badge bg-info text-dark ms-2">
-            <i class="bi bi-building me-1"></i>{{ job.companyName }}
+      <p *ngIf="scoringError" class="scoring-error">{{ scoringError }}</p>
+
+      <div *ngIf="fitScore" class="fit-score-panel">
+        <div class="fit-score-panel__header">
+          <span class="fit-score-panel__title">Your profile match</span>
+          <span
+            class="fit-score-panel__tier"
+            [ngClass]="{
+              'fit-score-panel__tier--strong_match':  fitScore.tier === 'STRONG_MATCH',
+              'fit-score-panel__tier--good_match':    fitScore.tier === 'GOOD_MATCH',
+              'fit-score-panel__tier--partial_match': fitScore.tier === 'PARTIAL_MATCH',
+              'fit-score-panel__tier--low_match':     fitScore.tier === 'LOW_MATCH'
+            }">
+            {{ tierLabel(fitScore.tier) }}
           </span>
-          <p class="mb-0 small text-muted">{{ job.category }} · {{ job.locationType }}</p>
         </div>
+
+        <div class="fit-score-panel__bar-wrap">
+          <div class="fit-score-panel__bar">
+            <div
+              class="fit-score-panel__fill"
+              [style.width.%]="fitScore.score"
+              [ngClass]="{
+                'fit-score-panel__fill--strong':  fitScore.tier === 'STRONG_MATCH',
+                'fit-score-panel__fill--good':    fitScore.tier === 'GOOD_MATCH',
+                'fit-score-panel__fill--partial': fitScore.tier === 'PARTIAL_MATCH',
+                'fit-score-panel__fill--low':     fitScore.tier === 'LOW_MATCH'
+              }">
+            </div>
+          </div>
+          <span class="fit-score-panel__number">{{ fitScore.score }} / 100</span>
+        </div>
+
+        <p class="fit-score-panel__summary">{{ fitScore.summary }}</p>
+
+        <div *ngIf="fitScore.matchedSkills.length" class="fit-score-panel__skills">
+          <span class="fit-score-panel__label">Matched</span>
+          <span *ngFor="let s of fitScore.matchedSkills" class="skill-tag skill-tag--matched">{{ s }}</span>
+        </div>
+
+        <div *ngIf="fitScore.missingSkills.length" class="fit-score-panel__skills">
+          <span class="fit-score-panel__label">Gaps</span>
+          <span *ngFor="let s of fitScore.missingSkills" class="skill-tag skill-tag--missing">{{ s }}</span>
+        </div>
+
+        <ul *ngIf="fitScore.recommendations.length" class="fit-score-panel__recs">
+          <li *ngFor="let r of fitScore.recommendations">{{ r }}</li>
+        </ul>
+      </div>
+    </section>
+
+    <div *ngIf="!userId" class="notice-banner">
+      <i class="bi bi-person-exclamation me-2"></i>
+      Sign in as a freelancer to check your profile match and submit an application.
+    </div>
+
+    <!-- Application form -->
+    <div class="apply-form-card">
+      <div class="apply-form-card__head">
+        <h2 class="apply-form-card__title">
+          <i class="bi bi-send-fill apply-form-card__title-icon"></i>
+          Your application
+        </h2>
+        <p class="apply-form-card__lead">Tell the client why you are the right person for this job.</p>
+      </div>
+
+      <div class="apply-form-card__body">
 
         <!-- Feedback banners -->
-        <div *ngIf="submitSuccess" class="alert alert-success">
+        <div *ngIf="submitSuccess" class="alert alert-success border-0 shadow-sm">
           <i class="bi bi-check-circle me-2"></i>Application submitted! Redirecting…
         </div>
-        <div *ngIf="submitError" class="alert alert-danger">{{ submitError }}</div>
+        <div *ngIf="submitError" class="alert alert-danger border-0">{{ submitError }}</div>
 
-        <!-- ── Form ── -->
         <form [formGroup]="form" (ngSubmit)="onSubmit()" novalidate>
 
-          <!-- Proposal message -->
-          <div class="mb-3">
-            <label class="form-label fw-semibold">Proposal Message *</label>
-            <textarea class="form-control" rows="6" formControlName="proposalMessage"
-                      placeholder="Describe why you're a great fit, your relevant experience, and your approach to this job…">
+          <div class="mb-4">
+            <label class="form-label fw-semibold" for="proposalMessage">Proposal message *</label>
+            <textarea id="proposalMessage" class="form-control form-control-lg rounded-3" rows="6" formControlName="proposalMessage"
+                      placeholder="Describe why you are a strong fit, relevant experience, and how you would approach this work…">
             </textarea>
             <div *ngIf="f('proposalMessage')?.invalid && f('proposalMessage')?.touched"
                  class="text-danger small mt-1">
@@ -47,72 +166,62 @@
             </div>
           </div>
 
-          <!-- Rate + availability -->
-          <div class="row mb-4">
+          <div class="row g-3 mb-4">
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Expected Rate</label>
+              <label class="form-label fw-semibold" for="expectedRate">Expected rate</label>
               <div class="input-group">
-                <input type="number" class="form-control" formControlName="expectedRate" placeholder="500">
-                <span class="input-group-text">{{ job?.currency || 'USD' }}</span>
+                <input id="expectedRate" type="number" class="form-control rounded-start-3" formControlName="expectedRate" placeholder="e.g. 500">
+                <span class="input-group-text rounded-end-3">{{ job.currency || 'USD' }}</span>
               </div>
             </div>
             <div class="col-md-6">
-              <label class="form-label fw-semibold">Available From</label>
-              <input type="date" class="form-control" formControlName="availabilityStart">
+              <label class="form-label fw-semibold" for="availabilityStart">Available from</label>
+              <input id="availabilityStart" type="date" class="form-control rounded-3" formControlName="availabilityStart">
             </div>
           </div>
 
-          <!-- ── File Upload ── -->
+          <!-- File upload -->
           <div class="mb-4">
-            <label class="form-label fw-semibold">
-              Attachments
+            <div class="form-label fw-semibold mb-2">
+              <span id="attachments-label">Attachments</span>
               <span class="text-muted fw-normal small ms-1">(optional · PDF, PNG, JPG, DOC, DOCX · max 10 MB each · up to 5 files)</span>
-            </label>
+            </div>
 
-            <!-- Drop zone -->
             <div class="drop-zone"
+                 aria-labelledby="attachments-label"
                  [class.drop-zone--active]="isDragging"
                  (dragover)="onDragOver($event)"
                  (dragleave)="onDragLeave($event)"
-                 (drop)="onDrop($event)"
-                 (click)="fileInput.click()"
-                 role="button"
-                 tabindex="0"
-                 (keydown.enter)="fileInput.click()">
+                 (drop)="onDrop($event)">
               <i class="bi bi-cloud-upload drop-zone__icon"></i>
-              <p class="drop-zone__text mb-0">
-                Drag &amp; drop files here, or <span class="text-success fw-semibold">click to browse</span>
+              <p class="drop-zone__text mb-2">
+                Drag &amp; drop files here, or
               </p>
+              <button type="button" class="drop-zone__browse" (click)="fileInput.click()">
+                Browse files
+              </button>
             </div>
 
-            <!-- Hidden file input -->
             <input #fileInput type="file" class="d-none" multiple
                    accept=".pdf,.png,.jpg,.jpeg,.doc,.docx"
                    (change)="onFileSelected($event)">
 
-            <!-- File validation error -->
             <div *ngIf="fileError" class="text-danger small mt-2">
               <i class="bi bi-exclamation-triangle me-1"></i>{{ fileError }}
             </div>
 
-            <!-- File previews -->
             <div *ngIf="filePreviews.length > 0" class="mt-3">
               <div class="file-list">
                 <div *ngFor="let p of filePreviews; let i = index" class="file-item">
-
-                  <!-- Image thumbnail -->
                   <img *ngIf="p.isImage && p.dataUrl" [src]="p.dataUrl"
                        class="file-item__thumb" [alt]="p.name">
-                  <!-- Non-image icon -->
                   <div *ngIf="!p.isImage" class="file-item__icon">
                     <i class="bi" [ngClass]="fileIcon(p.type)"></i>
                   </div>
-
                   <div class="file-item__info">
                     <span class="file-item__name" [title]="p.name">{{ p.name }}</span>
                     <span class="file-item__size">{{ formatSize(p.size) }}</span>
                   </div>
-
                   <button type="button" class="btn-close file-item__remove"
                           (click)="removeFile(i)" aria-label="Remove file"></button>
                 </div>
@@ -120,33 +229,29 @@
               <small class="text-muted">{{ filePreviews.length }} / 5 files selected</small>
             </div>
 
-            <!-- Upload progress bar -->
             <div *ngIf="isSubmitting && uploadProgress > 0 && uploadProgress < 100" class="mt-3">
-              <div class="progress" style="height:6px">
+              <div class="progress rounded-pill" style="height:6px">
                 <div class="progress-bar progress-bar-striped progress-bar-animated bg-success"
                      [style.width.%]="uploadProgress"></div>
               </div>
               <small class="text-muted">Uploading… {{ uploadProgress }}%</small>
             </div>
           </div>
-          <!-- /File Upload -->
 
-          <!-- Actions -->
-          <div class="d-flex gap-2">
-            <button type="submit" class="btn btn-success" [disabled]="isSubmitting">
+          <div class="apply-form-card__actions">
+            <button type="submit" class="btn-submit" [disabled]="isSubmitting">
               <span *ngIf="isSubmitting" class="spinner-border spinner-border-sm me-2"></span>
               <i *ngIf="!isSubmitting" class="bi bi-send me-2"></i>
-              {{ isSubmitting ? 'Submitting…' : 'Submit Application' }}
+              {{ isSubmitting ? 'Submitting…' : 'Submit application' }}
             </button>
-            <button type="button" class="btn btn-outline-secondary"
-                    routerLink="/dashboard/browse-freelancia-jobs">
+            <button type="button" class="btn-cancel" routerLink="/dashboard/browse-freelancia-jobs">
               Cancel
             </button>
           </div>
 
         </form>
+      </div>
+    </div>
 
-      </ng-container>
-    </div><!-- /card-body -->
-  </div><!-- /card -->
+  </ng-container>
 </div>

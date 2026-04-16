@@ -9,12 +9,15 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import tn.esprit.freelanciajob.Client.ExperienceClient;
+import tn.esprit.freelanciajob.Client.NotificationClient;
 import tn.esprit.freelanciajob.Client.SkillClient;
 import tn.esprit.freelanciajob.Client.UserClient;
-import tn.esprit.freelanciajob.Client.ExperienceClient;
+import tn.esprit.freelanciajob.Dto.request.NotificationCreateRequest;
 import tn.esprit.freelanciajob.Dto.request.JobRequest;
 import tn.esprit.freelanciajob.Dto.response.UserDto;
 import tn.esprit.freelanciajob.Entity.Job;
@@ -58,6 +61,7 @@ class FreelanciaJobIntegrationTest {
     @MockitoBean private ExperienceClient experienceClient;
     @MockitoBean private EmailService     emailService;
     @MockitoBean private FileStorageService fileStorageService;
+    @MockitoBean private NotificationClient notificationClient;
 
     private ObjectMapper objectMapper;
 
@@ -78,6 +82,8 @@ class FreelanciaJobIntegrationTest {
         lenient().when(userClient.getUsersByRole(any())).thenReturn(List.of());
         lenient().when(skillClient.getSkillsByIds(any())).thenReturn(List.of());
         lenient().when(skillClient.getSkillsByUserId(any())).thenReturn(List.of());
+        lenient().when(notificationClient.create(any(NotificationCreateRequest.class)))
+                .thenReturn(ResponseEntity.ok().build());
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────

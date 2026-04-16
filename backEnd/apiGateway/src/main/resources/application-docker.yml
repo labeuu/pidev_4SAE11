@@ -11,6 +11,8 @@ spring:
     max-in-memory-size: 10MB
   cloud:
     gateway:
+      default-filters:
+        - SetRequestHeader=X-Internal-Gateway,true
       httpclient:
         response-timeout: 4h
         connect-timeout: 30000
@@ -32,7 +34,7 @@ spring:
           filters: [StripPrefix=1]
 
         - id: user
-          uri: http://user:8090
+          uri: lb://USER
           predicates: [Path=/user/**]
           filters: [StripPrefix=1]
 
@@ -42,23 +44,23 @@ spring:
           filters: [StripPrefix=1]
 
         - id: planning
-          uri: http://planning:8081
+          uri: lb://PLANNING
           predicates: [Path=/planning/**]
           filters: [StripPrefix=1]
           metadata: {response-timeout: 30000, connect-timeout: 5000}
 
         - id: review
-          uri: http://review:8085
+          uri: lb://REVIEW
           predicates: [Path=/review/**]
           filters: [StripPrefix=1]
 
         - id: project
-          uri: http://project:8084
+          uri: lb://PROJECT
           predicates: [Path=/project/**]
           filters: [StripPrefix=1]
 
         - id: gamification
-          uri: http://gamification:8088
+          uri: lb://GAMIFICATION
           predicates: [Path=/gamification/**]
           filters: [StripPrefix=1]
 
@@ -68,47 +70,57 @@ spring:
           filters: [StripPrefix=1]
 
         - id: contract
-          uri: http://contract:8083
+          uri: lb://CONTRACT
           predicates: [Path=/contract/**]
           filters: [StripPrefix=1]
 
+        - id: subcontracting
+          uri: lb://SUBCONTRACTING
+          predicates: [Path=/subcontracting/**]
+          filters: [StripPrefix=1]
+
         - id: notification
-          uri: http://notification:8087
+          uri: lb://NOTIFICATION
           predicates: [Path=/notification/**]
           filters: [StripPrefix=1]
 
         - id: task-ai
-          uri: http://task:8091
+          uri: lb://TASK
           order: -1
           predicates: [Path=/task/api/tasks/ai/**]
           filters: [StripPrefix=1]
           metadata: {response-timeout: 14400000, connect-timeout: 30000}
 
         - id: task
-          uri: http://task:8091
+          uri: lb://TASK
           predicates: [Path=/task/**]
           filters: [StripPrefix=1]
 
         - id: meeting
-          uri: http://meeting:8101
+          uri: lb://MEETING
           predicates: [Path=/meeting/**]
           filters: [StripPrefix=1]
 
         - id: freelancia-job
-          uri: http://freelancia-job:8097
+          uri: lb://FREELANCIAJOB
           predicates: [Path=/freelancia-job/**]
           filters: [StripPrefix=1]
 
         - id: chat
-          uri: http://chat:8093
+          uri: lb://CHAT
           predicates: [Path=/chat/**]
           filters: [StripPrefix=1]
 
         - id: vendor
-          uri: http://vendor:8092
+          uri: lb://vendor
           predicates: [Path=/vendor/**]
           filters: [StripPrefix=1]
           metadata: {response-timeout: 14400000, connect-timeout: 30000}
+
+        - id: ticket
+          uri: lb://TICKET-SERVICE
+          predicates: [Path=/ticket/**]
+          filters: [StripPrefix=1]
 
         - id: aimodel
           uri: lb://AIMODEL

@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 /**
  * Feign client for the Project microservice (to resolve project owner / clientId).
  */
-@FeignClient(name = "project", url = "${project.service.url:http://localhost:8084}", path = "/projects")
+@FeignClient(name = "Project", path = "/projects")
 public interface ProjectClient {
 
     @GetMapping("/{id}")

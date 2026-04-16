@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
  * Feign client for the Notification microservice.
  * Creates in-app notifications when clients ask questions on offers.
  */
-@FeignClient(name = "notification", url = "${service.notification.url:http://localhost:8098}", path = "/api/notifications")
+@FeignClient(name = "notification", path = "/api/notifications")
 public interface NotificationClient {
 
     @PostMapping

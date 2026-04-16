@@ -21,11 +21,10 @@ import java.util.List;
  * Used by {@link com.esprit.task.service.TaskAiService#clientStatusBrief} and
  * {@link com.esprit.task.service.TaskStatusProgressBridge}.
  *
- * <p>Base URL: {@code planning.service.url} (e.g. {@code http://localhost:8081}).
+ * <p>Resolved through Eureka with service ID {@code planning}.
  */
 @FeignClient(
         name = "planning",
-        url = "${planning.service.url:http://localhost:8081}",
         contextId = "planningClient")
 public interface PlanningClient {
 

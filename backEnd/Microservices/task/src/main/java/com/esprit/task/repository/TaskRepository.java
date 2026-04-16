@@ -51,6 +51,9 @@ public interface TaskRepository extends JpaRepository<Task, Long>, JpaSpecificat
 
     boolean existsByProjectIdAndAssigneeId(Long projectId, Long assigneeId);
 
+    @Query("SELECT DISTINCT t.projectId FROM Task t WHERE t.assigneeId = :assigneeId AND t.projectId IS NOT NULL")
+    List<Long> findDistinctProjectIdsByAssigneeId(@Param("assigneeId") Long assigneeId);
+
     long countByProjectIdAndStatus(Long projectId, TaskStatus status);
 
     List<Task> findByStatusAndUpdatedAtBefore(TaskStatus status, LocalDateTime before);

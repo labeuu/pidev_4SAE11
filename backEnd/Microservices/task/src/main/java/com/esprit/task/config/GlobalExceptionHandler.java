@@ -85,8 +85,8 @@ public class GlobalExceptionHandler {
         String fm = ex.getMessage();
         if (fm != null) {
             if (fm.contains("Connection refused")) {
-                return "Connection refused to an upstream service. Start the Project microservice (project.service.url, "
-                        + "default port 8084) and AImodel (aimodel.service.url, default 8095).";
+                return "Connection refused to an upstream service. Ensure Eureka can resolve "
+                        + "the Project and AIMODEL services and that both microservices are running.";
             }
             if (fm.toLowerCase().contains("timeout") || fm.contains("timed out")) {
                 return "The AI model service timed out. Ensure Ollama is running and timeouts are high enough.";

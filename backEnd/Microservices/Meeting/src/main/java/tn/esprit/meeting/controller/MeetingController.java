@@ -13,7 +13,9 @@ import tn.esprit.meeting.enums.MeetingStatus;
 import tn.esprit.meeting.service.MeetingService;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 
 /**
  * All endpoints receive the caller's identity via the X-User-Id header,
@@ -75,12 +77,26 @@ public class MeetingController {
     @GetMapping("/my-projects")
     public ResponseEntity<List<ProjectDto>> getMyProjects(
             @RequestHeader("X-User-Id") Long userId) {
+        Map<Long, ProjectDto> byId = new LinkedHashMap<>();
         try {
-            return ResponseEntity.ok(projectClient.getProjectsByClient(userId));
+            for (ProjectDto p : projectClient.getProjectsByClient(userId)) {
+                if (p != null && p.getId() != null) {
+                    byId.putIfAbsent(p.getId(), p);
+                }
+            }
         } catch (Exception e) {
-            log.error("[MeetingService] Failed to fetch projects for userId={}: {}", userId, e.getMessage());
-            return ResponseEntity.ok(List.of());
+            log.error("[MeetingService] Failed to fetch projects (client) for userId={}: {}", userId, e.getMessage());
         }
+        try {
+            for (ProjectDto p : projectClient.getProjectsByFreelancer(userId)) {
+                if (p != null && p.getId() != null) {
+                    byId.putIfAbsent(p.getId(), p);
+                }
+            }
+        } catch (Exception e) {
+            log.error("[MeetingService] Failed to fetch projects (freelancer) for userId={}: {}", userId, e.getMessage());
+        }
+        return ResponseEntity.ok(new ArrayList<>(byId.values()));
     }
 
     @GetMapping("/my-contracts")

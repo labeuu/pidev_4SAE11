@@ -2,6 +2,7 @@ package com.esprit.ticket.service;
 
 import com.esprit.ticket.domain.TicketPriority;
 import com.esprit.ticket.domain.TicketStatus;
+import com.esprit.ticket.dto.ticket.CreateTicketRequest;
 import com.esprit.ticket.dto.ticket.TicketPageResponse;
 import com.esprit.ticket.dto.ticket.TicketResponse;
 import com.esprit.ticket.entity.Ticket;
@@ -146,5 +147,26 @@ class TicketServiceTest {
 
         assertThat(response.assignedAdminId()).isEqualTo(42L);
         assertThat(response.assignedAdminName()).isEqualTo("admin@example.com");
+    }
+
+    @Test
+    void create_throwsWhenSpamLimitReached() {
+        when(currentUserService.requireCurrentUserId()).thenReturn(1L);
+        when(ticketRepository.countByUserIdAndCreatedAtAfter(any(), any())).thenReturn(5L);
+
+        assertThatThrownBy(() -> ticketService.create(new CreateTicketRequest("Subject")))
+                .isInstanceOf(ResponseStatusException.class)
+                .matches(ex -> ((ResponseStatusException) ex).getStatusCode().value() == 429);
+    }
+
+    @Test
+    void create_throwsWhenSubjectBlankAfterModeration() {
+        when(currentUserService.requireCurrentUserId()).thenReturn(1L);
+        when(ticketRepository.countByUserIdAndCreatedAtAfter(any(), any())).thenReturn(0L);
+        when(contentModerationService.validateAndPrepareText("x")).thenReturn("   ");
+
+        assertThatThrownBy(() -> ticketService.create(new CreateTicketRequest("x")))
+                .isInstanceOf(ResponseStatusException.class)
+                .matches(ex -> ((ResponseStatusException) ex).getStatusCode().value() == 400);
     }
 }

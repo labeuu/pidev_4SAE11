@@ -20,11 +20,28 @@ x-java-svc: &java-svc   # common settings for every Spring Boot service
   networks: [sf-net]
   env_file: [.env]
 
+# Merge this under each service's `environment:` — a service-level `environment` map replaces
+# the anchor's keys from <<: *java-svc, so shared vars must be merged explicitly.
+x-java-env: &java-env
+  CONFIG_SERVER_URL: http://config-server:8888
+  # Issuer must match the "iss" claim in JWTs. In Docker, Keycloak is configured with
+  # KC_HOSTNAME=keycloak so tokens use http://keycloak:8080/realms/smart-freelance.
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
+  SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_JWK_SET_URI: http://keycloak:8080/realms/smart-freelance/protocol/openid-connect/certs
+  # Config Server templates (planning, task, gamification, etc.) use these placeholders — inside
+  # containers localhost would NOT reach Keycloak; always point at the Docker service name.
+  KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
+  KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/smart-freelance/protocol/openid-connect/certs
+
 x-java-depends: &java-depends  # wait for infra before starting any microservice
   depends_on:
     mysql:
       condition: service_healthy
     eureka:
+      condition: service_healthy
+    config-server:
+      condition: service_healthy
+    keycloak:
       condition: service_healthy
 
 services:
@@ -57,7 +74,8 @@ services:
   # Keycloak Identity Provider (v26.6.0 — no pre-baked credentials, create admin on first run)
   keycloak:
     build:
-      context: ./keycloak-start
+      context: .
+      dockerfile: keycloak-start/Dockerfile
     image: ${DOCKER_HUB_USERNAME:-smartfreelance}/keycloak:${TAG:-latest}
     container_name: sf-keycloak
     restart: unless-stopped
@@ -70,7 +88,7 @@ services:
       KC_DB_USERNAME: root
       KC_DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       KC_HTTP_PORT: 8080
-      KC_HOSTNAME: localhost
+      KC_HOSTNAME: keycloak
       KC_HOSTNAME_STRICT: "false"
       KC_HOSTNAME_STRICT_HTTPS: "false"
     ports:
@@ -79,7 +97,7 @@ services:
       mysql:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "exec 3<>/dev/tcp/127.0.0.1/9000 && echo -e 'GET /health/ready HTTP/1.0\\r\\nHost: localhost\\r\\n\\r\\n' >&3 && cat <&3 | grep -q '200 OK'"]
+      test: ["CMD-SHELL", "/bin/bash -c 'echo > /dev/tcp/127.0.0.1/8080'"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -95,7 +113,7 @@ services:
     volumes:
       - ollama-data:/root/.ollama
     healthcheck:
-      test: ["CMD-SHELL", "wget -q -O - http://localhost:11434/api/tags >/dev/null 2>&1"]
+      test: ["CMD-SHELL", "ollama --version >/dev/null 2>&1 || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 10
@@ -107,20 +125,24 @@ services:
     restart: "no"
     networks: [sf-net]
     environment:
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma2:2b}
     depends_on:
       ollama:
         condition: service_healthy
-    entrypoint: ["/bin/sh", "-c"]
-    command: >
-      until curl -fsS http://ollama:11434/api/tags >/dev/null; do
-        echo "Waiting for Ollama...";
-        sleep 2;
-      done;
-      echo "Pulling model $${OLLAMA_MODEL}...";
-      curl -fsS http://ollama:11434/api/pull
-      -H "Content-Type: application/json"
-      -d "{\"name\":\"$${OLLAMA_MODEL}\"}"
+    # One argv block: Compose must not split a multiline string across entrypoint + command.
+    command:
+      - /bin/sh
+      - -c
+      - |
+        set -e
+        until curl -fsS http://ollama:11434/api/tags >/dev/null; do
+          echo "Waiting for Ollama..."
+          sleep 2
+        done
+        echo "Pulling model $${OLLAMA_MODEL}..."
+        curl -fsS http://ollama:11434/api/pull \
+          -H "Content-Type: application/json" \
+          -d "{\"name\":\"$${OLLAMA_MODEL}\"}"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Service Registry
@@ -133,6 +155,7 @@ services:
     container_name: sf-eureka
     <<: *java-svc
     environment:
+      <<: *java-env
       SERVER_PORT: 8420
     ports:
       - "8420:8420"
@@ -154,6 +177,7 @@ services:
     container_name: sf-config
     <<: *java-svc
     environment:
+      <<: *java-env
       SERVER_PORT: 8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
     depends_on:
@@ -179,6 +203,7 @@ services:
     container_name: sf-gateway
     <<: *java-svc
     environment:
+      <<: *java-env
       SERVER_PORT: 8078
       SPRING_PROFILES_ACTIVE: docker     # activates application-docker.yml routes
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
@@ -186,6 +211,24 @@ services:
       eureka:
         condition: service_healthy
       config-server:
+        condition: service_healthy
+      keycloak:
+        condition: service_healthy
+      keycloak-auth:
+        condition: service_healthy
+      user:
+        condition: service_healthy
+      project:
+        condition: service_healthy
+      offer:
+        condition: service_healthy
+      contract:
+        condition: service_healthy
+      review:
+        condition: service_healthy
+      planning:
+        condition: service_healthy
+      task:
         condition: service_healthy
     ports:
       - "8078:8078"
@@ -207,6 +250,7 @@ services:
     container_name: sf-keycloak-auth
     <<: *java-svc
     environment:
+      <<: *java-env
       SERVER_PORT: 8079
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
@@ -222,6 +266,12 @@ services:
         condition: service_healthy
     ports:
       - "8079:8079"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8079'"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 90s
 
   # ─────────────────────────────────────────────────────────────────────────
   # Microservices
@@ -234,6 +284,7 @@ services:
     container_name: sf-user
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8090
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/userdb
       SPRING_DATASOURCE_USERNAME: root
@@ -241,11 +292,16 @@ services:
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
       KEYCLOAK_AUTH_SERVICE_URL: http://keycloak-auth:8079
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
     volumes:
       - user-uploads:/uploads/avatars
     ports:
       - "8090:8090"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8090'"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 120s
 
   project:
     build:
@@ -254,23 +310,30 @@ services:
     container_name: sf-project
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8084
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/projectdb
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
     ports:
       - "8084:8084"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8084'"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 120s
 
   offer:
     build:
       context: ./backEnd/Microservices/Offer
     image: ${DOCKER_HUB_USERNAME:-smartfreelance}/offer:${TAG:-latest}
     container_name: sf-offer
-    <<: *java-svc
+    <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8082
       SPRING_PROFILES_ACTIVE: docker          # activates application-docker.properties
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gestion_offre_db
@@ -278,15 +341,14 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      eureka:
-        condition: service_healthy
-      config-server:
-        condition: service_healthy
     ports:
       - "8082:8082"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8082'"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 120s
 
   contract:
     build:
@@ -295,6 +357,7 @@ services:
     container_name: sf-contract
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8083
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gestion_contract_db
       SPRING_DATASOURCE_USERNAME: root
@@ -303,6 +366,12 @@ services:
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
     ports:
       - "8083:8083"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8083'"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 120s
 
   portfolio:
     build:
@@ -311,7 +380,9 @@ services:
     container_name: sf-portfolio
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8086
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/portfolio_db
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
@@ -328,6 +399,7 @@ services:
     container_name: sf-review
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8085
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/reviewdb
       SPRING_DATASOURCE_USERNAME: root
@@ -342,6 +414,12 @@ services:
       SPRING_MAIL_PASSWORD: ${MAIL_PASSWORD:-}
     ports:
       - "8085:8085"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8085'"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 120s
 
   planning:
     build:
@@ -350,6 +428,7 @@ services:
     container_name: sf-planning
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8081
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888,optional:classpath:application-local.properties
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/planningdb
@@ -366,10 +445,18 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
     volumes:
       - ${PLANNING_CALENDAR_CREDENTIALS:-./credentials/calendar-service-account.json}:/credentials/planning-service-account.json:ro
     ports:
       - "8081:8081"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8081'"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 120s
 
   task:
     build:
@@ -378,6 +465,7 @@ services:
     container_name: sf-task
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8091
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888,optional:classpath:application-local.properties
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/taskdb
@@ -393,8 +481,16 @@ services:
         condition: service_healthy
       config-server:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
     ports:
       - "8091:8091"
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8091'"]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 120s
 
   ticket-service:
     build:
@@ -403,6 +499,7 @@ services:
     container_name: sf-ticket-service
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8096
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/ticketdb?useUnicode=true&characterEncoding=utf8&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true&createDatabaseIfNotExist=true
       SPRING_DATASOURCE_USERNAME: root
@@ -432,8 +529,10 @@ services:
     container_name: sf-subcontracting
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8110
       SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888,optional:classpath:application-local.properties
+      SPRING_MAIN_ALLOW_BEAN_DEFINITION_OVERRIDING: "true"
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gestion_subcontracting_db?createDatabaseIfNotExist=true&useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
@@ -442,12 +541,16 @@ services:
       SERVICE_USER_URL: http://user:8090
       SERVICE_PROJECT_URL: http://project:8084
       SERVICE_NOTIFICATION_URL: http://notification:8087
+      # Media storage (videos / audio) — container-local writable directory
+      APP_SUBCONTRACT_MEDIA_STORAGE_PATH: /tmp/subcontract-media
     depends_on:
       mysql:
         condition: service_healthy
       eureka:
         condition: service_healthy
       config-server:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     ports:
       - "8110:8110"
@@ -459,18 +562,22 @@ services:
     container_name: sf-notification
     <<: *java-svc
     environment:
+      <<: *java-env
       SERVER_PORT: 8087
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      NOTIFICATION_FIREBASE_ENABLED: "true"
       GOOGLE_APPLICATION_CREDENTIALS: /firebase/firebase-credentials.json
     volumes:
-      # Mount your real Firebase JSON here. A placeholder file is created by the
-      # init container below so the service starts (but Firebase calls will fail
-      # without real credentials). Replace with the real file path in .env:
-      #   FIREBASE_CREDENTIALS=./firebase-credentials/firebase-credentials.json
-      - ${FIREBASE_CREDENTIALS:-./firebase-credentials/placeholder.json}:/firebase/firebase-credentials.json:ro
+      # Production: set FIREBASE_CREDENTIALS in .env to your service account JSON (host path).
+      - ${FIREBASE_CREDENTIALS:-./firebase-credentials/firebase-credentials.json}:/firebase/firebase-credentials.json:ro
     depends_on:
       eureka:
+        condition: service_healthy
+      config-server:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     ports:
       - "8087:8087"
@@ -482,13 +589,13 @@ services:
     container_name: sf-gamification
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8088
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/gamificationdb
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
-      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
     ports:
       - "8088:8088"
 
@@ -499,6 +606,7 @@ services:
     container_name: sf-chat
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8093
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/chatdb
       SPRING_DATASOURCE_USERNAME: root
@@ -515,6 +623,7 @@ services:
     container_name: sf-meeting
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8101
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/meetingdb
       SPRING_DATASOURCE_USERNAME: root
@@ -529,26 +638,36 @@ services:
 
   aimodel:
     build:
-      context: ./backEnd/Microservices/AImodel
+      context: ./backEnd/Microservices/aimodel-node
     image: ${DOCKER_HUB_USERNAME:-smartfreelance}/aimodel:${TAG:-latest}
     container_name: sf-aimodel
-    <<: *java-svc
+    restart: unless-stopped
+    networks: [sf-net]
+    env_file: [.env]
     environment:
-      SERVER_PORT: 8095
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
-      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
-      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
+      KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
+      KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/smart-freelance/protocol/openid-connect/certs
+      PORT: 8095
+      EUREKA_APP_NAME: AIMODEL
+      EUREKA_CLIENT_SERVICE_URL: http://eureka:8420/eureka
+      EUREKA_INSTANCE_HOSTNAME: aimodel
       OLLAMA_BASE_URL: http://ollama:11434
-      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma3:4b}
+      OLLAMA_MODEL: ${OLLAMA_MODEL:-gemma2:2b}
     depends_on:
       eureka:
         condition: service_healthy
-      config-server:
+      keycloak:
         condition: service_healthy
       ollama-model-init:
         condition: service_completed_successfully
     ports:
       - "8095:8095"
+    healthcheck:
+      test: ["CMD-SHELL", "node -e \"fetch('http://127.0.0.1:8095/actuator/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))\""]
+      interval: 15s
+      timeout: 10s
+      retries: 8
+      start_period: 45s
 
   freelancia-job:
     build:
@@ -557,6 +676,7 @@ services:
     container_name: sf-freelancia-job
     <<: [*java-svc, *java-depends]
     environment:
+      <<: *java-env
       SERVER_PORT: 8097
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/freelancia_job_db
       SPRING_DATASOURCE_USERNAME: root
@@ -565,27 +685,6 @@ services:
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
     ports:
       - "8097:8097"
-
-  vendor:
-    build:
-      context: ./backEnd/Microservices/Vendor
-    image: ${DOCKER_HUB_USERNAME:-smartfreelance}/vendor:${TAG:-latest}
-    container_name: sf-vendor
-    <<: *java-svc
-    environment:
-      SERVER_PORT: 8092
-      SPRING_PROFILES_ACTIVE: docker          # activates application-docker.properties
-      EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
-      EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
-    depends_on:
-      mysql:
-        condition: service_healthy
-      eureka:
-        condition: service_healthy
-      config-server:
-        condition: service_healthy
-    ports:
-      - "8092:8092"
 
   # ─────────────────────────────────────────────────────────────────────────
   # Frontend

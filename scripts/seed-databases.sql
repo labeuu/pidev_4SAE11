@@ -23,28 +23,7 @@ SET time_zone = '+00:00';
 -- gamificationdb.achievement: 8 | user_level: 3 | user_achievement: 10
 -- chatdb.chat_messages: 20
 
--- -----------------------------------------------------------------------------
--- 1) USER DB (userdb)
--- -----------------------------------------------------------------------------
-CREATE DATABASE IF NOT EXISTS userdb;
-USE userdb;
 
--- Required users: password = 15961596 (BCrypt)
-INSERT INTO users (id, email, password_hash, first_name, last_name, role, phone, avatar_url, is_active, created_at, updated_at) VALUES
-(1, 'hanen@hotmail.com', '$2b$10$8XLQGMLPa/QeqxDSD8i5luP3q.QZeoG6zEApSglhf1rq23XxSIEuu', 'Hanen', 'Freelancer', 'FREELANCER', '+21620100101', NULL, 1, NOW(), NOW()),
-(2, 'omar@hotmail.com',  '$2b$10$8XLQGMLPa/QeqxDSD8i5luP3q.QZeoG6zEApSglhf1rq23XxSIEuu', 'Omar',  'Client',     'CLIENT',     '+21620100102', NULL, 1, NOW(), NOW()),
-(3, 'ridha@hotmail.com', '$2b$10$8XLQGMLPa/QeqxDSD8i5luP3q.QZeoG6zEApSglhf1rq23XxSIEuu', 'Ridha', 'Admin',      'ADMIN',      '+21620100103', NULL, 1, NOW(), NOW()),
-(4, 'demo.user1@example.com', '$2b$10$8XLQGMLPa/QeqxDSD8i5luP3q.QZeoG6zEApSglhf1rq23XxSIEuu', 'Demo', 'One', 'FREELANCER', '+21620100104', NULL, 1, NOW(), NOW()),
-(5, 'demo.user2@example.com', '$2b$10$8XLQGMLPa/QeqxDSD8i5luP3q.QZeoG6zEApSglhf1rq23XxSIEuu', 'Demo', 'Two', 'CLIENT', '+21620100105', NULL, 1, NOW(), NOW())
-ON DUPLICATE KEY UPDATE
-email = VALUES(email),
-password_hash = VALUES(password_hash),
-first_name = VALUES(first_name),
-last_name = VALUES(last_name),
-role = VALUES(role),
-phone = VALUES(phone),
-is_active = VALUES(is_active),
-updated_at = NOW();
 
 -- -----------------------------------------------------------------------------
 -- 2) PORTFOLIO DB (portfolio_db)

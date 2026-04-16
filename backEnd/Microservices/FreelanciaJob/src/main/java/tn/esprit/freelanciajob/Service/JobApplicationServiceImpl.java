@@ -1,14 +1,19 @@
 package tn.esprit.freelanciajob.Service;
 
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import tn.esprit.freelanciajob.Dto.request.JobApplicationRequest;
+import tn.esprit.freelanciajob.Client.UserClient;
 import tn.esprit.freelanciajob.Dto.response.ApplyJobResponse;
 import tn.esprit.freelanciajob.Dto.response.AttachmentResponse;
 import tn.esprit.freelanciajob.Dto.response.JobApplicationResponse;
+import tn.esprit.freelanciajob.Dto.response.UserDto;
 import tn.esprit.freelanciajob.Entity.ApplicationAttachment;
 import tn.esprit.freelanciajob.Entity.Job;
 import tn.esprit.freelanciajob.Entity.JobApplication;
@@ -27,6 +32,7 @@ import java.util.Collections;
 import java.util.List;
 import java.util.stream.Collectors;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class JobApplicationServiceImpl implements IJobApplicationService {
@@ -36,6 +42,7 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
     private final ApplicationAttachmentRepository attachmentRepository;
     private final FileStorageService            fileStorageService;
     private final ApplicationEventPublisher     eventPublisher;
+    private final UserClient                    userClient;
 
     // ── Existing CRUD (unchanged behaviour) ──────────────────────────────────
 
@@ -57,8 +64,9 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
                 .build();
 
         JobApplication saved = applicationRepository.save(application);
+        initializeJobForAsyncEvents(saved);
         eventPublisher.publishEvent(new ApplicationSubmittedEvent(this, saved, request.getFreelancerId()));
-        return JobMapper.toApplicationDto(saved);
+        return enrichFreelancerDisplay(JobMapper.toApplicationDto(saved));
     }
 
     @Override
@@ -68,7 +76,7 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
         existing.setProposalMessage(request.getProposalMessage());
         existing.setExpectedRate(request.getExpectedRate());
         existing.setAvailabilityStart(request.getAvailabilityStart());
-        return JobMapper.toApplicationDto(applicationRepository.save(existing));
+        return enrichFreelancerDisplay(JobMapper.toApplicationDto(applicationRepository.save(existing)));
     }
 
     @Override
@@ -86,13 +94,14 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
     public JobApplicationResponse getApplicationById(Long id) {
         JobApplication app = applicationRepository.findById(id)
                 .orElseThrow(() -> new RuntimeException("Application not found with id: " + id));
-        return JobMapper.toApplicationDto(app);
+        return enrichFreelancerDisplay(JobMapper.toApplicationDto(app));
     }
 
     @Override
     public List<JobApplicationResponse> getAllApplications() {
         return applicationRepository.findAll().stream()
                 .map(JobMapper::toApplicationDto)
+                .map(this::enrichFreelancerDisplay)
                 .collect(Collectors.toList());
     }
 
@@ -100,6 +109,7 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
     public List<JobApplicationResponse> getApplicationsByJob(Long jobId) {
         return applicationRepository.findByJobId(jobId).stream()
                 .map(JobMapper::toApplicationDto)
+                .map(this::enrichFreelancerDisplay)
                 .collect(Collectors.toList());
     }
 
@@ -118,9 +128,10 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
         JobApplication saved = applicationRepository.save(app);
 
         if (status == ApplicationStatus.ACCEPTED) {
+            initializeJobForAsyncEvents(saved);
             eventPublisher.publishEvent(new ApplicationAcceptedEvent(this, saved, saved.getFreelancerId()));
         }
-        return JobMapper.toApplicationDto(saved);
+        return enrichFreelancerDisplay(JobMapper.toApplicationDto(saved));
     }
 
     // ── New: enhanced apply workflow with attachments ─────────────────────────
@@ -132,11 +143,21 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
                                        List<MultipartFile> files) {
 
         if (applicationRepository.existsByJobIdAndFreelancerId(jobId, freelancerId)) {
-            throw new RuntimeException("Freelancer has already applied to this job.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Freelancer has already applied to this job.");
+        }
+
+        if (proposalMessage == null || proposalMessage.trim().length() < 20) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "proposalMessage must be at least 20 characters");
+        }
+
+        if (expectedRate != null && expectedRate.signum() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "expectedRate must be positive");
         }
 
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found: " + jobId));
 
         // 1 ── Persist application
         JobApplication application = JobApplication.builder()
@@ -148,6 +169,7 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
                 .status(ApplicationStatus.PENDING)
                 .build();
         application = applicationRepository.save(application);
+        initializeJobForAsyncEvents(application);
 
         // 2 ── Handle attachments (skip empty multipart slots)
         List<MultipartFile> nonEmpty = (files == null) ? Collections.emptyList() :
@@ -170,7 +192,11 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
         }
 
         // 3 ── Publish event (triggers email to freelancer + client via listener)
-        eventPublisher.publishEvent(new ApplicationSubmittedEvent(this, application, freelancerId));
+        try {
+            eventPublisher.publishEvent(new ApplicationSubmittedEvent(this, application, freelancerId));
+        } catch (Exception e) {
+            log.warn("Application submitted event failed for application {}: {}", application.getId(), e.getMessage());
+        }
 
         // 4 ── Build and return response
         return buildApplyJobResponse(application, attachments);
@@ -185,6 +211,39 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
+
+    /**
+     * Loads the lazy {@link Job} inside the transaction so {@link tn.esprit.freelanciajob.Event.ApplicationSubmittedEvent}
+     * listeners (async email) can safely read job title and client id after the persistence context closes.
+     */
+    private void initializeJobForAsyncEvents(JobApplication application) {
+        Job job = application.getJob();
+        if (job != null) {
+            job.getId();
+            job.getTitle();
+            job.getClientId();
+        }
+    }
+
+    /**
+     * Fills {@code freelancerFirstName} / {@code freelancerLastName} from the USER microservice
+     * for API consumers (e.g. job owner viewing applicants).
+     */
+    private JobApplicationResponse enrichFreelancerDisplay(JobApplicationResponse dto) {
+        if (dto == null || dto.getFreelancerId() == null) {
+            return dto;
+        }
+        try {
+            UserDto u = userClient.getUserById(dto.getFreelancerId());
+            if (u != null) {
+                dto.setFreelancerFirstName(u.getFirstName());
+                dto.setFreelancerLastName(u.getLastName());
+            }
+        } catch (Exception e) {
+            log.debug("Could not load freelancer display name for id {}: {}", dto.getFreelancerId(), e.getMessage());
+        }
+        return dto;
+    }
 
     private AttachmentResponse toAttachmentResponse(ApplicationAttachment att) {
         AttachmentResponse r = new AttachmentResponse();
