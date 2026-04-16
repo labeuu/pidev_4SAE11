@@ -15,6 +15,7 @@ CREATE DATABASE IF NOT EXISTS chatdb          CHARACTER SET utf8mb4 COLLATE utf8
 CREATE DATABASE IF NOT EXISTS meetingdb       CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS freelancia_job_db CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 CREATE DATABASE IF NOT EXISTS keycloakdb      CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE DATABASE IF NOT EXISTS ticketdb        CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
 
 -- Grant all privileges to root (already set, but explicit for clarity)
 GRANT ALL PRIVILEGES ON *.* TO 'root'@'%' WITH GRANT OPTION;

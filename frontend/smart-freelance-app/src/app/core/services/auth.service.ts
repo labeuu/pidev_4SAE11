@@ -423,11 +423,18 @@ export class AuthService {
     const token = this.getToken();
     if (!token) return null;
     const decoded = this.decodeToken(token);
-    const roles = decoded?.realm_access?.roles || [];
-    if (roles.includes('ADMIN'))      return 'ADMIN';
-    if (roles.includes('CLIENT'))     return 'CLIENT';
-    if (roles.includes('FREELANCER')) return 'FREELANCER';
-    return null;
+    const roles: unknown[] = decoded?.realm_access?.roles || [];
+
+    if (Array.isArray(roles)) {
+      if (roles.includes('ADMIN'))      return 'ADMIN';
+      if (roles.includes('CLIENT'))     return 'CLIENT';
+      if (roles.includes('FREELANCER')) return 'FREELANCER';
+      // Fallback: any non-admin authenticated user is treated as FREELANCER
+      if (roles.length > 0) return 'FREELANCER';
+    }
+
+    // Extra fallback for tokens without realm_access but that are otherwise valid
+    return this.isLoggedIn() ? 'FREELANCER' : null;
   }
 
   getDisplayName(): string {

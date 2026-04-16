@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 
 @FeignClient(
         name = "AIMODEL",
+        url = "${AIMODEL_SERVICE_URL:http://aimodel:8095}",
         path = "/api/ai",
         contextId = "aimodelAiClient",
         configuration = AImodelFeignConfiguration.class)

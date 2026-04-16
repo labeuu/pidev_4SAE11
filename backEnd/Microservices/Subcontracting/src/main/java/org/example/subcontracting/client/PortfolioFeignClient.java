@@ -8,7 +8,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
-@FeignClient(name = "portfolioMs", url = "${service.portfolio.url:http://localhost:8086}")
+@FeignClient(name = "PORTFOLIO")
 public interface PortfolioFeignClient {
 
     @GetMapping("/api/skills/user/{userId}")
