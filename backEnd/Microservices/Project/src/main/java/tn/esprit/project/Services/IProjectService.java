@@ -1,5 +1,6 @@
 package tn.esprit.project.Services;
 
+import tn.esprit.project.Dto.request.ProjectRequest;
 import tn.esprit.project.Dto.response.JointProjectsResponse;
 import tn.esprit.project.Dto.response.ProjectResponse;
 import tn.esprit.project.Entities.Project;
@@ -8,7 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface IProjectService {
-    Project addProject(Project project);
+    Project addProject(ProjectRequest request);
     Project updateProject(Project project);
 
     void deleteProject(Long id);

@@ -6,7 +6,6 @@ import com.esprit.user.dto.UserUpdateRequest;
 import com.esprit.user.entity.Role;
 import com.esprit.user.entity.User;
 import com.esprit.user.repository.UserRepository;
-import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,12 +17,17 @@ import java.util.List;
  * Syncs delete/update with Keycloak via keycloak-auth service when configured.
  */
 @Service
-@RequiredArgsConstructor
 public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final KeycloakAuthClient keycloakAuthClient;
+
+    public UserService(UserRepository userRepository, PasswordEncoder passwordEncoder, KeycloakAuthClient keycloakAuthClient) {
+        this.userRepository = userRepository;
+        this.passwordEncoder = passwordEncoder;
+        this.keycloakAuthClient = keycloakAuthClient;
+    }
 
     @Transactional(readOnly = true)
     public List<User> findAll() {
@@ -60,16 +64,15 @@ public class UserService {
         String passwordHash = request.getPassword() != null && !request.getPassword().isBlank()
                 ? passwordEncoder.encode(request.getPassword())
                 : passwordEncoder.encode("changeme");
-        User user = User.builder()
-                .email(email.trim())
-                .passwordHash(passwordHash)
-                .firstName(request.getFirstName())
-                .lastName(request.getLastName())
-                .role(request.getRole())
-                .phone(request.getPhone())
-                .avatarUrl(request.getAvatarUrl())
-                .isActive(request.getIsActive() != null ? request.getIsActive() : true)
-                .build();
+        User user = new User();
+        user.setEmail(email.trim());
+        user.setPasswordHash(passwordHash);
+        user.setFirstName(request.getFirstName());
+        user.setLastName(request.getLastName());
+        user.setRole(request.getRole());
+        user.setPhone(request.getPhone());
+        user.setAvatarUrl(request.getAvatarUrl());
+        user.setIsActive(request.getIsActive() != null ? request.getIsActive() : true);
         return userRepository.save(user);
     }
 

@@ -1,8 +1,8 @@
 package com.esprit.user.client;
 
 import com.esprit.user.config.KeycloakAuthProperties;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
@@ -19,12 +19,16 @@ import java.util.Map;
  * If keycloak.auth.service-url or service-secret is not set, operations are no-ops.
  */
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class KeycloakAuthClient {
 
+    private static final Logger log = LoggerFactory.getLogger(KeycloakAuthClient.class);
     private final KeycloakAuthProperties keycloakAuthProperties;
     private final RestTemplate restTemplate;
+
+    public KeycloakAuthClient(KeycloakAuthProperties keycloakAuthProperties, RestTemplate restTemplate) {
+        this.keycloakAuthProperties = keycloakAuthProperties;
+        this.restTemplate = restTemplate;
+    }
 
     /**
      * Delete user from Keycloak by email. Best-effort: logs and continues if keycloak-auth is unreachable.

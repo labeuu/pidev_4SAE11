@@ -4,8 +4,8 @@ import com.esprit.keycloak.client.UserServiceClient;
 import com.esprit.keycloak.config.KeycloakProperties;
 import com.esprit.keycloak.dto.RegisterRequest;
 import jakarta.ws.rs.core.Response;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.keycloak.admin.client.Keycloak;
 import org.keycloak.admin.client.KeycloakBuilder;
 import org.keycloak.admin.client.resource.RealmResource;
@@ -24,12 +24,16 @@ import java.util.List;
  * Realm roles should match the User service: CLIENT, FREELANCER, ADMIN.
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class KeycloakAdminService {
 
+    private static final Logger log = LoggerFactory.getLogger(KeycloakAdminService.class);
     private final KeycloakProperties keycloakProperties;
     private final UserServiceClient userServiceClient;
+
+    public KeycloakAdminService(KeycloakProperties keycloakProperties, UserServiceClient userServiceClient) {
+        this.keycloakProperties = keycloakProperties;
+        this.userServiceClient = userServiceClient;
+    }
 
     /**
      * Create a Keycloak admin client for the master realm (to obtain token and call Admin API).

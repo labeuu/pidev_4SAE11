@@ -4,8 +4,8 @@ import com.esprit.keycloak.config.KeycloakProperties;
 import com.esprit.keycloak.dto.TokenResponse;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.*;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
@@ -22,13 +22,16 @@ import java.util.Optional;
  * Clients can POST /api/auth/token with username/password to get JWT.
  */
 @Service
-@RequiredArgsConstructor
-@Slf4j
 public class KeycloakTokenService {
 
+    private static final Logger log = LoggerFactory.getLogger(KeycloakTokenService.class);
     private final KeycloakProperties keycloakProperties;
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper = new ObjectMapper();
+
+    public KeycloakTokenService(KeycloakProperties keycloakProperties) {
+        this.keycloakProperties = keycloakProperties;
+    }
 
     public TokenResponse refreshToken(String refreshToken) {
         String url = keycloakProperties.getAuthServerUrl() + "/realms/" + keycloakProperties.getRealm()
@@ -55,14 +58,14 @@ public class KeycloakTokenService {
 
         try {
             JsonNode node = objectMapper.readTree(response.getBody());
-            return TokenResponse.builder()
-                .accessToken(node.path("access_token").asText(null))
-                .refreshToken(node.has("refresh_token") ? node.path("refresh_token").asText() : null)
-                .tokenType(node.path("token_type").asText("Bearer"))
-                .expiresIn(node.has("expires_in") ? node.path("expires_in").asInt() : null)
-                .refreshExpiresIn(node.has("refresh_expires_in") ? node.path("refresh_expires_in").asInt() : null)
-                .scope(node.has("scope") ? node.path("scope").asText() : null)
-                .build();
+            return new TokenResponse(
+                node.path("access_token").asText(null),
+                node.has("refresh_token") ? node.path("refresh_token").asText() : null,
+                node.path("token_type").asText("Bearer"),
+                node.has("expires_in") ? node.path("expires_in").asInt() : null,
+                node.has("refresh_expires_in") ? node.path("refresh_expires_in").asInt() : null,
+                node.has("scope") ? node.path("scope").asText() : null
+            );
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse token refresh response", e);
         }
@@ -112,14 +115,14 @@ public class KeycloakTokenService {
 
         try {
             JsonNode node = objectMapper.readTree(responseBody);
-            return TokenResponse.builder()
-                .accessToken(node.path("access_token").asText(null))
-                .refreshToken(node.has("refresh_token") ? node.path("refresh_token").asText() : null)
-                .tokenType(node.path("token_type").asText("Bearer"))
-                .expiresIn(node.has("expires_in") ? node.path("expires_in").asInt() : null)
-                .refreshExpiresIn(node.has("refresh_expires_in") ? node.path("refresh_expires_in").asInt() : null)
-                .scope(node.has("scope") ? node.path("scope").asText() : null)
-                .build();
+            return new TokenResponse(
+                node.path("access_token").asText(null),
+                node.has("refresh_token") ? node.path("refresh_token").asText() : null,
+                node.path("token_type").asText("Bearer"),
+                node.has("expires_in") ? node.path("expires_in").asInt() : null,
+                node.has("refresh_expires_in") ? node.path("refresh_expires_in").asInt() : null,
+                node.has("scope") ? node.path("scope").asText() : null
+            );
         } catch (Exception e) {
             throw new IllegalStateException("Failed to parse token response", e);
         }
