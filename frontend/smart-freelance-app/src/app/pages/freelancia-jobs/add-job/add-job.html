@@ -128,10 +128,16 @@
         <div class="field-group">
           <label class="field-label" for="budgetMin">Budget Min</label>
           <input id="budgetMin" class="field-input" type="number" formControlName="budgetMin" placeholder="500">
+          <span *ngIf="f('budgetMin')?.invalid && f('budgetMin')?.touched" class="field-error">
+            Budget min must be greater than 0.
+          </span>
         </div>
         <div class="field-group">
           <label class="field-label" for="budgetMax">Budget Max</label>
           <input id="budgetMax" class="field-input" type="number" formControlName="budgetMax" placeholder="2000">
+          <span *ngIf="f('budgetMax')?.invalid && f('budgetMax')?.touched" class="field-error">
+            Budget max must be greater than 0.
+          </span>
         </div>
         <div class="field-group">
           <label class="field-label" for="currency">Currency</label>
@@ -148,6 +154,9 @@
       <div class="field-group">
         <label class="field-label" for="deadline">Application Deadline</label>
         <input id="deadline" class="field-input" type="date" formControlName="deadline" [min]="minDate">
+        <span *ngIf="f('deadline')?.touched && submitError === 'The deadline must be after today.'" class="field-error">
+          The deadline must be after today.
+        </span>
       </div>
 
       <!-- Category & Location -->

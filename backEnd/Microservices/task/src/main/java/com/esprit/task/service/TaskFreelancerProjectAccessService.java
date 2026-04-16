@@ -4,6 +4,7 @@ import com.esprit.task.client.ProjectApplicationClient;
 import com.esprit.task.client.ContractClient;
 import com.esprit.task.dto.ContractDto;
 import com.esprit.task.dto.ProjectApplicationFeignDto;
+import com.esprit.task.repository.TaskRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -17,6 +18,7 @@ public class TaskFreelancerProjectAccessService {
 
     private final ProjectApplicationClient projectApplicationClient;
     private final ContractClient contractClient;
+    private final TaskRepository taskRepository;
 
     /**
      * Mirrors freelancer "projects for add" rules: has a task on the project as assignee,
@@ -30,13 +32,21 @@ public class TaskFreelancerProjectAccessService {
     }
 
     /**
-     * Resolves projects visible to a freelancer using accepted relations only:
-     * accepted project applications and accepted/active contracts.
+     * Resolves projects visible to a freelancer: assigned tasks on the project,
+     * accepted project applications, and active-style contracts.
      */
     public Set<Long> getAccessibleProjectIdsForFreelancer(Long freelancerId) {
         Set<Long> projectIds = new HashSet<>();
         if (freelancerId == null) {
             return projectIds;
+        }
+        try {
+            List<Long> assignedProjectIds = taskRepository.findDistinctProjectIdsByAssigneeId(freelancerId);
+            if (assignedProjectIds != null) {
+                projectIds.addAll(assignedProjectIds);
+            }
+        } catch (Exception ignored) {
+            // same tolerance as remote sources — Feign/DB issues should not block other access paths
         }
         try {
             List<ProjectApplicationFeignDto> apps = projectApplicationClient.getApplicationsByFreelance(freelancerId);

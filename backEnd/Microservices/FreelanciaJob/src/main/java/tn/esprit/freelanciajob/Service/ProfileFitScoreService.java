@@ -3,6 +3,7 @@ package tn.esprit.freelanciajob.Service;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
@@ -23,10 +24,13 @@ import tn.esprit.freelanciajob.Repository.JobRepository;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class ProfileFitScoreService {
@@ -65,7 +69,7 @@ public class ProfileFitScoreService {
                     this.apiKey = envKey;
                 }
             } catch (Exception e) {
-                System.err.println("[ProfileFitScoreService] Could not load API_KEY from .env: " + e.getMessage());
+                log.warn("Could not load API_KEY from .env: {}", e.getMessage());
             }
         }
     }
@@ -77,11 +81,21 @@ public class ProfileFitScoreService {
         List<Skills> skills = fetchSkillsSafely(freelancerId);
         List<ExperienceDto> experiences = fetchExperiencesSafely(freelancerId);
 
+        if (apiKey == null || apiKey.isBlank()) {
+            log.warn("AI key missing. Falling back to local fit-score calculation.");
+            return buildFallbackFitScore(job, skills, experiences);
+        }
+
         String systemPrompt = buildSystemPrompt();
         String userPrompt = buildUserPrompt(job, skills, experiences);
 
-        String rawResponse = callExternalApi(systemPrompt, userPrompt);
-        return parseAndValidate(rawResponse);
+        try {
+            String rawResponse = callExternalApi(systemPrompt, userPrompt);
+            return parseAndValidate(rawResponse);
+        } catch (Exception e) {
+            log.warn("AI fit-score generation failed. Falling back to local scoring.", e);
+            return buildFallbackFitScore(job, skills, experiences);
+        }
     }
 
     private List<Skills> fetchSkillsSafely(Long freelancerId) {
@@ -89,7 +103,7 @@ public class ProfileFitScoreService {
             List<Skills> result = skillClient.getSkillsByUserId(freelancerId);
             return result != null ? result : Collections.emptyList();
         } catch (Exception e) {
-            System.err.println("[ProfileFitScoreService] Could not fetch skills for freelancer " + freelancerId + ": " + e.getMessage());
+            log.warn("Could not fetch skills for freelancer {}: {}", freelancerId, e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -99,7 +113,7 @@ public class ProfileFitScoreService {
             List<ExperienceDto> result = experienceClient.getExperiencesByUserId(freelancerId);
             return result != null ? result : Collections.emptyList();
         } catch (Exception e) {
-            System.err.println("[ProfileFitScoreService] Could not fetch experiences for freelancer " + freelancerId + ": " + e.getMessage());
+            log.warn("Could not fetch experiences for freelancer {}: {}", freelancerId, e.getMessage());
             return Collections.emptyList();
         }
     }
@@ -219,12 +233,19 @@ public class ProfileFitScoreService {
     private FitScoreResponse parseAndValidate(String jsonResponse) {
         try {
             JsonNode root = objectMapper.readTree(jsonResponse);
-            String content = root.path("choices").get(0).path("message").path("content").asText();
+            JsonNode choices = root.path("choices");
+            if (!choices.isArray() || choices.size() == 0) {
+                throw new IllegalStateException("AI response has no choices[]");
+            }
+
+            String content = choices.path(0).path("message").path("content").asText("").trim();
+            if (content.isEmpty()) {
+                throw new IllegalStateException("AI message content is empty");
+            }
 
             // Strip markdown fences if the model added them despite instructions
             content = content.replaceAll("(?s)```json\\s*", "").replaceAll("(?s)```\\s*", "").trim();
-
-            JsonNode node = objectMapper.readTree(content);
+            JsonNode node = parseContentJson(content);
 
             int score = Math.max(0, Math.min(100, node.path("score").asInt(0)));
 
@@ -251,6 +272,145 @@ public class ProfileFitScoreService {
         } catch (Exception e) {
             throw new RuntimeException("Failed to parse fit score response from AI: " + e.getMessage(), e);
         }
+    }
+
+    private JsonNode parseContentJson(String content) throws Exception {
+        try {
+            return objectMapper.readTree(content);
+        } catch (Exception first) {
+            int start = content.indexOf('{');
+            int end = content.lastIndexOf('}');
+            if (start >= 0 && end > start) {
+                return objectMapper.readTree(content.substring(start, end + 1));
+            }
+            throw first;
+        }
+    }
+
+    private FitScoreResponse buildFallbackFitScore(Job job, List<Skills> skills, List<ExperienceDto> experiences) {
+        List<String> freelancerSkills = normalizeSkills(skills);
+        List<String> requiredSkills = resolveJobRequiredSkills(job);
+
+        List<String> matchedSkills = new ArrayList<>();
+        List<String> missingSkills = new ArrayList<>();
+
+        for (String required : requiredSkills) {
+            if (containsIgnoreCase(freelancerSkills, required)) {
+                matchedSkills.add(required);
+            } else {
+                missingSkills.add(required);
+            }
+        }
+
+        int skillScore;
+        if (requiredSkills.isEmpty()) {
+            skillScore = freelancerSkills.isEmpty() ? 35 : 60;
+        } else {
+            skillScore = (int) Math.round((matchedSkills.size() * 100.0) / requiredSkills.size());
+        }
+
+        int experienceBonus = Math.min(20, experiences.size() * 5);
+        int score = Math.min(100, skillScore * 8 / 10 + experienceBonus);
+        String tier = deriveeTierFromScore(score);
+
+        String summary = matchedSkills.isEmpty()
+                ? "This profile has limited direct overlap with the job requirements right now."
+                : "This profile matches several of the job's required skills and shows relevant potential.";
+
+        List<String> recommendations = new ArrayList<>();
+        if (!missingSkills.isEmpty()) {
+            recommendations.add("Highlight experience related to " + missingSkills.get(0) + " in your proposal.");
+        }
+        if (experiences.isEmpty()) {
+            recommendations.add("Add portfolio experience to strengthen your application.");
+        }
+        if (recommendations.isEmpty()) {
+            recommendations.add("Tailor your proposal to the job deliverables and emphasize similar past work.");
+        }
+
+        return FitScoreResponse.builder()
+                .score(score)
+                .tier(tier)
+                .summary(summary)
+                .matchedSkills(matchedSkills)
+                .missingSkills(missingSkills)
+                .recommendations(recommendations)
+                .build();
+    }
+
+    private List<String> normalizeSkills(List<Skills> skills) {
+        LinkedHashSet<String> normalized = new LinkedHashSet<>();
+        for (Skills skill : skills) {
+            if (skill != null && skill.getName() != null && !skill.getName().isBlank()) {
+                normalized.add(skill.getName().trim());
+            }
+        }
+        return new ArrayList<>(normalized);
+    }
+
+    private List<String> resolveJobRequiredSkills(Job job) {
+        try {
+            List<Long> ids = job.getRequiredSkillIds();
+            if (ids != null && !ids.isEmpty()) {
+                List<Skills> required = skillClient.getSkillsByIds(ids);
+                if (required != null && !required.isEmpty()) {
+                    return normalizeSkills(required);
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not resolve required skills for job {}: {}", job.getId(), e.getMessage());
+        }
+
+        List<String> inferred = new ArrayList<>();
+        String title = safeLower(job.getTitle());
+        String description = safeLower(job.getDescription());
+        String category = safeLower(job.getCategory());
+
+        addIfMentioned(inferred, "Angular", title, description, category, "angular");
+        addIfMentioned(inferred, "React", title, description, category, "react");
+        addIfMentioned(inferred, "Java", title, description, category, "java");
+        addIfMentioned(inferred, "Spring Boot", title, description, category, "spring");
+        addIfMentioned(inferred, "SQL", title, description, category, "sql", "mysql", "postgres");
+        addIfMentioned(inferred, "Docker", title, description, category, "docker");
+        addIfMentioned(inferred, "Python", title, description, category, "python");
+        addIfMentioned(inferred, "REST APIs", title, description, category, "api", "rest");
+
+        if (inferred.isEmpty() && job.getCategory() != null) {
+            inferred.add(job.getCategory());
+        }
+        return inferred;
+    }
+
+    private void addIfMentioned(List<String> bucket, String label, String title, String description, String category, String... tokens) {
+        if (containsAny(title, tokens) || containsAny(description, tokens) || containsAny(category, tokens)) {
+            bucket.add(label);
+        }
+    }
+
+    private boolean containsAny(String text, String... tokens) {
+        for (String token : tokens) {
+            if (text.contains(token)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private boolean containsIgnoreCase(List<String> values, String expected) {
+        String normalizedExpected = safeLower(expected);
+        for (String value : values) {
+            String normalizedValue = safeLower(value);
+            if (normalizedValue.equals(normalizedExpected)
+                    || normalizedValue.contains(normalizedExpected)
+                    || normalizedExpected.contains(normalizedValue)) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    private String safeLower(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
     private String deriveeTierFromScore(int score) {

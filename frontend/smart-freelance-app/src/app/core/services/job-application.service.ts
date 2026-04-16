@@ -133,7 +133,7 @@ export class JobApplicationService {
         }),
         filter(event => event.type === HttpEventType.Response),
         map(event => (event as HttpResponse<ApplyJobResponse>).body),
-        catchError(() => of(null))
+        timeout(REQUEST_TIMEOUT_MS)
       );
   }
 

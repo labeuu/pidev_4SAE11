@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
-@FeignClient(name = "projectApplicationsPlanning", url = "${project.service.url:http://localhost:8084}", path = "/applications")
+@FeignClient(name = "Project", path = "/applications", contextId = "projectApplicationsPlanning")
 public interface ProjectApplicationClient {
     @GetMapping("/freelance/{freelanceId}")
     List<ProjectApplicationFeignDto> getApplicationsByFreelance(@PathVariable("freelanceId") Long freelanceId);

@@ -7,7 +7,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 import java.util.List;
 
-@FeignClient(name = "contractPlanning", url = "${contract.service.url:http://localhost:8083}", path = "/api/contracts")
+@FeignClient(name = "Contract", path = "/api/contracts", contextId = "contractPlanning")
 public interface ContractClient {
     @GetMapping("/freelancer/{freelancerId}")
     List<ContractDto> getContractsByFreelancer(@PathVariable("freelancerId") Long freelancerId);

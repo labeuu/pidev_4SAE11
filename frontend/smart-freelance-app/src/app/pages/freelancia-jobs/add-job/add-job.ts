@@ -1,7 +1,10 @@
 import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormBuilder, FormGroup, FormsModule, ReactiveFormsModule, Validators } from '@angular/forms';
+import { HttpErrorResponse } from '@angular/common/http';
 import { Router, RouterModule } from '@angular/router';
+import { asyncScheduler } from 'rxjs';
+import { observeOn } from 'rxjs/operators';
 import { JobService } from '../../../core/services/job.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { UserService } from '../../../core/services/user.service';
@@ -15,7 +18,9 @@ import { PortfolioService, Skill } from '../../../core/services/portfolio.servic
   styleUrl: './add-job.scss',
 })
 export class AddJob implements OnInit {
-  form!: FormGroup;
+  private static readonly MIN_POSITIVE_VALUE = 0.01;
+
+  form: FormGroup;
   isSubmitting = false;
   submitError: string | null = null;
   submitSuccess = false;
@@ -41,36 +46,37 @@ export class AddJob implements OnInit {
     private userService: UserService,
     private portfolioService: PortfolioService,
     private router: Router
-  ) {}
+  ) {
+    this.form = this.buildForm();
+  }
 
   ngOnInit(): void {
-    const today = new Date();
-    this.minDate = today.toISOString().split('T')[0];
-
-    this.form = this.fb.group({
-      clientType: ['INDIVIDUAL', Validators.required],
-      companyName: [''],
-      title: ['', [Validators.required, Validators.minLength(3)]],
-      description: ['', [Validators.required, Validators.minLength(10)]],
-      budgetMin: [null, [Validators.min(0)]],
-      budgetMax: [null, [Validators.min(0)]],
-      currency: ['USD'],
-      deadline: [''],
-      category: ['', Validators.required],
-      locationType: ['REMOTE', Validators.required],
-      requiredSkillIds: [[]]
-    });
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    this.minDate = tomorrow.toISOString().split('T')[0];
 
     const email = this.authService.getPreferredUsername();
     if (email) {
-      this.userService.getByEmail(email).subscribe({
+      this.userService.getByEmail(email).pipe(observeOn(asyncScheduler)).subscribe({
         next: user => this.userId = user?.id ?? null
       });
     }
 
-    this.portfolioService.getAllSkills().subscribe({
+    this.portfolioService.getAllSkills().pipe(observeOn(asyncScheduler)).subscribe({
       next: skills => this.allSkills = skills,
       error: () => {}
+    });
+
+    this.form.get('clientType')?.valueChanges.subscribe(type => {
+      const companyName = this.form.get('companyName');
+      if (!companyName) return;
+      if (type === 'COMPANY') {
+        companyName.setValidators([Validators.required, Validators.minLength(2)]);
+      } else {
+        companyName.clearValidators();
+        companyName.setValue('');
+      }
+      companyName.updateValueAndValidity({ emitEvent: false });
     });
   }
 
@@ -126,9 +132,11 @@ export class AddJob implements OnInit {
 
         this.aiDraftReady = true;
       },
-      error: () => {
+      error: (error: HttpErrorResponse) => {
         this.isGenerating = false;
-        this.aiError = 'AI generation failed. Please try again or fill the form manually.';
+        this.aiError = error.status === 503
+          ? 'AI service is temporarily unavailable. Please try again in a moment or fill the form manually.'
+          : 'AI generation failed. Please try again or fill the form manually.';
       }
     });
   }
@@ -139,12 +147,20 @@ export class AddJob implements OnInit {
       if (!this.userId) this.submitError = 'User not identified. Please re-login.';
       return;
     }
+
+    const raw = this.form.value;
+    if (raw.deadline && raw.deadline < this.minDate) {
+      this.submitError = 'The deadline must be after today.';
+      this.form.get('deadline')?.markAsTouched();
+      return;
+    }
+
     this.isSubmitting = true;
     this.submitError = null;
-    const raw = this.form.value;
     const payload = {
       ...raw,
       clientId: this.userId,
+      companyName: raw.clientType === 'COMPANY' ? raw.companyName?.trim() || null : null,
       deadline: raw.deadline ? raw.deadline + 'T00:00:00' : null,
     };
     this.jobService.createJob(payload).subscribe({
@@ -157,12 +173,47 @@ export class AddJob implements OnInit {
           this.submitError = 'Failed to create job. Please try again.';
         }
       },
-      error: () => {
+      error: (error: HttpErrorResponse) => {
         this.isSubmitting = false;
+        if (error.status === 400) {
+          this.submitError = this.extractValidationMessage(error)
+            ?? 'Please check the form. The deadline must be after today and numeric values must be positive.';
+          return;
+        }
         this.submitError = 'Failed to create job. Please try again.';
       }
     });
   }
 
   f(name: string) { return this.form.get(name); }
+
+  private buildForm(): FormGroup {
+    return this.fb.group({
+      clientType: ['INDIVIDUAL', Validators.required],
+      companyName: [''],
+      title: ['', [Validators.required, Validators.minLength(3)]],
+      description: ['', [Validators.required, Validators.minLength(10)]],
+      budgetMin: [null, [Validators.min(AddJob.MIN_POSITIVE_VALUE)]],
+      budgetMax: [null, [Validators.min(AddJob.MIN_POSITIVE_VALUE)]],
+      currency: ['USD'],
+      deadline: [''],
+      category: ['', Validators.required],
+      locationType: ['REMOTE', Validators.required],
+      requiredSkillIds: [[]]
+    });
+  }
+
+  private extractValidationMessage(error: HttpErrorResponse): string | null {
+    const payload = error.error;
+    if (typeof payload === 'string' && payload.trim()) {
+      return payload;
+    }
+    if (payload?.message) {
+      return String(payload.message);
+    }
+    if (Array.isArray(payload?.errors) && payload.errors.length > 0) {
+      return String(payload.errors[0]);
+    }
+    return null;
+  }
 }

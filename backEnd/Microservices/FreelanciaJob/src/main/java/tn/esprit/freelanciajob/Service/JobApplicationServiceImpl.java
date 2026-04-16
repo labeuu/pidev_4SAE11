@@ -3,9 +3,11 @@ package tn.esprit.freelanciajob.Service;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.ApplicationEventPublisher;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 import tn.esprit.freelanciajob.Dto.request.JobApplicationRequest;
 import tn.esprit.freelanciajob.Client.UserClient;
 import tn.esprit.freelanciajob.Dto.response.ApplyJobResponse;
@@ -141,11 +143,21 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
                                        List<MultipartFile> files) {
 
         if (applicationRepository.existsByJobIdAndFreelancerId(jobId, freelancerId)) {
-            throw new RuntimeException("Freelancer has already applied to this job.");
+            throw new ResponseStatusException(HttpStatus.CONFLICT, "Freelancer has already applied to this job.");
+        }
+
+        if (proposalMessage == null || proposalMessage.trim().length() < 20) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "proposalMessage must be at least 20 characters");
+        }
+
+        if (expectedRate != null && expectedRate.signum() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
+                    "expectedRate must be positive");
         }
 
         Job job = jobRepository.findById(jobId)
-                .orElseThrow(() -> new RuntimeException("Job not found: " + jobId));
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Job not found: " + jobId));
 
         // 1 ── Persist application
         JobApplication application = JobApplication.builder()
@@ -180,7 +192,11 @@ public class JobApplicationServiceImpl implements IJobApplicationService {
         }
 
         // 3 ── Publish event (triggers email to freelancer + client via listener)
-        eventPublisher.publishEvent(new ApplicationSubmittedEvent(this, application, freelancerId));
+        try {
+            eventPublisher.publishEvent(new ApplicationSubmittedEvent(this, application, freelancerId));
+        } catch (Exception e) {
+            log.warn("Application submitted event failed for application {}: {}", application.getId(), e.getMessage());
+        }
 
         // 4 ── Build and return response
         return buildApplyJobResponse(application, attachments);

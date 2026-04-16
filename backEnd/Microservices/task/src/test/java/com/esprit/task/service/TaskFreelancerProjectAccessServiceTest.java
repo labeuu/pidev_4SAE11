@@ -4,6 +4,7 @@ import com.esprit.task.client.ContractClient;
 import com.esprit.task.dto.ContractDto;
 import com.esprit.task.client.ProjectApplicationClient;
 import com.esprit.task.dto.ProjectApplicationFeignDto;
+import com.esprit.task.repository.TaskRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,6 +27,9 @@ class TaskFreelancerProjectAccessServiceTest {
     @Mock
     private ContractClient contractClient;
 
+    @Mock
+    private TaskRepository taskRepository;
+
     @InjectMocks
     private TaskFreelancerProjectAccessService service;
 
@@ -42,6 +46,7 @@ class TaskFreelancerProjectAccessServiceTest {
         app.setProject(new ProjectApplicationFeignDto.NestedProject(10L, "P"));
         when(projectApplicationClient.getApplicationsByFreelance(5L)).thenReturn(List.of(app));
         when(contractClient.getContractsByFreelancer(5L)).thenReturn(Collections.emptyList());
+        when(taskRepository.findDistinctProjectIdsByAssigneeId(5L)).thenReturn(Collections.emptyList());
 
         assertThat(service.canFreelancerUseProject(5L, 10L)).isTrue();
     }
@@ -53,6 +58,7 @@ class TaskFreelancerProjectAccessServiceTest {
         app.setProject(new ProjectApplicationFeignDto.NestedProject(10L, null));
         when(projectApplicationClient.getApplicationsByFreelance(5L)).thenReturn(List.of(app));
         when(contractClient.getContractsByFreelancer(5L)).thenReturn(Collections.emptyList());
+        when(taskRepository.findDistinctProjectIdsByAssigneeId(5L)).thenReturn(Collections.emptyList());
 
         assertThat(service.canFreelancerUseProject(5L, 10L)).isFalse();
     }
@@ -61,6 +67,7 @@ class TaskFreelancerProjectAccessServiceTest {
     void canFreelancerUseProject_whenAppsNull_returnsFalse() {
         when(projectApplicationClient.getApplicationsByFreelance(5L)).thenReturn(null);
         when(contractClient.getContractsByFreelancer(5L)).thenReturn(Collections.emptyList());
+        when(taskRepository.findDistinctProjectIdsByAssigneeId(5L)).thenReturn(Collections.emptyList());
 
         assertThat(service.canFreelancerUseProject(5L, 10L)).isFalse();
     }
@@ -69,8 +76,18 @@ class TaskFreelancerProjectAccessServiceTest {
     void canFreelancerUseProject_whenAppsEmpty_returnsFalse() {
         when(projectApplicationClient.getApplicationsByFreelance(5L)).thenReturn(Collections.emptyList());
         when(contractClient.getContractsByFreelancer(5L)).thenReturn(Collections.emptyList());
+        when(taskRepository.findDistinctProjectIdsByAssigneeId(5L)).thenReturn(Collections.emptyList());
 
         assertThat(service.canFreelancerUseProject(5L, 10L)).isFalse();
+    }
+
+    @Test
+    void canFreelancerUseProject_whenHasAssignedTaskOnProject_returnsTrue() {
+        when(projectApplicationClient.getApplicationsByFreelance(5L)).thenReturn(Collections.emptyList());
+        when(contractClient.getContractsByFreelancer(5L)).thenReturn(Collections.emptyList());
+        when(taskRepository.findDistinctProjectIdsByAssigneeId(5L)).thenReturn(List.of(10L));
+
+        assertThat(service.canFreelancerUseProject(5L, 10L)).isTrue();
     }
 
     @Test
@@ -80,6 +97,7 @@ class TaskFreelancerProjectAccessServiceTest {
         app.setProject(null);
         when(projectApplicationClient.getApplicationsByFreelance(5L)).thenReturn(List.of(app));
         when(contractClient.getContractsByFreelancer(5L)).thenReturn(Collections.emptyList());
+        when(taskRepository.findDistinctProjectIdsByAssigneeId(5L)).thenReturn(Collections.emptyList());
 
         assertThat(service.canFreelancerUseProject(5L, 10L)).isFalse();
     }
@@ -88,6 +106,7 @@ class TaskFreelancerProjectAccessServiceTest {
     void canFreelancerUseProject_whenClientThrows_returnsFalse() {
         when(projectApplicationClient.getApplicationsByFreelance(5L)).thenThrow(new RuntimeException("feign down"));
         when(contractClient.getContractsByFreelancer(5L)).thenReturn(Collections.emptyList());
+        when(taskRepository.findDistinctProjectIdsByAssigneeId(5L)).thenReturn(Collections.emptyList());
 
         assertThat(service.canFreelancerUseProject(5L, 10L)).isFalse();
     }
@@ -103,9 +122,10 @@ class TaskFreelancerProjectAccessServiceTest {
                 new ContractDto(3L, 11L, 5L, 99L, "COMPLETED"),
                 new ContractDto(4L, 12L, 5L, 99L, "DRAFT")
         ));
+        when(taskRepository.findDistinctProjectIdsByAssigneeId(5L)).thenReturn(List.of(77L));
 
         Set<Long> ids = service.getAccessibleProjectIdsForFreelancer(5L);
 
-        assertThat(ids).contains(10L, 11L).doesNotContain(12L);
+        assertThat(ids).contains(10L, 11L, 77L).doesNotContain(12L);
     }
 }

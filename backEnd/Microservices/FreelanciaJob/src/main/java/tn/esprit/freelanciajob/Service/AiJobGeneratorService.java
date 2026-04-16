@@ -4,7 +4,10 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.annotation.PostConstruct;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.env.Environment;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
@@ -19,14 +22,18 @@ import tn.esprit.freelanciajob.Dto.response.GeneratedJobDraft;
 import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
+import java.util.Properties;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class AiJobGeneratorService {
 
     private final RestTemplate restTemplate = new RestTemplate();
     private final ObjectMapper objectMapper;
+    private final Environment environment;
 
     @Value("${ai.api.url}")
     private String apiUrl;
@@ -39,27 +46,20 @@ public class AiJobGeneratorService {
 
     @PostConstruct
     public void init() {
-        if (apiKey == null || apiKey.isBlank() || apiKey.startsWith("${")) {
-            try {
-                io.github.cdimascio.dotenv.Dotenv dotenv = io.github.cdimascio.dotenv.Dotenv.configure()
-                        .ignoreIfMissing()
-                        .directory("../../")
-                        .filename(".env")
-                        .load();
-                String envKey = dotenv.get("API_KEY");
-                if (envKey != null && !envKey.isBlank()) {
-                    this.apiKey = envKey;
-                }
-            } catch (Exception e) {
-                System.err.println("[AiJobGeneratorService] Could not load API_KEY from .env: " + e.getMessage());
-            }
+        String resolvedKey = resolveApiKey();
+        if (hasText(resolvedKey)) {
+            this.apiKey = resolvedKey.trim();
+            log.info("AI API key resolved successfully for job generation.");
+        } else {
+            log.warn("AI API key could not be resolved. Job generation will use fallback drafts.");
         }
     }
 
     public GeneratedJobDraft generateJobDraft(String userPrompt) {
+        refreshApiKeyIfNeeded();
         if (apiKey == null || apiKey.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "AI job generation is not configured. Set API_KEY or ai.api.key (and optionally AI_API_URL).");
+            log.warn("AI key missing. Falling back to local draft generation.");
+            return buildFallbackDraft(userPrompt);
         }
         String systemPrompt = """
                 You are an expert freelance platform assistant.
@@ -99,10 +99,12 @@ public class AiJobGeneratorService {
             ResponseEntity<String> response = restTemplate.postForEntity(apiUrl, entity, String.class);
             return parseDraft(response.getBody());
         } catch (ResponseStatusException e) {
-            throw e;
+            log.warn("AI draft generation failed with status {}. Falling back. Reason: {}",
+                    e.getStatusCode(), e.getReason());
+            return buildFallbackDraft(userPrompt);
         } catch (Exception e) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "AI service unavailable: " + e.getMessage(), e);
+            log.warn("AI service call failed. Falling back to local draft generation.", e);
+            return buildFallbackDraft(userPrompt);
         }
     }
 
@@ -178,5 +180,221 @@ public class AiJobGeneratorService {
             }
             throw first;
         }
+    }
+
+    /**
+     * Resilient fallback used when external AI provider is unavailable.
+     * Keeps the endpoint usable instead of returning 5xx.
+     */
+    private GeneratedJobDraft buildFallbackDraft(String userPrompt) {
+        String prompt = userPrompt == null ? "" : userPrompt.trim();
+        String normalized = prompt.toLowerCase(Locale.ROOT);
+
+        String category = inferCategory(normalized);
+        String locationType = inferLocationType(normalized);
+        List<String> skills = inferSkills(normalized, category);
+
+        String titleBase = prompt.isBlank() ? "Project Opportunity" : prompt;
+        if (titleBase.length() > 80) {
+            titleBase = titleBase.substring(0, 80).trim();
+        }
+
+        String description = "We are looking for a freelancer to deliver this project end-to-end. "
+                + "Scope includes analysis, implementation, testing, and handover documentation. "
+                + "Please share your relevant experience, timeline estimate, and approach. "
+                + "Deliverables should include production-ready output, clear progress updates, and final support for adjustments. "
+                + (prompt.isBlank() ? "" : "Project context: " + prompt + ".");
+
+        return GeneratedJobDraft.builder()
+                .title(titleBase)
+                .description(description)
+                .requiredSkills(skills)
+                .budgetMin(BigDecimal.valueOf(500))
+                .budgetMax(BigDecimal.valueOf(2000))
+                .currency("USD")
+                .estimatedDurationWeeks(4)
+                .category(category)
+                .locationType(locationType)
+                .build();
+    }
+
+    private String inferCategory(String normalizedPrompt) {
+        if (containsAny(normalizedPrompt, "android", "ios", "mobile", "flutter", "react native")) {
+            return "Mobile Development";
+        }
+        if (containsAny(normalizedPrompt, "ui", "ux", "figma", "design")) {
+            return "UI/UX Design";
+        }
+        if (containsAny(normalizedPrompt, "ml", "ai", "data", "analytics", "model")) {
+            return "Data Science";
+        }
+        if (containsAny(normalizedPrompt, "devops", "docker", "kubernetes", "ci/cd", "pipeline")) {
+            return "DevOps";
+        }
+        if (containsAny(normalizedPrompt, "content", "copywriting", "article", "blog")) {
+            return "Content Writing";
+        }
+        if (containsAny(normalizedPrompt, "marketing", "seo", "ads", "campaign")) {
+            return "Marketing";
+        }
+        if (containsAny(normalizedPrompt, "api", "spring", "node", "backend", "database")) {
+            return "Backend";
+        }
+        return "Web Development";
+    }
+
+    private String inferLocationType(String normalizedPrompt) {
+        if (containsAny(normalizedPrompt, "onsite", "on-site")) {
+            return "ONSITE";
+        }
+        if (containsAny(normalizedPrompt, "hybrid")) {
+            return "HYBRID";
+        }
+        return "REMOTE";
+    }
+
+    private List<String> inferSkills(String normalizedPrompt, String category) {
+        List<String> skills = new ArrayList<>();
+        if (containsAny(normalizedPrompt, "angular")) skills.add("Angular");
+        if (containsAny(normalizedPrompt, "react")) skills.add("React");
+        if (containsAny(normalizedPrompt, "spring")) skills.add("Spring Boot");
+        if (containsAny(normalizedPrompt, "java")) skills.add("Java");
+        if (containsAny(normalizedPrompt, "sql", "mysql", "postgres")) skills.add("SQL");
+        if (containsAny(normalizedPrompt, "docker")) skills.add("Docker");
+        if (containsAny(normalizedPrompt, "figma")) skills.add("Figma");
+        if (containsAny(normalizedPrompt, "python")) skills.add("Python");
+
+        if (skills.isEmpty()) {
+            switch (category) {
+                case "Mobile Development" -> skills.addAll(List.of("Flutter", "REST APIs", "Firebase"));
+                case "UI/UX Design" -> skills.addAll(List.of("Figma", "Wireframing", "Prototyping"));
+                case "Data Science" -> skills.addAll(List.of("Python", "Machine Learning", "Data Analysis"));
+                case "DevOps" -> skills.addAll(List.of("Docker", "CI/CD", "Kubernetes"));
+                case "Backend" -> skills.addAll(List.of("Java", "Spring Boot", "SQL"));
+                default -> skills.addAll(List.of("JavaScript", "REST APIs", "Git"));
+            }
+        }
+        return skills;
+    }
+
+    private boolean containsAny(String text, String... tokens) {
+        for (String token : tokens) {
+            if (text.contains(token)) return true;
+        }
+        return false;
+    }
+
+    private String resolveApiKey() {
+        if (hasText(apiKey) && !apiKey.startsWith("${")) {
+            return apiKey;
+        }
+
+        String[] propertyKeys = {
+                "ai.api.key",
+                "AI_API_KEY",
+                "API_KEY",
+                "OPENAI_API_KEY"
+        };
+        for (String propertyKey : propertyKeys) {
+            String candidate = environment.getProperty(propertyKey);
+            if (hasText(candidate) && !candidate.startsWith("${")) {
+                return candidate;
+            }
+        }
+
+        String dotenvKey = readDotenvKey();
+        if (hasText(dotenvKey)) {
+            return dotenvKey;
+        }
+
+        String localPropertyKey = readKeyFromClasspathProperties("application-local.properties");
+        if (hasText(localPropertyKey)) {
+            return localPropertyKey;
+        }
+
+        return readKeyFromClasspathProperties("application.properties");
+    }
+
+    private void refreshApiKeyIfNeeded() {
+        if (hasText(apiKey)) {
+            return;
+        }
+
+        String resolvedKey = resolveApiKey();
+        if (hasText(resolvedKey)) {
+            this.apiKey = resolvedKey.trim();
+            log.info("AI API key resolved on demand: {}", maskKey(this.apiKey));
+        }
+    }
+
+    private String readDotenvKey() {
+        try {
+            io.github.cdimascio.dotenv.Dotenv dotenv = io.github.cdimascio.dotenv.Dotenv.configure()
+                    .ignoreIfMissing()
+                    .directory("../../")
+                    .filename(".env")
+                    .load();
+
+            String[] dotenvKeys = {"AI_API_KEY", "API_KEY", "OPENAI_API_KEY"};
+            for (String dotenvKey : dotenvKeys) {
+                String candidate = dotenv.get(dotenvKey);
+                if (hasText(candidate)) {
+                    return candidate;
+                }
+            }
+        } catch (Exception e) {
+            log.warn("Could not load AI API key from .env: {}", e.getMessage());
+        }
+        return null;
+    }
+
+    private String readKeyFromClasspathProperties(String fileName) {
+        try {
+            ClassPathResource resource = new ClassPathResource(fileName);
+            if (!resource.exists()) {
+                return null;
+            }
+
+            Properties properties = new Properties();
+            properties.load(resource.getInputStream());
+
+            String raw = properties.getProperty("ai.api.key");
+            if (!hasText(raw)) {
+                return null;
+            }
+
+            if (!raw.startsWith("${")) {
+                return raw;
+            }
+
+            return extractPlaceholderDefault(raw);
+        } catch (Exception e) {
+            log.warn("Could not read {} while resolving AI API key: {}", fileName, e.getMessage());
+            return null;
+        }
+    }
+
+    private String extractPlaceholderDefault(String placeholder) {
+        int colonIndex = placeholder.indexOf(':');
+        int endIndex = placeholder.lastIndexOf('}');
+        if (colonIndex < 0 || endIndex <= colonIndex) {
+            return null;
+        }
+        String defaultValue = placeholder.substring(colonIndex + 1, endIndex).trim();
+        return hasText(defaultValue) ? defaultValue : null;
+    }
+
+    private boolean hasText(String value) {
+        return value != null && !value.isBlank();
+    }
+
+    private String maskKey(String value) {
+        if (!hasText(value)) {
+            return "<missing>";
+        }
+        if (value.length() <= 8) {
+            return "****";
+        }
+        return value.substring(0, 4) + "..." + value.substring(value.length() - 4);
     }
 }
