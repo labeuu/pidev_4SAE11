@@ -40,6 +40,7 @@ public class UserServiceClient {
         );
         var headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
+        headers.set("X-Internal-Gateway", "true");
         var entity = new HttpEntity<>(body, headers);
         try {
             restTemplate.postForEntity(USER_SERVICE_URL, entity, Object.class);

@@ -73,9 +73,9 @@ spring:
             connect-timeout: 10000
 
 
-        # Planning: direct URL (no Eureka), port 8081 - ensure Planning microservice is running
+        # Planning: use Eureka load balancing (serviceId = planning)
         - id: planning
-          uri: http://localhost:8081
+          uri: lb://planning
           predicates:
             - Path=/planning/**
           filters:
@@ -171,9 +171,9 @@ spring:
           filters:
             - StripPrefix=1
 
-        # Task AI: match first — metadata response-timeout in milliseconds (4h) for slow Ollama.
+        # Task AI: match first — metadata response-timeout in milliseconds (4h) for slow Ollama. Uses Eureka (serviceId = task).
         - id: task-ai
-          uri: http://localhost:8091
+          uri: lb://task
           order: -1
           predicates:
             - Path=/task/api/tasks/ai/**
@@ -184,9 +184,9 @@ spring:
             response-timeout: 14400000
             connect-timeout: 30000
 
-        # Task: direct URL (port 8091)
+        # Task: use Eureka load balancing (serviceId = task)
         - id: task
-          uri: http://localhost:8091
+          uri: lb://task
           predicates:
             - Path=/task/**
           filters:

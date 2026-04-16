@@ -19,9 +19,9 @@ import org.springframework.web.client.RestTemplate;
 @Slf4j
 public class ContractClient {
 
-    private final RestTemplate restTemplate = new RestTemplate();
+    private final RestTemplate restTemplate;
 
-    @Value("${service.contract.url:http://localhost:8083}")
+    @Value("${service.contract.url:lb://Contract}")
     private String contractServiceUrl;
 
     /**

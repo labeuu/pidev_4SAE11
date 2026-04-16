@@ -11,6 +11,7 @@
         <module name="Offer" />
         <module name="Portfolio" />
         <module name="apiGateway" />
+        <module name="Subcontracting" />
         <module name="ConfigServer" />
         <module name="Eureka" />
         <module name="Contract" />
@@ -21,6 +22,7 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.36/lombok-1.18.36.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.36/lombok-1.18.36.jar" />
         </processorPath>
         <module name="Project" />
       </profile>
@@ -30,27 +32,16 @@
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.38/lombok-1.18.38.jar" />
         </processorPath>
         <module name="meeting" />
       </profile>
-      <profile name="Annotation profile for gamification" enabled="true">
+      <profile name="Annotation profile for ticket" enabled="true">
         <sourceOutputDir name="target/generated-sources/annotations" />
         <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
         <outputRelativeToContentRoot value="true" />
         <processorPath useClasspath="false">
-          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
-        </processorPath>
-        <module name="gamification" />
-        <module name="FreelanciaJob" />
-        <module name="KeyCloak" />
-        <module name="user" />
-        <module name="chat" />
-      </profile>
-      <profile name="Annotation profile for task" enabled="true">
-        <sourceOutputDir name="target/generated-sources/annotations" />
-        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
-        <outputRelativeToContentRoot value="true" />
-        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
           <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.30/lombok-1.18.30.jar" />
         </processorPath>
         <module name="notification" />
@@ -58,6 +49,20 @@
         <module name="ticket" />
         <module name="aimodel" />
         <module name="review" />
+      </profile>
+      <profile name="Annotation profile for user" enabled="true">
+        <sourceOutputDir name="target/generated-sources/annotations" />
+        <sourceTestOutputDir name="target/generated-test-sources/test-annotations" />
+        <outputRelativeToContentRoot value="true" />
+        <processorPath useClasspath="false">
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+          <entry name="$MAVEN_REPOSITORY$/org/projectlombok/lombok/1.18.42/lombok-1.18.42.jar" />
+        </processorPath>
+        <module name="gamification" />
+        <module name="FreelanciaJob" />
+        <module name="KeyCloak" />
+        <module name="user" />
+        <module name="chat" />
       </profile>
     </annotationProcessing>
   </component>
