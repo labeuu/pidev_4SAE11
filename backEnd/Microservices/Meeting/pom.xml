@@ -20,8 +20,10 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2025.1.0</spring-cloud.version>
-        <spring-ai.version>2.0.0-M4</spring-ai.version>
-        <lombok.version>1.18.38</lombok.version>
+<lombok.version>1.18.38</lombok.version>
+        <sonar.organization>4sae11</sonar.organization>
+        <sonar.host.url>http://localhost:9000</sonar.host.url>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
     </properties>
 
     <dependencies>
@@ -103,13 +105,7 @@
             <version>1.23.0</version>
         </dependency>
 
-        <!-- Spring AI – Ollama (same version as AImodel microservice) -->
-        <dependency>
-            <groupId>org.springframework.ai</groupId>
-            <artifactId>spring-ai-starter-model-ollama</artifactId>
-        </dependency>
-
-        <!-- Lombok -->
+<!-- Lombok -->
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
@@ -173,14 +169,7 @@
                 <type>pom</type>
                 <scope>import</scope>
             </dependency>
-            <dependency>
-                <groupId>org.springframework.ai</groupId>
-                <artifactId>spring-ai-bom</artifactId>
-                <version>${spring-ai.version}</version>
-                <type>pom</type>
-                <scope>import</scope>
-            </dependency>
-        </dependencies>
+</dependencies>
     </dependencyManagement>
 
     <build>
@@ -210,6 +199,29 @@
                         </path>
                     </annotationProcessorPaths>
                 </configuration>
+            </plugin>
+            <!-- JaCoCo – generates coverage report for SonarQube -->
+            <plugin>
+                <groupId>org.jacoco</groupId>
+                <artifactId>jacoco-maven-plugin</artifactId>
+                <version>0.8.12</version>
+                <executions>
+                    <execution>
+                        <id>prepare-agent</id>
+                        <goals><goal>prepare-agent</goal></goals>
+                    </execution>
+                    <execution>
+                        <id>report</id>
+                        <phase>test</phase>
+                        <goals><goal>report</goal></goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- SonarQube scanner -->
+            <plugin>
+                <groupId>org.sonarsource.scanner.maven</groupId>
+                <artifactId>sonar-maven-plugin</artifactId>
+                <version>5.1.0.4751</version>
             </plugin>
         </plugins>
     </build>

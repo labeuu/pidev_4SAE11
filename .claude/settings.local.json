@@ -24,7 +24,10 @@
       "Bash(git check-ignore:*)",
       "Bash(jar -tf ~/.m2/repository/org/springframework/boot/spring-boot-test-autoconfigure/4.0.2/spring-boot-test-autoconfigure-4.0.2.jar)",
       "Bash(grep -v \"/$\")",
-      "Bash(grep \"\\\\.class$\")"
+      "Bash(grep \"\\\\.class$\")",
+      "Bash(jar -tf ~/.m2/repository/org/springframework/boot/spring-boot-data-jpa-test/4.0.2/spring-boot-data-jpa-test-4.0.2.jar)",
+      "Bash(jar -tf ~/.m2/repository/org/springframework/boot/spring-boot-jdbc-test/4.0.2/spring-boot-jdbc-test-4.0.2.jar)",
+      "Bash(mvn clean:*)"
     ]
   }
 }
