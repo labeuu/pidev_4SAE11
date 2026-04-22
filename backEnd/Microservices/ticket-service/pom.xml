@@ -22,6 +22,9 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2025.1.0</spring-cloud.version>
+        <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.inclusions>**/src/main/java/com/esprit/ticket/service/**/*.java</sonar.coverage.inclusions>
     </properties>
 
     <dependencies>
@@ -176,14 +179,6 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
-                        <configuration>
-                            <includes>
-                                <include>com/esprit/ticket/service/TicketService*</include>
-                                <include>com/esprit/ticket/service/ReplyService*</include>
-                                <include>com/esprit/ticket/service/ContentModerationService*</include>
-                                <include>com/esprit/ticket/service/TicketNotificationService*</include>
-                            </includes>
-                        </configuration>
                     </execution>
                     <execution>
                         <id>check</id>
