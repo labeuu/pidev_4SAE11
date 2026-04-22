@@ -63,9 +63,12 @@ pipeline {
                 dir(FRONTEND_DIR) {
                     withCredentials([string(credentialsId: 'SonarQubeToken', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('SonarQube') {
+                            // @sonar/scan: do not use a "sonar" subcommand with npx (that was for pnpm dlx). Pass -D* on the same line.
+                            // withSonarQubeEnv sets SONAR_HOST_URL; some Jenkins versions use SONARQUBE_URL.
                             sh '''
-                                npx --yes @sonar/scan sonar \
-                                  -Dsonar.token=$SONAR_TOKEN
+                                npx --yes @sonar/scan \
+                                  -Dsonar.host.url="${SONAR_HOST_URL:-$SONARQUBE_URL}" \
+                                  -Dsonar.token="$SONAR_TOKEN"
                             '''
                         }
                     }
