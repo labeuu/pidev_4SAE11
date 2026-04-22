@@ -21,7 +21,7 @@ describe('TrackProgress', () => {
   beforeEach(async () => {
     const planningSpy = jasmine.createSpyObj('PlanningService', [
       'getStatsByProject',
-      'getStalledProjects',
+      'getDueOrOverdueProjects',
       'getFilteredProgressUpdates',
       'getCommentsByProgressUpdateId',
       'createComment',
@@ -29,7 +29,7 @@ describe('TrackProgress', () => {
       'deleteComment',
     ]);
     planningSpy.getStatsByProject.and.returnValue(of(null));
-    planningSpy.getStalledProjects.and.returnValue(of([]));
+    planningSpy.getDueOrOverdueProjects.and.returnValue(of([]));
     planningSpy.getFilteredProgressUpdates.and.returnValue(
       of({ content: [], totalElements: 0, totalPages: 0, size: 10, number: 0 })
     );
@@ -42,9 +42,17 @@ describe('TrackProgress', () => {
       imports: [TrackProgress, ReactiveFormsModule, Card, RouterLink],
       providers: [
         { provide: PlanningService, useValue: planningSpy },
-        { provide: AuthService, useValue: { currentUser: of(null) } },
-        { provide: UserService, useValue: {} },
-        { provide: ProjectService, useValue: { getProjects: () => of([]), getProjectById: () => of(null) } },
+        {
+          provide: AuthService,
+          useValue: { getPreferredUsername: () => 'client@test.com' },
+        },
+        {
+          provide: UserService,
+          useValue: {
+            getByEmail: () => of({ id: 1, firstName: 'Test', lastName: 'Client', email: 'client@test.com' }),
+          },
+        },
+        { provide: ProjectService, useValue: { getByClientId: () => of([]) } },
         { provide: ActivatedRoute, useValue: { params: of({}), queryParams: of({}) } },
       ],
     }).compileComponents();

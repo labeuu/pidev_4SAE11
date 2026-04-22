@@ -1,0 +1,128 @@
+// CI/CD pipeline for the Smart Freelance Angular frontend (monorepo: pidev_4SAE11).
+// Script Path in Jenkins: frontend/smart-freelance-app/Jenkinsfile
+// Credentials: GithubCredentials (SCM), DockerHubCrendentials (push), SonarQube (server with SonarQube Token).
+// Prometheus: set PROMETHEUS_PUSHGATEWAY_URL (e.g. http://192.168.1.13:9091) to push build metrics.
+pipeline {
+    agent any
+
+    environment {
+        FRONTEND_DIR = 'frontend/smart-freelance-app'
+        DOCKER_IMAGE = 'ridhaferchichi/smart-freelance-frontend'
+        DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
+        JOB_NAME_SAFE = "${env.JOB_NAME?.replaceAll('[^a-zA-Z0-9]', '_') ?: 'smart_freelance_frontend'}"
+        CI = 'true'
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout([
+                    $class: 'GitSCM',
+                    branches: scm.branches,
+                    userRemoteConfigs: scm.userRemoteConfigs,
+                    doGenerateSubmoduleConfigurations: false,
+                    submoduleCfg: [],
+                    extensions: [
+                        [$class: 'CleanBeforeCheckout'],
+                        [$class: 'CloneOption', shallow: true, depth: 1, noTags: true, honorRefspec: true, timeout: 20],
+                        [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
+                            [$class: 'SparseCheckoutPath', path: FRONTEND_DIR]
+                        ]]
+                    ]
+                ])
+            }
+        }
+
+        stage('Install & Test') {
+            steps {
+                dir(FRONTEND_DIR) {
+                    sh 'npm ci --prefer-offline'
+                    sh 'npm run test:ci'
+                }
+            }
+        }
+
+        stage('Build') {
+            steps {
+                dir(FRONTEND_DIR) {
+                    sh 'npm run build -- --configuration production'
+                }
+            }
+        }
+
+        stage('SonarQube Analysis') {
+            steps {
+                dir(FRONTEND_DIR) {
+                    withCredentials([string(credentialsId: 'SonarQubeToken', variable: 'SONAR_TOKEN')]) {
+                        withSonarQubeEnv('SonarQube') {
+                            sh '''
+                                npx --yes @sonar/scan sonar \
+                                  -Dsonar.token=$SONAR_TOKEN
+                            '''
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Quality Gate') {
+            steps {
+                dir(FRONTEND_DIR) {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        timeout(time: 10, unit: 'SECONDS') {
+                            waitForQualityGate abortPipeline: false
+                        }
+                    }
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir(FRONTEND_DIR) {
+                    script {
+                        docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    }
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'DockerHubCrendentials') {
+                        def image = docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        image.push()
+                        image.push('latest')
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                if (env.PROMETHEUS_PUSHGATEWAY_URL?.trim()) {
+                    def status = currentBuild.result == 'SUCCESS' ? 1 : 0
+                    def duration = (System.currentTimeMillis() - currentBuild.startTimeInMillis) / 1000.0
+                    writeFile file: 'prometheus_metrics.txt', text: """# HELP jenkins_build_result Build result (1=success, 0=failure)
+# TYPE jenkins_build_result gauge
+jenkins_build_result{job="${JOB_NAME_SAFE}",build_number="${env.BUILD_NUMBER}"} ${status}
+# HELP jenkins_build_duration_seconds Build duration in seconds
+# TYPE jenkins_build_duration_seconds gauge
+jenkins_build_duration_seconds{job="${JOB_NAME_SAFE}",build_number="${env.BUILD_NUMBER}"} ${duration}
+"""
+                    sh "curl -s --data-binary @prometheus_metrics.txt '${env.PROMETHEUS_PUSHGATEWAY_URL}/metrics/job/${JOB_NAME_SAFE}/instance/${env.BUILD_NUMBER}' || true"
+                }
+            }
+            cleanWs()
+        }
+        failure {
+            echo 'Pipeline failed'
+        }
+        success {
+            echo 'Pipeline succeeded'
+        }
+    }
+}

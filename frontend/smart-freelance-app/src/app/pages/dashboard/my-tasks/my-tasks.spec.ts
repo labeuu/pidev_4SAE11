@@ -83,6 +83,7 @@ describe('MyTasks', () => {
     fixture = TestBed.createComponent(MyTasks);
     component = fixture.componentInstance;
     taskService = TestBed.inject(TaskService) as jasmine.SpyObj<TaskService>;
+    fixture.detectChanges();
   });
 
   it('should create', () => {

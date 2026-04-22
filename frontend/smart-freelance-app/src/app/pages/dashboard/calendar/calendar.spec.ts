@@ -1,6 +1,7 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
 import { Calendar } from './calendar';
 import { PlanningService } from '../../../core/services/planning.service';
+import { MeetingService } from '../../../core/services/meeting.service';
 import { AuthService } from '../../../core/services/auth.service';
 import { of } from 'rxjs';
 
@@ -21,7 +22,8 @@ describe('Calendar', () => {
       imports: [Calendar],
       providers: [
         { provide: PlanningService, useValue: planningSpy },
-        { provide: AuthService, useValue: {} },
+        { provide: MeetingService, useValue: { getMyMeetings: () => of([]) } },
+        { provide: AuthService, useValue: { getUserId: () => 1, getUserRole: () => 'FREELANCER' } },
       ],
     }).compileComponents();
 
