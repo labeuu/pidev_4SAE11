@@ -9,7 +9,6 @@ const AUTH_ENDPOINTS = ['/token', '/refresh'];
 /** Non-auth calls where 401 must not trigger logout (e.g. optional probe; gateway may differ from /task/). */
 const NO_LOGOUT_ON_401_SUBSTRINGS = [
   'aimodel/api/ai/status',
-  '/user/api/users',
   '/subcontracting/api/subcontracts'
 ];
 

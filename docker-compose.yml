@@ -32,6 +32,14 @@ x-java-env: &java-env
   # containers localhost would NOT reach Keycloak; always point at the Docker service name.
   KEYCLOAK_ISSUER_URI: http://keycloak:8080/realms/smart-freelance
   KEYCLOAK_JWKS_URI: http://keycloak:8080/realms/smart-freelance/protocol/openid-connect/certs
+  # ── Monitoring: separate management port, no Spring Security involved ──────
+  # Prometheus scrapes http://<service>:9090/actuator/prometheus from within sf-net.
+  # Using a dedicated port means SecurityConfig on the main port is never touched.
+  MANAGEMENT_SERVER_PORT: "9090"
+  MANAGEMENT_ENDPOINTS_WEB_EXPOSURE_INCLUDE: "health,info,prometheus,metrics,env,loggers"
+  MANAGEMENT_ENDPOINT_HEALTH_SHOW_DETAILS: "always"
+  MANAGEMENT_PROMETHEUS_METRICS_EXPORT_ENABLED: "true"
+  MANAGEMENT_METRICS_TAGS_PLATFORM: "smart-freelance"
 
 x-java-depends: &java-depends  # wait for infra before starting any microservice
   depends_on:
@@ -160,7 +168,7 @@ services:
     ports:
       - "8420:8420"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8420/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/actuator/health"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -186,7 +194,7 @@ services:
     ports:
       - "8888:8888"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8888/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/actuator/health"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -233,7 +241,7 @@ services:
     ports:
       - "8078:8078"
     healthcheck:
-      test: ["CMD", "wget", "-q", "--spider", "http://localhost:8078/actuator/health"]
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/actuator/health"]
       interval: 15s
       timeout: 10s
       retries: 5
@@ -309,6 +317,7 @@ services:
     image: ${DOCKER_HUB_USERNAME:-smartfreelance}/project:${TAG:-latest}
     container_name: sf-project
     <<: [*java-svc, *java-depends]
+    mem_limit: 768m
     environment:
       <<: *java-env
       SERVER_PORT: 8084
@@ -317,14 +326,15 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD:-rootpassword}
       EUREKA_CLIENT_SERVICEURL_DEFAULTZONE: http://eureka:8420/eureka
       EUREKA_INSTANCE_PREFER_IP_ADDRESS: "true"
+      SPRING_CONFIG_IMPORT: optional:configserver:http://config-server:8888
     ports:
       - "8084:8084"
     healthcheck:
       test: ["CMD-SHELL", "bash -c 'echo > /dev/tcp/127.0.0.1/8084'"]
       interval: 15s
       timeout: 10s
-      retries: 8
-      start_period: 120s
+      retries: 10
+      start_period: 150s
 
   offer:
     build:
@@ -687,6 +697,69 @@ services:
       - "8097:8097"
 
   # ─────────────────────────────────────────────────────────────────────────
+  # Monitoring Stack
+  # ─────────────────────────────────────────────────────────────────────────
+
+  prometheus:
+    image: prom/prometheus:v2.51.2
+    container_name: sf-prometheus
+    restart: unless-stopped
+    networks: [sf-net]
+    command:
+      - --config.file=/etc/prometheus/prometheus.yml
+      - --storage.tsdb.path=/prometheus
+      - --storage.tsdb.retention.time=15d          # keep 15 days of data
+      - --storage.tsdb.retention.size=5GB
+      - --web.enable-lifecycle                      # POST /-/reload to hot-reload config
+      - --web.enable-admin-api
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./monitoring/prometheus/alert-rules.yml:/etc/prometheus/alert-rules.yml:ro
+      - prometheus-data:/prometheus
+    # No hard depends_on — Prometheus retries failed scrapes automatically.
+    # Start it alongside the rest of the stack.
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:9090/-/healthy"]
+      interval: 15s
+      timeout:  5s
+      retries:  5
+      start_period: 15s
+
+  grafana:
+    image: grafana/grafana:10.4.2
+    container_name: sf-grafana
+    restart: unless-stopped
+    networks: [sf-net]
+    environment:
+      # Admin credentials (override in .env for production)
+      GF_SECURITY_ADMIN_USER:     ${GRAFANA_ADMIN_USER:-admin}
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:-admin}
+      GF_SERVER_ROOT_URL:         http://localhost:3000
+      # Auto-provision; no sign-up needed
+      GF_USERS_ALLOW_SIGN_UP:     "false"
+      # Persist dashboards and datasources across restarts
+      GF_PATHS_PROVISIONING:      /etc/grafana/provisioning
+      # Useful plugins (uncomment if needed)
+      # GF_INSTALL_PLUGINS: grafana-clock-panel,grafana-simple-json-datasource
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards:ro
+      - grafana-data:/var/lib/grafana
+    depends_on:
+      prometheus:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/api/health"]
+      interval: 15s
+      timeout:  5s
+      retries:  5
+      start_period: 30s
+
+  # ─────────────────────────────────────────────────────────────────────────
   # Frontend
   # ─────────────────────────────────────────────────────────────────────────
 
@@ -719,3 +792,7 @@ volumes:
     name: sf-user-uploads
   ollama-data:
     name: sf-ollama-data
+  prometheus-data:
+    name: sf-prometheus-data
+  grafana-data:
+    name: sf-grafana-data

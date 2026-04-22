@@ -27,7 +27,28 @@
       "Bash(grep \"\\\\.class$\")",
       "Bash(jar -tf ~/.m2/repository/org/springframework/boot/spring-boot-data-jpa-test/4.0.2/spring-boot-data-jpa-test-4.0.2.jar)",
       "Bash(jar -tf ~/.m2/repository/org/springframework/boot/spring-boot-jdbc-test/4.0.2/spring-boot-jdbc-test-4.0.2.jar)",
-      "Bash(mvn clean:*)"
+      "Bash(mvn clean:*)",
+      "Bash(docker-compose build:*)",
+      "Bash(python3 -m json.tool)",
+      "Bash(docker ps:*)",
+      "Bash(until docker:*)",
+      "Bash(do sleep:*)",
+      "Bash(done)",
+      "Bash(docker-compose stop:*)",
+      "Bash(docker-compose start:*)",
+      "Bash(docker events:*)",
+      "Bash(docker-compose ps:*)",
+      "Bash(until grep:*)",
+      "Bash(grep -r \"sonar\" /Users/macbook/pidev_4SAE11/backEnd/*/pom.xml /Users/macbook/pidev_4SAE11/backEnd/Microservices/*/pom.xml)",
+      "Bash(grep -r \"micrometer\\\\|actuator\\\\|prometheus\" /Users/macbook/pidev_4SAE11/backEnd/Microservices/*/pom.xml /Users/macbook/pidev_4SAE11/backEnd/KeyCloak/pom.xml /Users/macbook/pidev_4SAE11/backEnd/ConfigServer/pom.xml)",
+      "Bash(grep -r \"management\\\\|actuator\\\\|micrometer\\\\|prometheus\" /Users/macbook/pidev_4SAE11/backEnd/Microservices/*/src/main/resources/application*.properties /Users/macbook/pidev_4SAE11/backEnd/*/src/main/resources/application*.properties)",
+      "Bash(grep -r \"jacoco\" /Users/macbook/pidev_4SAE11/backEnd/Microservices/*/pom.xml)",
+      "Bash(grep -r \"checkstyle\\\\|spotbugs\\\\|pmd\" /Users/macbook/pidev_4SAE11/backEnd/Microservices/*/pom.xml)",
+      "Bash(grep -r \"Counter\\\\|Gauge\\\\|Timer\\\\|MeterRegistry\\\\|@Timed\\\\|@Counted\" /Users/macbook/pidev_4SAE11/backEnd/Microservices/*/src/main/java /Users/macbook/pidev_4SAE11/backEnd/*/src/main/java)",
+      "Bash(grep -r \"MeterRegistry\\\\|io.micrometer\" /Users/macbook/pidev_4SAE11/backEnd/Microservices/*/src/main/java /Users/macbook/pidev_4SAE11/backEnd/*/src/main/java)",
+      "Bash(find /Users/macbook/pidev_4SAE11/backEnd/Microservices -maxdepth 2 -name \"pom.xml\" -exec dirname {} \\\\;)",
+      "Bash(find:*)",
+      "Bash(grep:*)"
     ]
   }
 }

@@ -1,0 +1,261 @@
+###############################################################################
+# Prometheus Configuration — Smart Freelance Platform
+#
+# All Spring Boot services expose metrics on management port 9090
+# at /actuator/prometheus (separate from the main service port).
+# This avoids any Spring Security conflicts on the main port.
+#
+# Scrape interval strategy:
+#   - Gateway + core business services: 15s  (high visibility)
+#   - Infrastructure (Eureka, Config):   30s  (low churn)
+#   - All others:                        20s  (balanced)
+###############################################################################
+
+global:
+  scrape_interval:     15s   # Default; overridden per-job below
+  evaluation_interval: 15s   # How often to evaluate alerting rules
+  scrape_timeout:      10s
+
+  # Attach these labels to ALL time-series collected by this Prometheus.
+  external_labels:
+    environment: "docker-compose"
+    platform:    "smart-freelance"
+
+# ── Alerting rules ────────────────────────────────────────────────────────────
+rule_files:
+  - "alert-rules.yml"
+
+# ── Alertmanager (uncomment when you deploy Alertmanager) ────────────────────
+# alerting:
+#   alertmanagers:
+#     - static_configs:
+#         - targets: ['alertmanager:9093']
+
+###############################################################################
+# Scrape Jobs
+#
+# Naming convention:  sf_<service-name>
+# All metrics paths:  /actuator/prometheus  (Spring Boot Actuator default)
+# All management ports: 9090 (management.server.port=9090 in each service)
+###############################################################################
+
+scrape_configs:
+
+  # ── Prometheus self-monitoring ─────────────────────────────────────────────
+  - job_name: "prometheus"
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["localhost:9090"]
+        labels:
+          service: "prometheus"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Edge / Infrastructure
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - job_name: "sf_api-gateway"
+    scrape_interval: 15s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["api-gateway:9090"]
+        labels:
+          service:  "api-gateway"
+          tier:     "edge"
+          port:     "8078"
+
+  - job_name: "sf_eureka"
+    scrape_interval: 30s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["eureka:9090"]
+        labels:
+          service:  "eureka"
+          tier:     "infrastructure"
+          port:     "8420"
+
+  - job_name: "sf_config-server"
+    scrape_interval: 30s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["config-server:9090"]
+        labels:
+          service:  "config-server"
+          tier:     "infrastructure"
+          port:     "8888"
+
+  - job_name: "sf_keycloak-auth"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["keycloak-auth:9090"]
+        labels:
+          service:  "keycloak-auth"
+          tier:     "security"
+          port:     "8079"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Core Business Microservices  (highest priority — 15s scrape)
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - job_name: "sf_user"
+    scrape_interval: 15s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["user:9090"]
+        labels:
+          service:  "user"
+          tier:     "core"
+          port:     "8090"
+
+  - job_name: "sf_project"
+    scrape_interval: 15s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["project:9090"]
+        labels:
+          service:  "project"
+          tier:     "core"
+          port:     "8084"
+
+  - job_name: "sf_offer"
+    scrape_interval: 15s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["offer:9090"]
+        labels:
+          service:  "offer"
+          tier:     "core"
+          port:     "8082"
+
+  - job_name: "sf_contract"
+    scrape_interval: 15s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["contract:9090"]
+        labels:
+          service:  "contract"
+          tier:     "core"
+          port:     "8083"
+
+  # ══════════════════════════════════════════════════════════════════════════
+  # Supporting Microservices  (20s scrape)
+  # ══════════════════════════════════════════════════════════════════════════
+
+  - job_name: "sf_review"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["review:9090"]
+        labels:
+          service:  "review"
+          tier:     "supporting"
+          port:     "8085"
+
+  - job_name: "sf_portfolio"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["portfolio:9090"]
+        labels:
+          service:  "portfolio"
+          tier:     "supporting"
+          port:     "8086"
+
+  - job_name: "sf_planning"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["planning:9090"]
+        labels:
+          service:  "planning"
+          tier:     "supporting"
+          port:     "8081"
+
+  - job_name: "sf_task"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["task:9090"]
+        labels:
+          service:  "task"
+          tier:     "supporting"
+          port:     "8091"
+
+  - job_name: "sf_notification"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["notification:9090"]
+        labels:
+          service:  "notification"
+          tier:     "supporting"
+          port:     "8087"
+
+  - job_name: "sf_gamification"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["gamification:9090"]
+        labels:
+          service:  "gamification"
+          tier:     "supporting"
+          port:     "8088"
+
+  - job_name: "sf_meeting"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["meeting:9090"]
+        labels:
+          service:  "meeting"
+          tier:     "supporting"
+          port:     "8101"
+
+  - job_name: "sf_chat"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["chat:9090"]
+        labels:
+          service:  "chat"
+          tier:     "supporting"
+          port:     "8093"
+
+  - job_name: "sf_ticket-service"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["ticket-service:9090"]
+        labels:
+          service:  "ticket-service"
+          tier:     "supporting"
+          port:     "8096"
+
+  - job_name: "sf_subcontracting"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["subcontracting:9090"]
+        labels:
+          service:  "subcontracting"
+          tier:     "supporting"
+          port:     "8110"
+
+  - job_name: "sf_freelancia-job"
+    scrape_interval: 20s
+    metrics_path: /actuator/prometheus
+    static_configs:
+      - targets: ["freelancia-job:9090"]
+        labels:
+          service:  "freelancia-job"
+          tier:     "supporting"
+          port:     "8097"
+
+  # ── MySQL (requires mysqld_exporter sidecar — optional) ───────────────────
+  # - job_name: "sf_mysql"
+  #   scrape_interval: 30s
+  #   static_configs:
+  #     - targets: ["mysqld-exporter:9104"]
+  #       labels:
+  #         service: "mysql"
+  #         tier:    "data"

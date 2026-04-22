@@ -2,10 +2,30 @@ FROM maven:3.9-eclipse-temurin-17 AS build
 WORKDIR /app
 
 COPY pom.xml ./
-RUN mvn dependency:go-offline --no-transfer-progress -q
+RUN set -eux; \
+    success=0; \
+    for i in 1 2 3; do \
+      if mvn dependency:go-offline --no-transfer-progress -q; then \
+        success=1; \
+        break; \
+      fi; \
+      echo "Maven command failed (attempt $i), retrying..."; \
+      sleep 5; \
+    done; \
+    test "$success" -eq 1
 
 COPY src ./src
-RUN mvn clean package -DskipTests --no-transfer-progress -q
+RUN set -eux; \
+    success=0; \
+    for i in 1 2 3; do \
+      if mvn clean package -DskipTests --no-transfer-progress -q; then \
+        success=1; \
+        break; \
+      fi; \
+      echo "Maven command failed (attempt $i), retrying..."; \
+      sleep 5; \
+    done; \
+    test "$success" -eq 1
 
 FROM eclipse-temurin:17-jre
 WORKDIR /app

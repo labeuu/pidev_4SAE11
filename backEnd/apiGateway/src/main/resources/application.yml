@@ -59,6 +59,7 @@ spring:
             - Path=/user/**
           filters:
             - StripPrefix=1
+            - SetRequestHeader=X-Internal-Gateway,true
 
         # Portfolio: URL directe (port 8086) — évite 503 « Unable to find instance for PORTFOLIO »
         # si Eureka n’est pas démarré ou si le service n’est pas enregistré.
