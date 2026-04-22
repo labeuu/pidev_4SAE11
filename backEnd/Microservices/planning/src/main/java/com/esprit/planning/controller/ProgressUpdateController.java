@@ -102,17 +102,31 @@ public class ProgressUpdateController {
         Sort sortObj = parseSort(sort);
         int cappedSize = Math.min(Math.max(1, size), 100);
         Pageable pageable = PageRequest.of(Math.max(0, page), cappedSize, sortObj);
-        Page<ProgressUpdate> result = progressUpdateService.findAllFiltered(
-                Optional.ofNullable(projectId),
-                Optional.ofNullable(freelancerId),
-                Optional.ofNullable(contractId),
-                Optional.ofNullable(progressMin),
-                Optional.ofNullable(progressMax),
-                Optional.ofNullable(dateFrom),
-                Optional.ofNullable(dateTo),
-                Optional.ofNullable(search),
-                allowedProjectIds,
-                pageable);
+        Page<ProgressUpdate> result;
+        if (allowedProjectIds.isPresent()) {
+            result = progressUpdateService.findAllFiltered(
+                    Optional.ofNullable(projectId),
+                    Optional.ofNullable(freelancerId),
+                    Optional.ofNullable(contractId),
+                    Optional.ofNullable(progressMin),
+                    Optional.ofNullable(progressMax),
+                    Optional.ofNullable(dateFrom),
+                    Optional.ofNullable(dateTo),
+                    Optional.ofNullable(search),
+                    allowedProjectIds,
+                    pageable);
+        } else {
+            result = progressUpdateService.findAllFiltered(
+                    Optional.ofNullable(projectId),
+                    Optional.ofNullable(freelancerId),
+                    Optional.ofNullable(contractId),
+                    Optional.ofNullable(progressMin),
+                    Optional.ofNullable(progressMax),
+                    Optional.ofNullable(dateFrom),
+                    Optional.ofNullable(dateTo),
+                    Optional.ofNullable(search),
+                    pageable);
+        }
         return ResponseEntity.ok(result);
     }
 
@@ -145,17 +159,31 @@ public class ProgressUpdateController {
         }
         // For now we always return CSV regardless of the requested format to avoid 400s from clients.
 
-        List<ProgressUpdate> result = progressUpdateService.findAllFilteredForExport(
-                Optional.ofNullable(projectId),
-                Optional.ofNullable(freelancerId),
-                Optional.ofNullable(contractId),
-                Optional.ofNullable(progressMin),
-                Optional.ofNullable(progressMax),
-                Optional.ofNullable(dateFrom),
-                Optional.ofNullable(dateTo),
-                Optional.ofNullable(search),
-                allowedProjectIds
-        );
+        List<ProgressUpdate> result;
+        if (allowedProjectIds.isPresent()) {
+            result = progressUpdateService.findAllFilteredForExport(
+                    Optional.ofNullable(projectId),
+                    Optional.ofNullable(freelancerId),
+                    Optional.ofNullable(contractId),
+                    Optional.ofNullable(progressMin),
+                    Optional.ofNullable(progressMax),
+                    Optional.ofNullable(dateFrom),
+                    Optional.ofNullable(dateTo),
+                    Optional.ofNullable(search),
+                    allowedProjectIds
+            );
+        } else {
+            result = progressUpdateService.findAllFilteredForExport(
+                    Optional.ofNullable(projectId),
+                    Optional.ofNullable(freelancerId),
+                    Optional.ofNullable(contractId),
+                    Optional.ofNullable(progressMin),
+                    Optional.ofNullable(progressMax),
+                    Optional.ofNullable(dateFrom),
+                    Optional.ofNullable(dateTo),
+                    Optional.ofNullable(search)
+            );
+        }
 
         StringBuilder sb = new StringBuilder();
         sb.append("id,projectId,contractId,freelancerId,title,description,progressPercentage,createdAt,updatedAt,nextUpdateDue,nextDueOverdueNotified,githubRepoUrl,commentCount\n");
@@ -220,7 +248,11 @@ public class ProgressUpdateController {
             @Parameter(description = "Progress update ID", example = "1", required = true) @PathVariable Long id,
             @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
             @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
-        return ResponseEntity.ok(progressUpdateService.findById(id, resolveFreelancerScope(viewerUserId, viewerRole)));
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (allowedProjectIds.isPresent()) {
+            return ResponseEntity.ok(progressUpdateService.findById(id, allowedProjectIds));
+        }
+        return ResponseEntity.ok(progressUpdateService.findById(id));
     }
 
     /** Returns a single progress update with all its comments in one response. 404 if update not found. */
@@ -237,7 +269,10 @@ public class ProgressUpdateController {
             @Parameter(description = "Progress update ID", example = "1", required = true) @PathVariable Long id,
             @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
             @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
-        ProgressUpdate update = progressUpdateService.findById(id, resolveFreelancerScope(viewerUserId, viewerRole));
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        ProgressUpdate update = allowedProjectIds.isPresent()
+                ? progressUpdateService.findById(id, allowedProjectIds)
+                : progressUpdateService.findById(id);
         List<ProgressComment> comments = progressCommentService.findByProgressUpdateId(id);
         ProgressUpdateWithCommentsDto dto = ProgressUpdateWithCommentsDto.builder()
                 .progressUpdate(update)
@@ -256,7 +291,10 @@ public class ProgressUpdateController {
             @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
         Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
         enforceProjectAccess(allowedProjectIds, projectId);
-        return ResponseEntity.ok(progressUpdateService.findByProjectId(projectId, allowedProjectIds));
+        if (allowedProjectIds.isPresent()) {
+            return ResponseEntity.ok(progressUpdateService.findByProjectId(projectId, allowedProjectIds));
+        }
+        return ResponseEntity.ok(progressUpdateService.findByProjectId(projectId));
     }
 
     /** Returns all progress updates for the given contract. */
@@ -267,7 +305,11 @@ public class ProgressUpdateController {
             @Parameter(description = "Contract ID", example = "1", required = true) @PathVariable Long contractId,
             @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
             @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
-        return ResponseEntity.ok(progressUpdateService.findByContractId(contractId, resolveFreelancerScope(viewerUserId, viewerRole)));
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (allowedProjectIds.isPresent()) {
+            return ResponseEntity.ok(progressUpdateService.findByContractId(contractId, allowedProjectIds));
+        }
+        return ResponseEntity.ok(progressUpdateService.findByContractId(contractId));
     }
 
     /** Returns all progress updates submitted by the given freelancer. */
@@ -300,11 +342,17 @@ public class ProgressUpdateController {
         Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
         if (projectIdsParam != null && !projectIdsParam.isBlank()) {
             List<Long> ids = parseIds(projectIdsParam);
-            return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByProjectIds(ids, allowedProjectIds));
+            if (allowedProjectIds.isPresent()) {
+                return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByProjectIds(ids, allowedProjectIds));
+            }
+            return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByProjectIds(ids));
         }
         if (contractIdsParam != null && !contractIdsParam.isBlank()) {
             List<Long> ids = parseIds(contractIdsParam);
-            return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByContractIds(ids, allowedProjectIds));
+            if (allowedProjectIds.isPresent()) {
+                return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByContractIds(ids, allowedProjectIds));
+            }
+            return ResponseEntity.ok().body((Object) progressUpdateService.getSummaryByContractIds(ids));
         }
         return ResponseEntity.badRequest()
                 .body((Object) Map.of(RESPONSE_MESSAGE_KEY, "Exactly one of projectIds or contractIds must be provided"));
@@ -403,7 +451,10 @@ public class ProgressUpdateController {
         Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
         LocalDate toDate = to != null ? to : LocalDate.now();
         LocalDate fromDate = from != null ? from : toDate.minusDays(30);
-        return ResponseEntity.ok(progressUpdateService.getProgressTrendByProject(projectId, fromDate, toDate, allowedProjectIds));
+        if (allowedProjectIds.isPresent()) {
+            return ResponseEntity.ok(progressUpdateService.getProgressTrendByProject(projectId, fromDate, toDate, allowedProjectIds));
+        }
+        return ResponseEntity.ok(progressUpdateService.getProgressTrendByProject(projectId, fromDate, toDate));
     }
 
     /** Returns projects with no progress update in the last N days (default 7). */
@@ -414,7 +465,11 @@ public class ProgressUpdateController {
             @Parameter(description = "Number of days without update to consider stalled", example = "7") @RequestParam(defaultValue = "7") int daysWithoutUpdate,
             @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
             @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
-        return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate, resolveFreelancerScope(viewerUserId, viewerRole)));
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (allowedProjectIds.isPresent()) {
+            return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate, allowedProjectIds));
+        }
+        return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate));
     }
 
     /** Alias for stalled projects: returns projects due or overdue for an update (no update in N days). */
@@ -428,7 +483,11 @@ public class ProgressUpdateController {
             @Parameter(description = "Number of days without update to consider due/overdue", example = "7") @RequestParam(defaultValue = "7") int daysWithoutUpdate,
             @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
             @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
-        return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate, resolveFreelancerScope(viewerUserId, viewerRole)));
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (allowedProjectIds.isPresent()) {
+            return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate, allowedProjectIds));
+        }
+        return ResponseEntity.ok(progressUpdateService.getProjectIdsWithStalledProgress(daysWithoutUpdate));
     }
 
     /** Returns freelancers ranked by progress update count, with comment count; limit caps the number returned. */

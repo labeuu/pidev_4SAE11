@@ -57,7 +57,11 @@ public class ProgressUpdateStatsController {
             @Parameter(description = "Project ID", example = "1", required = true) @PathVariable Long projectId,
             @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
             @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
-        return ResponseEntity.ok(progressUpdateService.getProgressStatisticsByProject(projectId, resolveFreelancerScope(viewerUserId, viewerRole)));
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (allowedProjectIds.isPresent()) {
+            return ResponseEntity.ok(progressUpdateService.getProgressStatisticsByProject(projectId, allowedProjectIds));
+        }
+        return ResponseEntity.ok(progressUpdateService.getProgressStatisticsByProject(projectId));
     }
 
     /** Returns progress statistics for the given contract. */
@@ -68,7 +72,11 @@ public class ProgressUpdateStatsController {
             @Parameter(description = "Contract ID", example = "1", required = true) @PathVariable Long contractId,
             @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
             @RequestHeader(value = "X-User-Role", required = false) String viewerRole) {
-        return ResponseEntity.ok(progressUpdateService.getProgressStatisticsByContract(contractId, resolveFreelancerScope(viewerUserId, viewerRole)));
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (allowedProjectIds.isPresent()) {
+            return ResponseEntity.ok(progressUpdateService.getProgressStatisticsByContract(contractId, allowedProjectIds));
+        }
+        return ResponseEntity.ok(progressUpdateService.getProgressStatisticsByContract(contractId));
     }
 
     /** Returns global dashboard statistics over all progress updates (total updates, comments, average %, distinct projects/freelancers). */
@@ -94,8 +102,11 @@ public class ProgressUpdateStatsController {
             @RequestHeader(value = "X-User-Id", required = false) Long viewerUserId,
             @RequestHeader(value = "X-User-Role", required = false) String viewerRole
     ) {
-        return ResponseEntity.ok(progressUpdateService.getProgressReportForProject(
-                projectId, from, to, resolveFreelancerScope(viewerUserId, viewerRole)));
+        Optional<Set<Long>> allowedProjectIds = resolveFreelancerScope(viewerUserId, viewerRole);
+        if (allowedProjectIds.isPresent()) {
+            return ResponseEntity.ok(progressUpdateService.getProgressReportForProject(projectId, from, to, allowedProjectIds));
+        }
+        return ResponseEntity.ok(progressUpdateService.getProgressReportForProject(projectId, from, to));
     }
 
     private Optional<Set<Long>> resolveFreelancerScope(Long userId, String role) {
