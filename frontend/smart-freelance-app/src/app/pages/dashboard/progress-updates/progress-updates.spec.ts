@@ -42,10 +42,31 @@ describe('ProgressUpdates', () => {
       imports: [ProgressUpdates, ReactiveFormsModule, Card],
       providers: [
         { provide: PlanningService, useValue: planningSpy },
-        { provide: AuthService, useValue: { currentUser: of(null) } },
-        { provide: UserService, useValue: { getUsers: () => of([]) } },
-        { provide: ProjectService, useValue: { getProjects: () => of([]), getProjectById: () => of(null) } },
-        { provide: ActivatedRoute, useValue: {} },
+        {
+          provide: AuthService,
+          useValue: {
+            getPreferredUsername: () => 'freelancer@test.com',
+            getUserId: () => 2,
+            getUserRole: () => 'FREELANCER',
+          },
+        },
+        {
+          provide: UserService,
+          useValue: {
+            getByEmail: () => of({ id: 2, firstName: 'Test', lastName: 'Freelancer', email: 'freelancer@test.com' }),
+          },
+        },
+        {
+          provide: ProjectService,
+          useValue: {
+            getApplicationsByFreelancer: () => of([]),
+            getById: () => of(null),
+          },
+        },
+        {
+          provide: ActivatedRoute,
+          useValue: { snapshot: { queryParamMap: { get: () => null } } },
+        },
       ],
     }).compileComponents();
 

@@ -35,7 +35,13 @@ describe('TaskManagement', () => {
       of({ service: 'task', status: 'UP', dbCount: 0, timestamp: '' } as TaskHealth)
     );
     taskSpy.getStatsDashboard.and.returnValue(
-      of({ totalTasks: 0, doneCount: 0, inProgressCount: 0, overdueCount: 0, completionPercentage: null } as TaskStatsDto)
+      of({
+        totalTasks: 0,
+        doneCount: 0,
+        inProgressCount: 0,
+        overdueCount: 0,
+        completionPercentage: 0,
+      } as TaskStatsDto)
     );
     taskSpy.getFilteredTasks.and.returnValue(
       of({ content: [] as Task[], totalElements: 0, totalPages: 0, size: 10, number: 0 } as PageResponse<Task>)

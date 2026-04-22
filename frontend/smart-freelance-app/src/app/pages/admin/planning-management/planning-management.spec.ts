@@ -26,23 +26,25 @@ describe('PlanningManagement', () => {
 
   beforeEach(async () => {
     const planningSpy = jasmine.createSpyObj('PlanningService', [
-      'getPlanningHealth',
       'getDashboardStats',
-      'getStalledProjects',
+      'getDueOrOverdueProjects',
       'getFreelancersByActivity',
       'getMostActiveProjects',
       'getFilteredProgressUpdates',
+      'getProgressUpdatesByProjectId',
+      'getProgressUpdatesByFreelancerId',
       'createProgressUpdate',
       'updateProgressUpdate',
       'deleteProgressUpdate',
     ]);
-    planningSpy.getPlanningHealth.and.returnValue(of({ service: 'planning', status: 'UP', timestamp: '' }));
     planningSpy.getDashboardStats.and.returnValue(
       of({ totalUpdates: 0, totalComments: 0, averageProgressPercentage: null, distinctProjectCount: 0, distinctFreelancerCount: 0 } as DashboardStatsDto)
     );
-    planningSpy.getStalledProjects.and.returnValue(of([]));
+    planningSpy.getDueOrOverdueProjects.and.returnValue(of([]));
     planningSpy.getFreelancersByActivity.and.returnValue(of([]));
     planningSpy.getMostActiveProjects.and.returnValue(of([]));
+    planningSpy.getProgressUpdatesByProjectId.and.returnValue(of([]));
+    planningSpy.getProgressUpdatesByFreelancerId.and.returnValue(of([]));
     planningSpy.getFilteredProgressUpdates.and.returnValue(
       of({ content: [], totalElements: 0, totalPages: 0, size: 20, number: 0 })
     );
@@ -51,9 +53,15 @@ describe('PlanningManagement', () => {
       imports: [PlanningManagement, ReactiveFormsModule, Card],
       providers: [
         { provide: PlanningService, useValue: planningSpy },
-        { provide: UserService, useValue: {} },
-        { provide: ProjectService, useValue: {} },
-        { provide: ProjectApplicationService, useValue: {} },
+        { provide: UserService, useValue: { getAll: () => of([]) } },
+        { provide: ProjectService, useValue: { getAllProjects: () => of([]) } },
+        {
+          provide: ProjectApplicationService,
+          useValue: {
+            getApplicationsByProject: () => of([]),
+            getApplicationsByFreelance: () => of([]),
+          },
+        },
       ],
     }).compileComponents();
 
@@ -66,15 +74,10 @@ describe('PlanningManagement', () => {
     expect(component).toBeTruthy();
   });
 
-  it('should call getPlanningHealth and getDashboardStats on init', () => {
+  it('should call getDashboardStats and ranking APIs on init', () => {
     fixture.detectChanges();
-    expect(planningService.getPlanningHealth).toHaveBeenCalled();
     expect(planningService.getDashboardStats).toHaveBeenCalled();
-  });
-
-  it('should call getStalledProjects and rankings on init', () => {
-    fixture.detectChanges();
-    expect(planningService.getStalledProjects).toHaveBeenCalled();
+    expect(planningService.getDueOrOverdueProjects).toHaveBeenCalled();
     expect(planningService.getFreelancersByActivity).toHaveBeenCalled();
     expect(planningService.getMostActiveProjects).toHaveBeenCalled();
   });
