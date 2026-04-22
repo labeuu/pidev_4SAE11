@@ -127,7 +127,7 @@
             "ci": {
               "watch": false,
               "progress": false,
-              "browsers": "ChromeHeadless",
+              "browsers": "ChromeHeadlessCI",
               "codeCoverage": true
             }
           }

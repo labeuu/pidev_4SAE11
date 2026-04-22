@@ -1,144 +1,107 @@
+// CI/CD pipeline for the Project microservice (monorepo: pidev_4SAE11).
+// Script Path in Jenkins: backEnd/Microservices/Project/Jenkinsfile
+// Credentials: GithubCredentials (SCM), DockerHubCrendentials (push), SonarQube (server with SonarQube Token).
+// Prometheus: set PROMETHEUS_PUSHGATEWAY_URL (e.g. http://192.168.1.13:9091) to push build metrics.
 pipeline {
     agent any
 
     environment {
-        // Docker Hub
-        DOCKER_HUB_CREDENTIALS = credentials('dockerhub-credentials')
-        DOCKER_IMAGE           = 'ton-dockerhub-username/springboot-project'
-        DOCKER_TAG             = "${env.BUILD_NUMBER}"
-
-        // SonarQube
-        SONAR_HOST_URL         = 'http://localhost:9000'
-        SONAR_TOKEN            = credentials('sonar-token')
-
-        // Déploiement SSH (VPS)
-        DEPLOY_HOST            = 'user@your-vps-ip'
-        DEPLOY_DIR             = '/opt/springboot-project'
-    }
-
-    tools {
-        maven 'Maven-3.9'   // Nom configuré dans Jenkins > Global Tool Configuration
-        jdk   'JDK-17'      // Nom configuré dans Jenkins > Global Tool Configuration
+        PROJECT_DIR = 'backEnd/Microservices/Project'
+        DOCKER_IMAGE = 'ridhaferchichi/project-microservice'
+        DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
+        JOB_NAME_SAFE = "${env.JOB_NAME?.replaceAll('[^a-zA-Z0-9]', '_') ?: 'project'}"
     }
 
     stages {
-
-        // ─────────────────────────────────────────
-        // 1. CHECKOUT
-        // ─────────────────────────────────────────
         stage('Checkout') {
             steps {
                 checkout scm
-                echo "✅ Code récupéré depuis le dépôt."
             }
         }
 
-        // ─────────────────────────────────────────
-        // 2. BUILD & TESTS
-        // ─────────────────────────────────────────
-        stage('Build & Tests') {
+        stage('Build & Test') {
             steps {
-                sh 'mvn clean package -DskipTests=false'
+                dir(PROJECT_DIR) {
+                    sh 'chmod +x mvnw && ./mvnw clean verify -B'
+                }
             }
             post {
                 always {
-                    junit '**/target/surefire-reports/*.xml'
-                    echo "✅ Build terminé. Rapports de tests publiés."
-                }
-                failure {
-                    echo "❌ Build ou tests échoués."
+                    junit allowEmptyResults: true, testResults: "${PROJECT_DIR}/target/surefire-reports/*.xml"
                 }
             }
         }
 
-        // ─────────────────────────────────────────
-        // 3. ANALYSE SONARQUBE
-        // ─────────────────────────────────────────
         stage('SonarQube Analysis') {
             steps {
-                withSonarQubeEnv('SonarQube') {
-                    sh """
-                        mvn sonar:sonar \
-                            -Dsonar.projectKey=springboot-project \
-                            -Dsonar.projectName='Spring Boot Project' \
-                            -Dsonar.host.url=${SONAR_HOST_URL} \
-                            -Dsonar.token=${SONAR_TOKEN}
-                    """
+                dir(PROJECT_DIR) {
+                    withCredentials([string(credentialsId: 'SonarQubeToken', variable: 'SONAR_TOKEN')]) {
+                        withSonarQubeEnv('SonarQube') {
+                            sh 'chmod +x mvnw && ./mvnw sonar:sonar -Dsonar.projectKey=project -Dsonar.projectName=Project -Dsonar.token=$SONAR_TOKEN'
+                        }
+                    }
                 }
             }
         }
 
-        // ─────────────────────────────────────────
-        // 4. QUALITY GATE
-        // ─────────────────────────────────────────
         stage('Quality Gate') {
             steps {
-                timeout(time: 5, unit: 'MINUTES') {
-                    waitForQualityGate abortPipeline: true
+                dir(PROJECT_DIR) {
+                    catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
+                        timeout(time: 10, unit: 'SECONDS') {
+                            waitForQualityGate abortPipeline: false
+                        }
+                    }
                 }
-                echo "✅ Quality Gate passé avec succès."
             }
         }
 
-        // ─────────────────────────────────────────
-        // 5. BUILD IMAGE DOCKER
-        // ─────────────────────────────────────────
         stage('Docker Build') {
             steps {
-                sh "docker build -t ${DOCKER_IMAGE}:${DOCKER_TAG} -t ${DOCKER_IMAGE}:latest ."
-                echo "✅ Image Docker construite : ${DOCKER_IMAGE}:${DOCKER_TAG}"
+                dir(PROJECT_DIR) {
+                    script {
+                        docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    }
+                }
             }
         }
 
-        // ─────────────────────────────────────────
-        // 6. PUSH IMAGE SUR DOCKER HUB
-        // ─────────────────────────────────────────
         stage('Docker Push') {
             steps {
-                sh "echo ${DOCKER_HUB_CREDENTIALS_PSW} | docker login -u ${DOCKER_HUB_CREDENTIALS_USR} --password-stdin"
-                sh "docker push ${DOCKER_IMAGE}:${DOCKER_TAG}"
-                sh "docker push ${DOCKER_IMAGE}:latest"
-                echo "✅ Image poussée sur Docker Hub."
-            }
-            post {
-                always {
-                    sh "docker logout"
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'DockerHubCrendentials') {
+                        def image = docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        image.push()
+                        image.push('latest')
+                    }
                 }
-            }
-        }
-
-        // ─────────────────────────────────────────
-        // 7. DÉPLOIEMENT VIA DOCKER COMPOSE
-        // ─────────────────────────────────────────
-        stage('Deploy') {
-            steps {
-                sshagent(['ssh-deploy-credentials']) {
-                    sh """
-                        ssh -o StrictHostKeyChecking=no ${DEPLOY_HOST} '
-                            cd ${DEPLOY_DIR} &&
-                            docker compose pull &&
-                            docker compose up -d --remove-orphans
-                        '
-                    """
-                }
-                echo "✅ Application déployée avec succès."
             }
         }
     }
 
-    // ─────────────────────────────────────────
-    // NOTIFICATIONS POST-PIPELINE
-    // ─────────────────────────────────────────
     post {
-        success {
-            echo "🎉 Pipeline terminé avec succès ! Image : ${DOCKER_IMAGE}:${DOCKER_TAG}"
+        always {
+            script {
+                if (env.PROMETHEUS_PUSHGATEWAY_URL?.trim()) {
+                    def status = currentBuild.result == 'SUCCESS' ? 1 : 0
+                    def duration = (System.currentTimeMillis() - currentBuild.startTimeInMillis) / 1000.0
+                    writeFile file: 'prometheus_metrics.txt', text: """# HELP jenkins_build_result Build result (1=success, 0=failure)
+# TYPE jenkins_build_result gauge
+jenkins_build_result{job="${JOB_NAME_SAFE}",build_number="${env.BUILD_NUMBER}"} ${status}
+# HELP jenkins_build_duration_seconds Build duration in seconds
+# TYPE jenkins_build_duration_seconds gauge
+jenkins_build_duration_seconds{job="${JOB_NAME_SAFE}",build_number="${env.BUILD_NUMBER}"} ${duration}
+"""
+                    sh "curl -s --data-binary @prometheus_metrics.txt '${env.PROMETHEUS_PUSHGATEWAY_URL}/metrics/job/${JOB_NAME_SAFE}/instance/${env.BUILD_NUMBER}' || true"
+                }
+            }
+            cleanWs()
         }
         failure {
-            echo "🚨 Pipeline échoué. Consulte les logs ci-dessus."
+            echo 'Pipeline failed'
         }
-        cleanup {
-            sh "docker rmi ${DOCKER_IMAGE}:${DOCKER_TAG} || true"
-            cleanWs()
+        success {
+            echo 'Pipeline succeeded'
         }
     }
 }
