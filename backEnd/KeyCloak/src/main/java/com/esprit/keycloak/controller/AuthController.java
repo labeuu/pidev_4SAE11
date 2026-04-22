@@ -14,8 +14,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -34,13 +34,17 @@ import java.util.stream.Stream;
  */
 @RestController
 @RequestMapping("/api/auth")
-@RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Authentication", description = "Keycloak-based authentication for Smart Freelance platform")
 public class AuthController {
 
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
     private final KeycloakAdminService keycloakAdminService;
     private final KeycloakTokenService keycloakTokenService;
+
+    public AuthController(KeycloakAdminService keycloakAdminService, KeycloakTokenService keycloakTokenService) {
+        this.keycloakAdminService = keycloakAdminService;
+        this.keycloakTokenService = keycloakTokenService;
+    }
 
     @Operation(summary = "Register", description = "Create a new user in Keycloak with the given role (CLIENT, FREELANCER, ADMIN).")
     @ApiResponses({
@@ -113,21 +117,21 @@ public class AuthController {
     @SecurityRequirement(name = "bearer-jwt")
     public UserInfoResponse userinfo(@AuthenticationPrincipal Jwt jwt) {
         if (jwt == null) {
-            return UserInfoResponse.builder().build();
+            return new UserInfoResponse();
         }
         List<String> roles = Stream.concat(
             getRealmRoles(jwt).stream(),
             getResourceRoles(jwt).stream()
         ).distinct().collect(Collectors.toList());
 
-        return UserInfoResponse.builder()
-            .sub(jwt.getSubject())
-            .email(jwt.getClaimAsString("email"))
-            .firstName(jwt.getClaimAsString("given_name"))
-            .lastName(jwt.getClaimAsString("family_name"))
-            .preferredUsername(jwt.getClaimAsString("preferred_username"))
-            .roles(roles)
-            .build();
+        UserInfoResponse response = new UserInfoResponse();
+        response.setSub(jwt.getSubject());
+        response.setEmail(jwt.getClaimAsString("email"));
+        response.setFirstName(jwt.getClaimAsString("given_name"));
+        response.setLastName(jwt.getClaimAsString("family_name"));
+        response.setPreferredUsername(jwt.getClaimAsString("preferred_username"));
+        response.setRoles(roles);
+        return response;
     }
 
     @Operation(summary = "Validate token", description = "Returns 200 if the Bearer token is valid. Used by other microservices to check auth.")

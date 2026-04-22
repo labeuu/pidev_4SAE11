@@ -1,6 +1,7 @@
 package com.esprit.user.service;
 
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
@@ -16,9 +17,9 @@ import java.util.UUID;
  * Stores avatar image files on the local filesystem and builds public URLs.
  */
 @Service
-@Slf4j
 public class AvatarStorageService {
 
+    private static final Logger log = LoggerFactory.getLogger(AvatarStorageService.class);
     private static final String AVATARS_PATH_SEGMENT = "api/users/avatars/";
     private static final long MAX_SIZE_BYTES = 5 * 1024 * 1024; // 5MB
     private static final String[] ALLOWED_CONTENT_TYPES = {

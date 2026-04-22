@@ -1,26 +1,29 @@
 package com.esprit.keycloak.client;
 
 import com.esprit.keycloak.dto.RegisterRequest;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestTemplate;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Calls the User microservice to create a user in userdb after Keycloak registration.
  * Uses Eureka service name "user" so the URL is http://user/api/users.
  */
 @Component
-@RequiredArgsConstructor
-@Slf4j
 public class UserServiceClient {
 
     private static final String USER_SERVICE_URL = "http://user/api/users";
+    private static final Logger log = LoggerFactory.getLogger(UserServiceClient.class);
 
     private final RestTemplate restTemplate;
+
+    public UserServiceClient(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
 
     /**
      * Create a user in the User service (userdb). Request body matches UserRequest (email, password, firstName, lastName, role, phone, avatarUrl).

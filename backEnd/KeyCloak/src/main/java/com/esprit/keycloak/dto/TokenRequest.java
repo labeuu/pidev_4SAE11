@@ -1,16 +1,10 @@
 package com.esprit.keycloak.dto;
 
 import jakarta.validation.constraints.NotBlank;
-import lombok.AllArgsConstructor;
-import lombok.Data;
-import lombok.NoArgsConstructor;
 
 /**
  * Request for token endpoint (password grant).
  */
-@Data
-@NoArgsConstructor
-@AllArgsConstructor
 public class TokenRequest {
 
     @NotBlank
@@ -20,4 +14,37 @@ public class TokenRequest {
     private String password;
 
     private String grantType = "password";
+
+    public TokenRequest() {
+    }
+
+    public TokenRequest(String username, String password, String grantType) {
+        this.username = username;
+        this.password = password;
+        this.grantType = grantType;
+    }
+
+    public String getUsername() {
+        return username;
+    }
+
+    public void setUsername(String username) {
+        this.username = username;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+
+    public String getGrantType() {
+        return grantType;
+    }
+
+    public void setGrantType(String grantType) {
+        this.grantType = grantType;
+    }
 }

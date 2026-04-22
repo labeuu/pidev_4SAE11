@@ -3,12 +3,11 @@ package com.esprit.user.controller;
 import com.esprit.user.service.AvatarStorageService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.io.Resource;
 import org.springframework.core.io.UrlResource;
 import org.springframework.http.HttpHeaders;
@@ -24,12 +23,15 @@ import java.util.Map;
  */
 @RestController
 @RequestMapping("/api/users")
-@RequiredArgsConstructor
-@Slf4j
 @Tag(name = "Avatar", description = "Upload and serve user avatar images")
 public class AvatarController {
 
+    private static final Logger log = LoggerFactory.getLogger(AvatarController.class);
     private final AvatarStorageService avatarStorageService;
+
+    public AvatarController(AvatarStorageService avatarStorageService) {
+        this.avatarStorageService = avatarStorageService;
+    }
 
     @Operation(summary = "Upload avatar", description = "Upload an image file as avatar. Returns URL to use as avatarUrl.")
     @ApiResponses({
