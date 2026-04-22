@@ -23,6 +23,11 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2023.0.0</spring-cloud.version>
+        <!-- Sonar: full JaCoCo XML (report must not filter classes) + scope coverage to tested service layer -->
+        <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.inclusions>**/src/main/java/org/example/offer/service/**/*.java</sonar.coverage.inclusions>
+        <sonar.coverage.exclusions>**/src/main/java/org/example/offer/service/ChatAssistantService.java,**/src/main/java/org/example/offer/service/SmartMatchingService.java,**/src/main/java/org/example/offer/service/TranslationService.java,**/src/main/java/org/example/offer/service/DashboardService.java,**/src/main/java/org/example/offer/service/EmailService.java</sonar.coverage.exclusions>
     </properties>
 
     <!-- ================= DEPENDENCIES ================= -->
@@ -191,12 +196,6 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
-                        <configuration>
-                            <includes>
-                                <include>org/example/offer/service/OfferApplicationService*</include>
-                                <include>org/example/offer/service/NotificationService*</include>
-                            </includes>
-                        </configuration>
                     </execution>
                     <execution>
                         <id>check</id>

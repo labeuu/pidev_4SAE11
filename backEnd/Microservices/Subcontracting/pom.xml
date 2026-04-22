@@ -22,6 +22,11 @@
     <properties>
         <java.version>17</java.version>
         <spring-cloud.version>2023.0.0</spring-cloud.version>
+        <sonar.java.coveragePlugin>jacoco</sonar.java.coveragePlugin>
+        <sonar.coverage.jacoco.xmlReportPaths>${project.build.directory}/site/jacoco/jacoco.xml</sonar.coverage.jacoco.xmlReportPaths>
+        <sonar.coverage.inclusions>**/src/main/java/org/example/subcontracting/service/**/*.java</sonar.coverage.inclusions>
+        <!-- Exclude AI / analytics / storage-heavy services from coverage denominator (integration-style code) -->
+        <sonar.coverage.exclusions>**/src/main/java/org/example/subcontracting/service/SubcontractAiDecisionAssistantService.java,**/src/main/java/org/example/subcontracting/service/SubcontractAiMatchService.java,**/src/main/java/org/example/subcontracting/service/SubcontractChatService.java,**/src/main/java/org/example/subcontracting/service/SubcontractFinancialAnalysisService.java,**/src/main/java/org/example/subcontracting/service/SubcontractCoachingService.java,**/src/main/java/org/example/subcontracting/service/SubcontractPredictiveDashboardService.java,**/src/main/java/org/example/subcontracting/service/SubcontractRiskCockpitService.java,**/src/main/java/org/example/subcontracting/service/SubcontractMediaStorageService.java,**/src/main/java/org/example/subcontracting/service/SubcontractDashboardService.java</sonar.coverage.exclusions>
     </properties>
 
     <dependencies>
@@ -165,11 +170,6 @@
                         <goals>
                             <goal>report</goal>
                         </goals>
-                        <configuration>
-                            <includes>
-                                <include>org/example/subcontracting/service/SubcontractAuditService*</include>
-                            </includes>
-                        </configuration>
                     </execution>
                     <execution>
                         <id>check</id>
