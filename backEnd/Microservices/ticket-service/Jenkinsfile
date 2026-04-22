@@ -22,7 +22,7 @@ pipeline {
         stage('Build & Test') {
             steps {
                 dir(TICKET_DIR) {
-                    sh 'chmod +x mvnw && ./mvnw clean verify -B'
+                    sh 'if [ -f mvnw ]; then chmod +x mvnw && ./mvnw clean verify -B; else mvn clean verify -B; fi'
                 }
             }
             post {
@@ -37,7 +37,7 @@ pipeline {
                 dir(TICKET_DIR) {
                     withCredentials([string(credentialsId: 'SonarQubeToken', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('SonarQube') {
-                            sh 'chmod +x mvnw && ./mvnw sonar:sonar -Dsonar.projectKey=ticket-service -Dsonar.projectName=Ticket-Service -Dsonar.token=$SONAR_TOKEN'
+                            sh 'if [ -f mvnw ]; then chmod +x mvnw && ./mvnw sonar:sonar -Dsonar.projectKey=ticket-service -Dsonar.projectName=Ticket-Service -Dsonar.token=$SONAR_TOKEN; else mvn sonar:sonar -Dsonar.projectKey=ticket-service -Dsonar.projectName=Ticket-Service -Dsonar.token=$SONAR_TOKEN; fi'
                         }
                     }
                 }
