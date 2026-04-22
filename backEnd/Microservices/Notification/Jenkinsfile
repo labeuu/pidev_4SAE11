@@ -1,72 +1,43 @@
-// CI/CD pipeline for the Smart Freelance Angular frontend (monorepo: pidev_4SAE11).
-// Script Path in Jenkins: frontend/smart-freelance-app/Jenkinsfile
+// CI/CD pipeline for the Notification microservice (monorepo: pidev_4SAE11).
+// Script Path in Jenkins: backEnd/Microservices/Notification/Jenkinsfile
 // Credentials: GithubCredentials (SCM), DockerHubCrendentials (push), SonarQube (server with SonarQube Token).
 // Prometheus: set PROMETHEUS_PUSHGATEWAY_URL (e.g. http://192.168.1.13:9091) to push build metrics.
-//
-// Node / npm: requires the Jenkins "Node.js" (nodejs) plugin. In Manage Jenkins > Tools, the Node.js installation
-// name must be exactly "NodeJS" to match the `tools` block below (or change the string in both places).
 pipeline {
     agent any
 
-    tools {
-        nodejs 'NodeJS'
-    }
-
     environment {
-        FRONTEND_DIR = 'frontend/smart-freelance-app'
-        DOCKER_IMAGE = 'ridhaferchichi/smart-freelance-frontend'
+        NOTIFICATION_DIR = 'backEnd/Microservices/Notification'
+        DOCKER_IMAGE = 'ridhaferchichi/notification-microservice'
         DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
-        JOB_NAME_SAFE = "${env.JOB_NAME?.replaceAll('[^a-zA-Z0-9]', '_') ?: 'smart_freelance_frontend'}"
-        CI = 'true'
+        JOB_NAME_SAFE = "${env.JOB_NAME?.replaceAll('[^a-zA-Z0-9]', '_') ?: 'notification'}"
     }
 
     stages {
         stage('Checkout') {
             steps {
-                checkout([
-                    $class: 'GitSCM',
-                    branches: scm.branches,
-                    userRemoteConfigs: scm.userRemoteConfigs,
-                    doGenerateSubmoduleConfigurations: false,
-                    submoduleCfg: [],
-                    extensions: [
-                        [$class: 'CleanBeforeCheckout'],
-                        [$class: 'CloneOption', shallow: true, depth: 1, noTags: true, honorRefspec: true, timeout: 20],
-                        [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
-                            [$class: 'SparseCheckoutPath', path: FRONTEND_DIR]
-                        ]]
-                    ]
-                ])
+                checkout scm
             }
         }
 
-        stage('Install & Test') {
+        stage('Build & Test') {
             steps {
-                dir(FRONTEND_DIR) {
-                    sh 'node -v && npm -v'
-                    sh 'npm ci --prefer-offline'
-                    sh 'npm run test:ci'
+                dir(NOTIFICATION_DIR) {
+                    sh 'if [ -f mvnw ]; then chmod +x mvnw && ./mvnw clean verify -B; else mvn clean verify -B; fi'
                 }
             }
-        }
-
-        stage('Build') {
-            steps {
-                dir(FRONTEND_DIR) {
-                    sh 'npm run build -- --configuration production'
+            post {
+                always {
+                    junit allowEmptyResults: true, testResults: "${NOTIFICATION_DIR}/target/surefire-reports/*.xml"
                 }
             }
         }
 
         stage('SonarQube Analysis') {
             steps {
-                dir(FRONTEND_DIR) {
+                dir(NOTIFICATION_DIR) {
                     withCredentials([string(credentialsId: 'SonarQubeToken', variable: 'SONAR_TOKEN')]) {
                         withSonarQubeEnv('SonarQube') {
-                            sh '''
-                                npx --yes @sonar/scan sonar \
-                                  -Dsonar.token=$SONAR_TOKEN
-                            '''
+                            sh 'if [ -f mvnw ]; then chmod +x mvnw && ./mvnw sonar:sonar -Dsonar.projectKey=notification -Dsonar.projectName=Notification -Dsonar.token=$SONAR_TOKEN; else mvn sonar:sonar -Dsonar.projectKey=notification -Dsonar.projectName=Notification -Dsonar.token=$SONAR_TOKEN; fi'
                         }
                     }
                 }
@@ -75,7 +46,7 @@ pipeline {
 
         stage('Quality Gate') {
             steps {
-                dir(FRONTEND_DIR) {
+                dir(NOTIFICATION_DIR) {
                     catchError(buildResult: 'SUCCESS', stageResult: 'UNSTABLE') {
                         timeout(time: 10, unit: 'SECONDS') {
                             waitForQualityGate abortPipeline: false
@@ -87,7 +58,7 @@ pipeline {
 
         stage('Docker Build') {
             steps {
-                dir(FRONTEND_DIR) {
+                dir(NOTIFICATION_DIR) {
                     script {
                         docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
                     }

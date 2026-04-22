@@ -1,0 +1,79 @@
+// CI/CD pipeline for the aimodel-node service (TypeScript/Node, monorepo: pidev_4SAE11).
+// Script Path in Jenkins: backEnd/Microservices/aimodel-node/Jenkinsfile
+// Credentials: GithubCredentials (SCM), DockerHubCrendentials (push).
+// Prometheus: set PROMETHEUS_PUSHGATEWAY_URL (e.g. http://192.168.1.13:9091) to push build metrics.
+// Note: No Sonar stage; add a JS scanner project in SonarQube and a stage here if you need parity with Java services.
+pipeline {
+    agent any
+
+    environment {
+        AIMODEL_NODE_DIR = 'backEnd/Microservices/aimodel-node'
+        DOCKER_IMAGE = 'ridhaferchichi/aimodel-node-microservice'
+        DOCKER_TAG = "${env.BUILD_NUMBER ?: 'latest'}"
+        JOB_NAME_SAFE = "${env.JOB_NAME?.replaceAll('[^a-zA-Z0-9]', '_') ?: 'aimodel_node'}"
+    }
+
+    stages {
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Install & Build') {
+            steps {
+                dir(AIMODEL_NODE_DIR) {
+                    sh 'npm ci && npm run build'
+                }
+            }
+        }
+
+        stage('Docker Build') {
+            steps {
+                dir(AIMODEL_NODE_DIR) {
+                    script {
+                        docker.build("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                    }
+                }
+            }
+        }
+
+        stage('Docker Push') {
+            steps {
+                script {
+                    docker.withRegistry('https://registry.hub.docker.com', 'DockerHubCrendentials') {
+                        def image = docker.image("${DOCKER_IMAGE}:${DOCKER_TAG}")
+                        image.push()
+                        image.push('latest')
+                    }
+                }
+            }
+        }
+    }
+
+    post {
+        always {
+            script {
+                if (env.PROMETHEUS_PUSHGATEWAY_URL?.trim()) {
+                    def status = currentBuild.result == 'SUCCESS' ? 1 : 0
+                    def duration = (System.currentTimeMillis() - currentBuild.startTimeInMillis) / 1000.0
+                    writeFile file: 'prometheus_metrics.txt', text: """# HELP jenkins_build_result Build result (1=success, 0=failure)
+# TYPE jenkins_build_result gauge
+jenkins_build_result{job="${JOB_NAME_SAFE}",build_number="${env.BUILD_NUMBER}"} ${status}
+# HELP jenkins_build_duration_seconds Build duration in seconds
+# TYPE jenkins_build_duration_seconds gauge
+jenkins_build_duration_seconds{job="${JOB_NAME_SAFE}",build_number="${env.BUILD_NUMBER}"} ${duration}
+"""
+                    sh "curl -s --data-binary @prometheus_metrics.txt '${env.PROMETHEUS_PUSHGATEWAY_URL}/metrics/job/${JOB_NAME_SAFE}/instance/${env.BUILD_NUMBER}' || true"
+                }
+            }
+            cleanWs()
+        }
+        failure {
+            echo 'Pipeline failed'
+        }
+        success {
+            echo 'Pipeline succeeded'
+        }
+    }
+}
