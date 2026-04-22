@@ -15,7 +15,20 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                checkout scm
+                checkout([
+                    $class: 'GitSCM',
+                    branches: scm.branches,
+                    userRemoteConfigs: scm.userRemoteConfigs,
+                    doGenerateSubmoduleConfigurations: false,
+                    submoduleCfg: [],
+                    extensions: [
+                        [$class: 'CleanBeforeCheckout'],
+                        [$class: 'CloneOption', shallow: true, depth: 1, noTags: true, honorRefspec: true, timeout: 20],
+                        [$class: 'SparseCheckoutPaths', sparseCheckoutPaths: [
+                            [$class: 'SparseCheckoutPath', path: OFFER_DIR]
+                        ]]
+                    ]
+                ])
             }
         }
 
