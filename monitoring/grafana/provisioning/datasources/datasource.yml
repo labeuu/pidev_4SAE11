@@ -1,0 +1,20 @@
+###############################################################################
+# Grafana — Auto-provisioned datasources
+# Grafana loads this on startup; no manual UI configuration needed.
+###############################################################################
+
+apiVersion: 1
+
+datasources:
+  - name:      Prometheus
+    type:      prometheus
+    uid:       prometheus
+    access:    proxy
+    url:       http://prometheus:9090
+    isDefault: true
+    editable:  false
+    jsonData:
+      httpMethod:          POST
+      timeInterval:        "15s"
+      # Enables Prometheus query hints and exemplar support
+      exemplarTraceIdDestinations: []

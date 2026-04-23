@@ -1,0 +1,19 @@
+###############################################################################
+# Grafana — Dashboard provisioning
+# Dashboards in the folder below are loaded automatically on startup.
+# Add .json files there to auto-import them without using the UI.
+###############################################################################
+
+apiVersion: 1
+
+providers:
+  - name:            "Smart Freelance Dashboards"
+    orgId:           1
+    folder:          "Smart Freelance"
+    folderUid:       "smart-freelance"
+    type:            file
+    disableDeletion: false
+    editable:        true
+    updateIntervalSeconds: 30
+    options:
+      path: /var/lib/grafana/dashboards

@@ -14,7 +14,9 @@ import org.keycloak.admin.client.resource.UsersResource;
 import org.keycloak.representations.idm.CredentialRepresentation;
 import org.keycloak.representations.idm.RoleRepresentation;
 import org.keycloak.representations.idm.UserRepresentation;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.util.Collections;
 import java.util.List;
@@ -49,7 +51,42 @@ public class KeycloakAdminService {
         if (admin.getClientSecret() != null && !admin.getClientSecret().isBlank()) {
             builder.clientSecret(admin.getClientSecret());
         }
-        return builder.build();
+        Keycloak keycloak = builder.build();
+        try {
+            // Trigger token acquisition immediately so bad admin credentials fail with a clear message.
+            keycloak.tokenManager().getAccessTokenString();
+            return keycloak;
+        } catch (Exception ex) {
+            try {
+                keycloak.close();
+            } catch (Exception ignored) {
+                // No-op.
+            }
+
+            String msg = ex.getMessage() != null ? ex.getMessage() : "";
+            String lower = msg.toLowerCase();
+            boolean invalidAdminLogin = lower.contains("invalid_grant")
+                || lower.contains("invalid user credentials")
+                || lower.contains("bad request")
+                || lower.contains("notauthorized")
+                || lower.contains("unauthorized")
+                || msg.contains("400")
+                || msg.contains("401");
+
+            if (invalidAdminLogin) {
+                throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Keycloak rejected admin login. Check keycloak.auth-server-url, keycloak.admin.username, keycloak.admin.password and keycloak.admin.client-secret.",
+                    ex
+                );
+            }
+
+            throw new ResponseStatusException(
+                HttpStatus.SERVICE_UNAVAILABLE,
+                "Cannot reach Keycloak admin API. Ensure Keycloak is running and reachable.",
+                ex
+            );
+        }
     }
 
     /**

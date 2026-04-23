@@ -97,6 +97,9 @@ sha-abc12 — git SHA for traceability (set by CI/CD)
 # Push everything at once
 docker-compose push
 
+# Or use the repo helper from the project root
+bash scripts/push-docker-images.sh
+
 # Or push a single service
 docker push YOUR_USERNAME/user:latest
 docker push YOUR_USERNAME/user:v1.0.0
