@@ -1,0 +1,23 @@
+SonarQube — enforce overall line coverage >= 40% for microservice projects
+==========================================================================
+
+These steps are performed on the SonarQube server (not in Git).
+
+1) Quality Gates
+   - Administration → Quality Gates → Create or duplicate an existing gate.
+   - Add condition: Metric "Coverage", Operator "is less than", Value "40".
+   - Ensure the condition applies to overall coverage (not only new code), matching team policy.
+
+2) Project binding
+   - For each microservice project (project keys align with Jenkins / sonar-project.properties):
+     Project → Project Settings → Quality Gate → select the gate created above.
+
+3) Jenkins
+   - Pipelines should run `mvn clean verify` (JaCoCo XML at target/site/jacoco/jacoco.xml) then `sonar:sonar`.
+   - Keep `waitForQualityGate` with a webhook or adequate timeout so analysis completes before the gate is evaluated.
+   - If the pipeline times out, increase the wait or fix Sonar server load / network.
+
+4) Local parity
+   - From a service directory: `mvnw clean verify sonar:sonar` with `sonar.token` as required; `sonar-project.properties` in the repo should match keys and `sonar.coverage.jacoco.xmlReportPaths` used in CI.
+
+Note: Some services set `sonar.coverage.exclusions` for generated-style code (e.g. entity/dto/bootstrap) so the Sonar "Coverage" percentage reflects testable code; raw JaCoCo HTML may still differ.

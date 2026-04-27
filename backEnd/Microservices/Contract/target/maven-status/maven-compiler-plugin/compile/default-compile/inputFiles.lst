@@ -1,20 +1,22 @@
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/ContractApplication.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/controller/CommentController.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/controller/ConflictController.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/controller/ContractController.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/dto/ConflictStatsDto.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/dto/ContractStatsDto.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/dto/PdfExportRequest.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/dto/SignatureRequest.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/entity/Comment.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/entity/Conflict.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/entity/ConflictStatus.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/entity/Contract.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/entity/ContractStatus.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/repository/CommentRepository.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/repository/ConflictRepository.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/repository/ContractRepository.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/service/CommentService.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/service/ConflictService.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/service/ContractPdfService.java
-/Users/macbook/pidev_4SAE11/backEnd/Microservices/Contract/src/main/java/org/example/contract/service/ContractService.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\config\GatewayOnlyFilter.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\config\SecurityConfig.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\ContractApplication.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\controller\CommentController.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\controller\ConflictController.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\controller\ContractController.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\dto\ConflictStatsDto.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\dto\ContractStatsDto.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\dto\PdfExportRequest.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\dto\SignatureRequest.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\entity\Comment.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\entity\Conflict.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\entity\ConflictStatus.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\entity\Contract.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\entity\ContractStatus.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\repository\CommentRepository.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\repository\ConflictRepository.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\repository\ContractRepository.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\service\CommentService.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\service\ConflictService.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\service\ContractPdfService.java
+C:\Users\ridha\Desktop\Esprit\4eme\Sem2\Pi\Smart Freelance and Project Matching Platform\backEnd\Microservices\Contract\src\main\java\org\example\contract\service\ContractService.java

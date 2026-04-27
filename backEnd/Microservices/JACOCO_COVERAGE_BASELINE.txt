@@ -1,0 +1,21 @@
+﻿JaCoCo overall LINE coverage (root report = last LINE counter in jacoco.xml).
+SonarQube overall coverage can differ when sonar.coverage.exclusions is set (see per-service sonar-project.properties).
+Regenerate: backEnd/Microservices/scripts/refresh-baseline-from-disk.ps1 (after mvn clean verify per service).
+Generated: 2026-04-28 00:33
+
+AImodel                LINE 69 covered / 164 missed  pct=29.6%  >=40%=no
+Chat                   LINE 57 covered / 226 missed  pct=20.1%  >=40%=no
+Contract               LINE 258 covered / 311 missed  pct=45.3%  >=40%=yes
+FreelanciaJob          jacoco report missing (run mvn clean verify)
+gamification           jacoco report missing (run mvn clean verify)
+Meeting                jacoco report missing (run mvn clean verify)
+Notification           jacoco report missing (run mvn clean verify)
+Offer                  LINE 299 covered / 986 missed  pct=23.3%  >=40%=no
+planning               LINE 1487 covered / 451 missed  pct=76.7%  >=40%=yes
+Portfolio              LINE 200 covered / 248 missed  pct=44.6%  >=40%=yes
+Project                jacoco report missing (run mvn clean verify)
+review                 LINE 169 covered / 160 missed  pct=51.4%  >=40%=yes
+Subcontracting         LINE 225 covered / 3388 missed  pct=6.2%  >=40%=no
+task                   jacoco report missing (run mvn clean verify)
+ticket-service         LINE 230 covered / 624 missed  pct=26.9%  >=40%=no
+user                   LINE 145 covered / 308 missed  pct=32.0%  >=40%=no
