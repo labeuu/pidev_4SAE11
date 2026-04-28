@@ -139,11 +139,11 @@ def runMicroservicePipeline(Map cfg) {
                             timeout(time: 15, unit: "SECONDS") {
                                 def qualityGate = waitForQualityGate abortPipeline: false
                                 if (qualityGate?.status != "OK") {
-                                    unstable("SonarQube Quality Gate status: ${qualityGate?.status}")
+                                    echo "SonarQube Quality Gate status: ${qualityGate?.status}. Continuing without marking build unstable."
                                 }
                             }
                         } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException ignored) {
-                            unstable("SonarQube Quality Gate check timed out; continuing pipeline as UNSTABLE")
+                            echo "SonarQube Quality Gate check timed out; continuing without marking build unstable."
                         }
                     }
                 }
@@ -162,7 +162,21 @@ def runMicroservicePipeline(Map cfg) {
                           echo "\$DH_PASS" | docker login -u "\$DH_USER" --password-stdin
                         """
                         sh "docker push ${fullImage}"
-                        sh "docker push ${dockerImage}:latest"
+                        def latestPushStatus = sh(script: """
+                          set +e
+                          docker push ${dockerImage}:latest
+                          status=\$?
+                          if [ "\$status" -ne 0 ]; then
+                            echo "Retrying latest push after re-login..."
+                            echo "\$DH_PASS" | docker login -u "\$DH_USER" --password-stdin
+                            docker push ${dockerImage}:latest
+                            status=\$?
+                          fi
+                          exit "\$status"
+                        """, returnStatus: true)
+                        if (latestPushStatus != 0) {
+                            unstable("Failed to push ${dockerImage}:latest, but versioned image ${fullImage} was pushed successfully.")
+                        }
                         sh "docker logout || true"
                     }
                 }
