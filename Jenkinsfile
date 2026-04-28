@@ -85,7 +85,7 @@ pipeline {
 }
 
 def runService(String jobName) {
-    build job: jobName, wait: true, propagate: true, parameters: [
+    def child = build job: jobName, wait: true, propagate: false, parameters: [
         string(name: "REPO_URL", value: params.REPO_URL),
         string(name: "BRANCH", value: params.BRANCH),
         string(name: "IMAGE_REPO", value: params.IMAGE_REPO),
@@ -94,4 +94,12 @@ def runService(String jobName) {
         booleanParam(name: "RUN_SONARQUBE", value: params.RUN_SONARQUBE),
         booleanParam(name: "TRIGGER_DOWNSTREAM", value: false)
     ]
+
+    if (child.result == "FAILURE" || child.result == "ABORTED") {
+        error("${jobName} finished with result ${child.result}")
+    }
+
+    if (child.result == "UNSTABLE") {
+        unstable("${jobName} finished UNSTABLE")
+    }
 }
