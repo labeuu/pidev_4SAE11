@@ -91,7 +91,15 @@ def runMicroservicePipeline(Map cfg) {
                     } else {
                         if (npmAvailable) {
                             withNodeEnv {
-                                sh "npm test -- --watch=false || npm test || true"
+                                def hasCiTestScript = (sh(
+                                        script: "node -e \"const p=require('./package.json'); process.exit(p.scripts && p.scripts['test:ci'] ? 0 : 1)\"",
+                                        returnStatus: true
+                                ) == 0)
+                                if (hasCiTestScript) {
+                                    sh "npm run test:ci"
+                                } else {
+                                    sh "npm test -- --watch=false || npm test || true"
+                                }
                             }
                         } else {
                             unstable("Skipping Node tests because npm is unavailable on Jenkins agent")
