@@ -6,7 +6,7 @@ def runMicroservicePipeline(Map cfg) {
 
     def servicePath = cfg.servicePath
     def githubCredsId = "GithubCredentials"
-    def dockerCredsId = "DockerHubCredentials"
+    def dockerCredsId = "DockerHubCrendentials"
     def sonarTokenCredentialsId = "SonarQubeToken"
     def sonarServerName = "SonarQube"
     def imageRepo = params.IMAGE_REPO
