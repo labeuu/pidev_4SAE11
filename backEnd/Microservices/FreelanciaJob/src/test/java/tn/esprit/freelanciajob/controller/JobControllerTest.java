@@ -170,14 +170,14 @@ class JobControllerTest {
     }
 
     @Test
-    @DisplayName("GET /jobs/{id} – should return 500 when service throws RuntimeException")
-    void getById_notFound_returns500() throws Exception {
+    @DisplayName("GET /jobs/{id} – should return 400 when service throws RuntimeException")
+    void getById_notFound_returns400() throws Exception {
         // Arrange
         when(jobService.getJobResponse(99L)).thenThrow(new RuntimeException("Job not found with id: 99"));
 
         // Act & Assert
         mockMvc.perform(get("/jobs/{id}", 99L))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 
     // ── PUT /jobs/update/{id} ─────────────────────────────────────────────────
