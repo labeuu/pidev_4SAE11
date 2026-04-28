@@ -100,11 +100,15 @@ def runMicroservicePipeline(Map cfg) {
                             withSonarQubeEnv(sonarServerName) {
                                 def sonarProjectKey = cfg.imageName.replaceAll("[^a-zA-Z0-9_.:-]", "-")
                                 if (buildTool == "maven") {
+                                    def hasJacocoPlugin = (sh(
+                                            script: "rg -q \"<artifactId>jacoco-maven-plugin</artifactId>\" pom.xml",
+                                            returnStatus: true
+                                    ) == 0)
                                     sh """
                                       if [ -f mvnw ]; then
-                                        ./mvnw -B jacoco:report sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
+                                        ./mvnw -B ${hasJacocoPlugin ? 'jacoco:report ' : ''}sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
                                       else
-                                        mvn -B jacoco:report sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
+                                        mvn -B ${hasJacocoPlugin ? 'jacoco:report ' : ''}sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
                                       fi
                                     """
                                     sonarAnalysisExecuted = true
@@ -136,7 +140,7 @@ def runMicroservicePipeline(Map cfg) {
                             return
                         }
                         try {
-                            timeout(time: 15, unit: "SECONDS") {
+                            timeout(time: 15, unit: "MINUTES") {
                                 def qualityGate = waitForQualityGate abortPipeline: false
                                 if (qualityGate?.status != "OK") {
                                     echo "SonarQube Quality Gate status: ${qualityGate?.status}. Continuing without marking build unstable."
