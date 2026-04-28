@@ -105,9 +105,16 @@ def runMicroservicePipeline(Map cfg) {
                     }
                 }
                 stage("Quality Gate") {
-                    catchError(buildResult: "UNSTABLE", stageResult: "UNSTABLE") {
-                        timeout(time: 10, unit: "SECONDS") {
-                            waitForQualityGate abortPipeline: false
+                    script {
+                        try {
+                            timeout(time: 15, unit: "SECONDS") {
+                                def qualityGate = waitForQualityGate abortPipeline: false
+                                if (qualityGate?.status != "OK") {
+                                    unstable("SonarQube Quality Gate status: ${qualityGate?.status}")
+                                }
+                            }
+                        } catch (org.jenkinsci.plugins.workflow.steps.FlowInterruptedException ignored) {
+                            unstable("SonarQube Quality Gate check timed out; continuing pipeline as UNSTABLE")
                         }
                     }
                 }
@@ -122,7 +129,9 @@ def runMicroservicePipeline(Map cfg) {
             if (params.PUSH_IMAGE) {
                 stage("Push Docker Image") {
                     withCredentials([usernamePassword(credentialsId: dockerCredsId, usernameVariable: "DH_USER", passwordVariable: "DH_PASS")]) {
-                        sh "echo \"${DH_PASS}\" | docker login -u \"${DH_USER}\" --password-stdin"
+                        sh """
+                          echo "\$DH_PASS" | docker login -u "\$DH_USER" --password-stdin
+                        """
                         sh "docker push ${fullImage}"
                         sh "docker push ${dockerImage}:latest"
                         sh "docker logout || true"
