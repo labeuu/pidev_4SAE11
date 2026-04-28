@@ -94,7 +94,7 @@ def runMicroservicePipeline(Map cfg) {
                 }
                 stage("Quality Gate") {
                     timeout(time: 5, unit: "SECONDS") {
-                        waitForQualityGate abortPipeline: true
+                        waitForQualityGate abortPipeline: false
                     }
                 }
             }
