@@ -227,13 +227,13 @@ class FreelanciaJobIntegrationTest {
     }
 
     // ═════════════════════════════════════════════════════════════════════════
-    // Delete non-existent job returns 500 (no 404 handler in this service)
+    // Delete non-existent job returns 400 via global error mapping
     // ═════════════════════════════════════════════════════════════════════════
 
     @Test
-    @DisplayName("DELETE /jobs/{id} for non-existent job returns 500")
-    void deleteNonExistentJob_returns500() throws Exception {
+    @DisplayName("DELETE /jobs/{id} for non-existent job returns 400")
+    void deleteNonExistentJob_returns400() throws Exception {
         mockMvc.perform(delete("/jobs/{id}", 99999L))
-                .andExpect(status().isInternalServerError());
+                .andExpect(status().isBadRequest());
     }
 }

@@ -15,6 +15,7 @@ def runMicroservicePipeline(Map cfg) {
     def fullImage = "${dockerImage}:${tag}"
     def buildTool = ""
     def npmAvailable = false
+    def sonarAnalysisExecuted = false
 
     timestamps {
         try {
@@ -106,6 +107,7 @@ def runMicroservicePipeline(Map cfg) {
                                         mvn -B sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
                                       fi
                                     """
+                                    sonarAnalysisExecuted = true
                                 } else if (buildTool == "gradle") {
                                     sh """
                                       if [ -f gradlew ]; then
@@ -114,9 +116,11 @@ def runMicroservicePipeline(Map cfg) {
                                         gradle sonarqube -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
                                       fi
                                     """
+                                    sonarAnalysisExecuted = true
                                 } else {
                                     if (npmAvailable) {
                                         sh "npx -y sonar-scanner -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.sources=. -Dsonar.token=\\$SONAR_TOKEN"
+                                        sonarAnalysisExecuted = true
                                     } else {
                                         unstable("Skipping Node SonarQube analysis because npm/npx is unavailable on Jenkins agent")
                                     }
@@ -127,8 +131,12 @@ def runMicroservicePipeline(Map cfg) {
                 }
                 stage("Quality Gate") {
                     script {
+                        if (!sonarAnalysisExecuted) {
+                            echo "Skipping Quality Gate because SonarQube analysis was not executed for this job."
+                            return
+                        }
                         try {
-                            timeout(time: 15, unit: "SECONDS") {
+                            timeout(time: 15, unit: "MINUTES") {
                                 def qualityGate = waitForQualityGate abortPipeline: false
                                 if (qualityGate?.status != "OK") {
                                     unstable("SonarQube Quality Gate status: ${qualityGate?.status}")
