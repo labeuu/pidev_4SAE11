@@ -14,6 +14,7 @@ def runMicroservicePipeline(Map cfg) {
     def dockerImage = "${imageRepo}/${cfg.imageName}"
     def fullImage = "${dockerImage}:${tag}"
     def buildTool = ""
+    def npmAvailable = false
 
     timestamps {
         try {
@@ -32,6 +33,10 @@ def runMicroservicePipeline(Map cfg) {
                     buildTool = "gradle"
                 } else if (fileExists("${servicePath}/package.json")) {
                     buildTool = "node"
+                    npmAvailable = (sh(script: "command -v npm >/dev/null 2>&1", returnStatus: true) == 0)
+                    if (!npmAvailable) {
+                        echo "npm not found on Jenkins agent. Node pre-build/test steps will be skipped; Docker build will still run."
+                    }
                 } else {
                     error("No supported build tool found in ${servicePath}")
                 }
@@ -44,8 +49,12 @@ def runMicroservicePipeline(Map cfg) {
                     } else if (buildTool == "gradle") {
                         sh "if [ -f gradlew ]; then chmod +x gradlew && ./gradlew clean assemble -x test; else gradle clean assemble -x test; fi"
                     } else {
-                        sh "npm ci"
-                        sh "npm run build --if-present"
+                        if (npmAvailable) {
+                            sh "npm ci"
+                            sh "npm run build --if-present"
+                        } else {
+                            echo "Skipping host Node build because npm is unavailable."
+                        }
                     }
                 }
             }
@@ -57,7 +66,11 @@ def runMicroservicePipeline(Map cfg) {
                     } else if (buildTool == "gradle") {
                         sh "if [ -f gradlew ]; then ./gradlew test; else gradle test; fi"
                     } else {
-                        sh "npm test -- --watch=false || npm test || true"
+                        if (npmAvailable) {
+                            sh "npm test -- --watch=false || npm test || true"
+                        } else {
+                            unstable("Skipping Node tests because npm is unavailable on Jenkins agent")
+                        }
                     }
                 }
                 junit allowEmptyResults: true, testResults: "${servicePath}/target/surefire-reports/*.xml, ${servicePath}/build/test-results/test/*.xml"
@@ -70,7 +83,11 @@ def runMicroservicePipeline(Map cfg) {
                     } else if (buildTool == "gradle") {
                         sh "if [ -f gradlew ]; then ./gradlew bootJar -x test || ./gradlew assemble -x test; else gradle assemble -x test; fi"
                     } else {
-                        sh "npm pack >/dev/null 2>&1 || true"
+                        if (npmAvailable) {
+                            sh "npm pack >/dev/null 2>&1 || true"
+                        } else {
+                            echo "Skipping npm package step because npm is unavailable."
+                        }
                     }
                 }
             }
@@ -98,7 +115,11 @@ def runMicroservicePipeline(Map cfg) {
                                       fi
                                     """
                                 } else {
-                                    sh "npx -y sonar-scanner -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.sources=. -Dsonar.token=\\$SONAR_TOKEN"
+                                    if (npmAvailable) {
+                                        sh "npx -y sonar-scanner -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.sources=. -Dsonar.token=\\$SONAR_TOKEN"
+                                    } else {
+                                        unstable("Skipping Node SonarQube analysis because npm/npx is unavailable on Jenkins agent")
+                                    }
                                 }
                             }
                         }

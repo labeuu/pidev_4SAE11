@@ -9,6 +9,7 @@ import java.util.List;
 import java.util.Map;
 
 public interface IProjectService {
+    Project addProject(Project project);
     Project addProject(ProjectRequest request);
     Project updateProject(Project project);
 

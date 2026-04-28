@@ -6,9 +6,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import tn.esprit.freelanciajob.Controller.JobController;
@@ -42,6 +44,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * All service dependencies are mocked with {@code @MockitoBean}.
  */
 @WebMvcTest(JobController.class)
+@AutoConfigureMockMvc(addFilters = false)
 @DisplayName("JobController – Web Layer Tests")
 class JobControllerTest {
 
@@ -53,6 +56,7 @@ class JobControllerTest {
     @MockitoBean private AiJobGeneratorService aiJobGeneratorService;
     @MockitoBean private JobStatsService       jobStatsService;
     @MockitoBean private ProfileFitScoreService fitScoreService;
+    @MockitoBean private JwtDecoder jwtDecoder;
 
     private ObjectMapper objectMapper;
 
@@ -164,8 +168,8 @@ class JobControllerTest {
         when(jobService.getJobResponse(99L)).thenThrow(new RuntimeException("Job not found with id: 99"));
 
         // Act & Assert
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> mockMvc.perform(get("/jobs/{id}", 99L)))
-                .hasCauseInstanceOf(RuntimeException.class);
+        mockMvc.perform(get("/jobs/{id}", 99L))
+                .andExpect(status().isInternalServerError());
     }
 
     // ── PUT /jobs/update/{id} ─────────────────────────────────────────────────

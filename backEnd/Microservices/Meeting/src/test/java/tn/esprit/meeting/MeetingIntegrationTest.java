@@ -9,6 +9,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.MediaType;
+import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
@@ -46,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  *  - Cross-concern validation (bean validation + business rules)
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @DisplayName("Meeting Microservice – Integration Tests")
 class MeetingIntegrationTest {
@@ -70,6 +71,10 @@ class MeetingIntegrationTest {
     // Replace Google Meet so calendar calls are never issued
     @MockitoBean
     private GoogleMeetService googleMeetService;
+
+    // Required by OAuth2 resource server configuration in SecurityConfig.
+    @MockitoBean
+    private JwtDecoder jwtDecoder;
 
     private ObjectMapper objectMapper;
 

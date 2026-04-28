@@ -47,7 +47,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * Scope: HTTP → Controller → Service → Repository (H2) → response
  */
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.MOCK)
-@AutoConfigureMockMvc
+@AutoConfigureMockMvc(addFilters = false)
 @ActiveProfiles("test")
 @DisplayName("FreelanciaJob – Integration Tests")
 class FreelanciaJobIntegrationTest {
@@ -233,7 +233,7 @@ class FreelanciaJobIntegrationTest {
     @Test
     @DisplayName("DELETE /jobs/{id} for non-existent job returns 500")
     void deleteNonExistentJob_returns500() throws Exception {
-        org.assertj.core.api.Assertions.assertThatThrownBy(() -> mockMvc.perform(delete("/jobs/{id}", 99999L)))
-                .hasCauseInstanceOf(RuntimeException.class);
+        mockMvc.perform(delete("/jobs/{id}", 99999L))
+                .andExpect(status().isInternalServerError());
     }
 }
