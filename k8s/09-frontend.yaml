@@ -21,6 +21,7 @@ spec:
       containers:
         - name: frontend
           image: YOUR_DOCKERHUB_USERNAME/frontend:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 80
           resources:

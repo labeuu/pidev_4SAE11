@@ -188,6 +188,91 @@ Full route and port reference: [Documentation/api-gateway.md](Documentation/api-
 
 ---
 
+## Jenkins Seed + kubeadm CI/CD
+
+This repository now supports **Jenkins Seed Job + Job DSL** automation for microservices on `main`, without Dockerizing Jenkins.
+
+### What was added
+
+- `jobs.groovy` creates:
+  - `services/<service-name>` pipeline jobs (one per verified buildable service)
+  - `orchestration/full-stack-main` master pipeline
+- Per-service Jenkinsfiles now follow one standardized flow:
+  - Checkout -> Build -> Test -> Package -> Docker build/tag -> Docker push -> Kubernetes deploy -> rollout verify
+  - Build tool autodetection: Maven, Gradle, Node
+- Root `Jenkinsfile` orchestrates dependency-aware build/deploy order:
+  - infra first, then parallel-safe services, then dependent services, then gateway, then frontend
+- Kubernetes manifests use `imagePullPolicy: IfNotPresent` for local kubeadm-friendly behavior.
+- Service dependency inventory is documented in `ci/service-catalog.yaml`.
+
+### Required Jenkins plugins
+
+- Pipeline
+- Git + Git Client
+- Credentials + Credentials Binding
+- Job DSL
+- Pipeline: Groovy
+- Pipeline: Build Step
+- Workspace Cleanup
+
+If Jenkins agents do not already have them, install these CLIs on the Jenkins VM/agent host:
+- `docker`
+- `kubectl`
+- Java + Maven + Node/npm (according to jobs you run)
+
+### One-time Jenkins UI bootstrap
+
+1. **Create credentials** (`Manage Jenkins` -> `Credentials`):
+   - `dockerhub-credentials-id` (Username with password/token)
+   - `kubeconfig-file-credential-id` (Secret file containing kubeconfig for your kubeadm cluster context)
+2. **Install Job DSL plugin** if missing.
+3. **Create Seed job**:
+   - New Item -> Freestyle -> name: `seed-jobs`
+   - Source Code Management -> Git -> Repository URL: your repo URL
+   - Branch: `*/main`
+   - Build step -> **Process Job DSLs**
+   - DSL scripts: `jobs.groovy`
+   - Save
+4. **Run `seed-jobs` once** to generate all pipeline jobs.
+5. Open generated `orchestration/full-stack-main` and run with:
+   - `REPO_URL`: your actual repository URL
+   - `IMAGE_REPO`: `docker.io/<your-dockerhub-username>`
+   - `DOCKERHUB_CREDENTIALS_ID`: `dockerhub-credentials-id`
+   - `KUBECONFIG_CREDENTIALS_ID`: `kubeconfig-file-credential-id`
+
+### How Jenkins connects to kubeadm securely
+
+- Store kubeconfig in Jenkins as a **Secret file** credential (`kubeconfig-file-credential-id`).
+- Pipelines copy it at runtime to workspace-local `.kube/config` with `chmod 600`.
+- `kubectl` commands run with explicit namespace (`smart-freelance` by default).
+- No kubeconfig is committed to git.
+
+### Image build and deployment model
+
+- Images are built in each service directory and pushed to Docker Hub as:
+  - `${IMAGE_REPO}/${service}:${BUILD_NUMBER}` and `:latest`
+- Deployments are updated with `kubectl set image` and validated via `kubectl rollout status`.
+- Full-stack orchestration applies manifests in order:
+  - `k8s/00-namespace.yaml` -> ... -> `k8s/10-ingress.yaml`
+
+### Full deploy vs single service deploy
+
+- **Full stack:** run `orchestration/full-stack-main`
+- **Single service:** run `services/<service-name>` directly (same parameters), optionally disabling `DEPLOY_TO_K8S`.
+
+### Adding a new service later
+
+1. Add service directory + Dockerfile + service `Jenkinsfile`.
+2. Add service entry to `jobs.groovy` and `ci/service-catalog.yaml` (path, image, dependencies, deployment name).
+3. Add Kubernetes Deployment/Service manifests (or update `k8s/08-microservices.yaml`).
+4. Re-run `seed-jobs` to regenerate jobs.
+
+### Current scope note
+
+- `vendor` is intentionally excluded from seed-generated CI/CD because `backEnd/Microservices/Vendor` is not currently verified buildable (missing `pom.xml`).
+
+---
+
 ## Optional Integrations
 
 | Integration | Purpose | Configuration |

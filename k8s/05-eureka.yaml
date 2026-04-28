@@ -16,6 +16,7 @@ spec:
       containers:
         - name: eureka
           image: YOUR_DOCKERHUB_USERNAME/eureka:latest   # replace with your image
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8420
           env:

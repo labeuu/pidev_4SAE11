@@ -1,125 +1,97 @@
-// Global CI pipeline — full stack via Docker Compose (no Kubernetes).
-//
-// Jenkins: New Item → Pipeline → Definition: Pipeline script from SCM → Script Path: Jenkinsfile
-//
-// Plugins: Pipeline, Git, Credentials Binding. Agent needs Docker Engine + Compose v2 (`docker compose`).
-//
-// Credentials (Jenkins → Manage Credentials):
-//   - GitHub/SCM credentials ID (default): GithubCredentials
-//   - Docker Hub credentials ID (default): DockerHubCrendentials
-// Both IDs are configurable as pipeline parameters below.
-//
-// Optional: `docker compose up` smoke tests are not in this pipeline (slow; needs extra host files
-// for Firebase/calendar mounts). Compose now includes Ollama + runtime model bootstrap.
-// See docker-compose.yml and firebase-credentials/README.md.
-
 pipeline {
     agent any
-
-    parameters {
-        string(
-            name: 'GITHUB_CREDENTIALS_ID',
-            defaultValue: 'GithubCredentials',
-            description: 'Jenkins credentials ID used for Git checkout'
-        )
-        string(
-            name: 'DOCKERHUB_CREDENTIALS_ID',
-            defaultValue: 'DockerHubCrendentials',
-            description: 'Jenkins credentials ID (username/password) for Docker Hub'
-        )
-        booleanParam(
-            name: 'PUSH_IMAGES',
-            defaultValue: false,
-            description: 'After a successful build, log in to Docker Hub and push all compose-tagged images'
-        )
+    options {
+        timestamps()
+        disableConcurrentBuilds()
+        buildDiscarder(logRotator(numToKeepStr: "25", artifactNumToKeepStr: "10"))
     }
-
+    parameters {
+        string(name: "REPO_URL", defaultValue: "https://github.com/YOUR_ORG/YOUR_REPO.git", description: "Git repository URL")
+        string(name: "BRANCH", defaultValue: "main", description: "Branch to build")
+        string(name: "IMAGE_REPO", defaultValue: "docker.io/YOUR_DOCKERHUB_USERNAME", description: "Registry/repo prefix")
+        string(name: "IMAGE_TAG", defaultValue: "", description: "Optional tag override")
+        booleanParam(name: "PUSH_IMAGE", defaultValue: true, description: "Push images to Docker Hub")
+        booleanParam(name: "RUN_SONARQUBE", defaultValue: true, description: "Run SonarQube analysis in child jobs")
+    }
+    environment {
+        ORCH_TAG = "${params.IMAGE_TAG?.trim() ? params.IMAGE_TAG.trim() : env.BUILD_NUMBER}"
+        GITHUB_CREDS_ID = "GithubCredentials"
+    }
     stages {
-        stage('Checkout') {
+        stage("Checkout") {
             steps {
                 checkout([
-                    $class: 'GitSCM',
-                    branches: scm.branches,
-                    doGenerateSubmoduleConfigurations: false,
-                    extensions: scm.extensions,
-                    userRemoteConfigs: [[
-                        url: scm.userRemoteConfigs[0].url,
-                        credentialsId: params.GITHUB_CREDENTIALS_ID
-                    ]]
+                    $class: "GitSCM",
+                    branches: [[name: "*/${params.BRANCH}"]],
+                    userRemoteConfigs: [[url: params.REPO_URL, credentialsId: env.GITHUB_CREDS_ID]]
                 ])
             }
         }
-
-        stage('Prepare .env') {
+        stage("Infrastructure Order") {
             steps {
-                sh 'cp -f .env.example .env'
-            }
-        }
-
-        stage('Compose validate') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: params.DOCKERHUB_CREDENTIALS_ID,
-                    usernameVariable: 'DH_USER',
-                    passwordVariable: 'DH_PASS'
-                )]) {
-                    sh '''
-                        export DOCKER_HUB_USERNAME="${DH_USER}"
-                        export TAG="${BUILD_NUMBER}"
-                        export OLLAMA_MODEL="${OLLAMA_MODEL:-gemma3:4b}"
-                        docker compose -f docker-compose.yml config -q
-                    '''
+                script {
+                    runService("services/eureka")
+                    runService("services/config-server")
+                    runService("services/keycloak-auth")
                 }
             }
         }
-
-        stage('Compose build') {
+        stage("Core Services Parallel") {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: params.DOCKERHUB_CREDENTIALS_ID,
-                    usernameVariable: 'DH_USER',
-                    passwordVariable: 'DH_PASS'
-                )]) {
-                    sh '''
-                        export DOCKER_HUB_USERNAME="${DH_USER}"
-                        export TAG="${BUILD_NUMBER}"
-                        export OLLAMA_MODEL="${OLLAMA_MODEL:-gemma3:4b}"
-                        export DOCKER_BUILDKIT=1
-                        docker compose -f docker-compose.yml build --parallel
-                    '''
+                script {
+                    parallel(
+                        user: { runService("services/user") },
+                        project: { runService("services/project") },
+                        notification: { runService("services/notification") },
+                        contract: { runService("services/contract") },
+                        portfolio: { runService("services/portfolio") },
+                        chat: { runService("services/chat") },
+                        meeting: { runService("services/meeting") },
+                        freelanciaJob: { runService("services/freelancia-job") },
+                        aimodel: { runService("services/aimodel") }
+                    )
                 }
             }
         }
-
-        stage('Compose push') {
-            when {
-                expression { return params.PUSH_IMAGES }
-            }
+        stage("Dependent Services") {
             steps {
-                withCredentials([usernamePassword(
-                    credentialsId: params.DOCKERHUB_CREDENTIALS_ID,
-                    usernameVariable: 'DH_USER',
-                    passwordVariable: 'DH_PASS'
-                )]) {
-                    sh '''
-                        export DOCKER_HUB_USERNAME="${DH_USER}"
-                        export TAG="${BUILD_NUMBER}"
-                        export OLLAMA_MODEL="${OLLAMA_MODEL:-gemma3:4b}"
-                        echo "${DH_PASS}" | docker login -u "${DH_USER}" --password-stdin
-                        docker compose -f docker-compose.yml push
-                        docker logout || true
-                    '''
+                script {
+                    runService("services/planning")
+                    runService("services/task")
+                    parallel(
+                        review: { runService("services/review") },
+                        offer: { runService("services/offer") },
+                        gamification: { runService("services/gamification") },
+                        ticketService: { runService("services/ticket-service") },
+                        subcontracting: { runService("services/subcontracting") }
+                    )
+                }
+            }
+        }
+        stage("Gateway Then Frontend") {
+            steps {
+                script {
+                    runService("services/api-gateway")
+                    runService("services/frontend")
                 }
             }
         }
     }
-
     post {
-        failure {
-            echo 'Global compose pipeline failed'
-        }
-        success {
-            echo 'Global compose pipeline succeeded'
+        always {
+            cleanWs(deleteDirs: true, disableDeferredWipeout: true)
         }
     }
+}
+
+def runService(String jobName) {
+    build job: jobName, wait: true, propagate: true, parameters: [
+        string(name: "REPO_URL", value: params.REPO_URL),
+        string(name: "BRANCH", value: params.BRANCH),
+        string(name: "IMAGE_REPO", value: params.IMAGE_REPO),
+        string(name: "IMAGE_TAG", value: ORCH_TAG),
+        booleanParam(name: "PUSH_IMAGE", value: params.PUSH_IMAGE),
+        booleanParam(name: "RUN_SONARQUBE", value: params.RUN_SONARQUBE),
+        booleanParam(name: "TRIGGER_DOWNSTREAM", value: false)
+    ]
 }

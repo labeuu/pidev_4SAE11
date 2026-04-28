@@ -1,0 +1,177 @@
+version: 1
+branch: main
+namespace: smart-freelance
+registry: docker.io/YOUR_DOCKERHUB_USERNAME
+
+services:
+  - id: eureka
+    path: backEnd/Eureka
+    jenkinsfile: backEnd/Eureka/Jenkinsfile
+    buildTool: maven
+    image: eureka
+    deployment: eureka
+    dependsOn: []
+
+  - id: config-server
+    path: backEnd/ConfigServer
+    jenkinsfile: backEnd/ConfigServer/Jenkinsfile
+    buildTool: maven
+    image: config-server
+    deployment: config-server
+    dependsOn: [eureka]
+
+  - id: keycloak-auth
+    path: backEnd/KeyCloak
+    jenkinsfile: backEnd/KeyCloak/Jenkinsfile
+    buildTool: maven
+    image: keycloak-auth
+    deployment: keycloak-auth
+    dependsOn: [eureka]
+
+  - id: user
+    path: backEnd/Microservices/user
+    jenkinsfile: backEnd/Microservices/user/Jenkinsfile
+    buildTool: maven
+    image: user
+    deployment: user
+    dependsOn: [config-server, keycloak-auth]
+
+  - id: project
+    path: backEnd/Microservices/Project
+    jenkinsfile: backEnd/Microservices/Project/Jenkinsfile
+    buildTool: maven
+    image: project
+    deployment: project
+    dependsOn: [config-server]
+
+  - id: notification
+    path: backEnd/Microservices/Notification
+    jenkinsfile: backEnd/Microservices/Notification/Jenkinsfile
+    buildTool: maven
+    image: notification
+    deployment: notification
+    dependsOn: [config-server]
+
+  - id: contract
+    path: backEnd/Microservices/Contract
+    jenkinsfile: backEnd/Microservices/Contract/Jenkinsfile
+    buildTool: maven
+    image: contract
+    deployment: contract
+    dependsOn: [config-server]
+
+  - id: portfolio
+    path: backEnd/Microservices/Portfolio
+    jenkinsfile: backEnd/Microservices/Portfolio/Jenkinsfile
+    buildTool: maven
+    image: portfolio
+    deployment: portfolio
+    dependsOn: [config-server]
+
+  - id: planning
+    path: backEnd/Microservices/planning
+    jenkinsfile: backEnd/Microservices/planning/Jenkinsfile
+    buildTool: maven
+    image: planning
+    deployment: planning
+    dependsOn: [config-server, project]
+
+  - id: task
+    path: backEnd/Microservices/task
+    jenkinsfile: backEnd/Microservices/task/Jenkinsfile
+    buildTool: maven
+    image: task
+    deployment: task
+    dependsOn: [config-server, project, planning, user]
+
+  - id: review
+    path: backEnd/Microservices/review
+    jenkinsfile: backEnd/Microservices/review/Jenkinsfile
+    buildTool: maven
+    image: review
+    deployment: review
+    dependsOn: [config-server, user, notification]
+
+  - id: offer
+    path: backEnd/Microservices/Offer
+    jenkinsfile: backEnd/Microservices/Offer/Jenkinsfile
+    buildTool: maven
+    image: offer
+    deployment: offer
+    dependsOn: [config-server, user, project, planning, contract, notification]
+
+  - id: gamification
+    path: backEnd/Microservices/gamification
+    jenkinsfile: backEnd/Microservices/gamification/Jenkinsfile
+    buildTool: maven
+    image: gamification
+    deployment: gamification
+    dependsOn: [config-server, notification]
+
+  - id: chat
+    path: backEnd/Microservices/Chat
+    jenkinsfile: backEnd/Microservices/Chat/Jenkinsfile
+    buildTool: maven
+    image: chat
+    deployment: chat
+    dependsOn: [config-server]
+
+  - id: meeting
+    path: backEnd/Microservices/Meeting
+    jenkinsfile: backEnd/Microservices/Meeting/Jenkinsfile
+    buildTool: maven
+    image: meeting
+    deployment: meeting
+    dependsOn: [config-server]
+
+  - id: freelancia-job
+    path: backEnd/Microservices/FreelanciaJob
+    jenkinsfile: backEnd/Microservices/FreelanciaJob/Jenkinsfile
+    buildTool: maven
+    image: freelancia-job
+    deployment: freelancia-job
+    dependsOn: [config-server]
+
+  - id: ticket-service
+    path: backEnd/Microservices/ticket-service
+    jenkinsfile: backEnd/Microservices/ticket-service/Jenkinsfile
+    buildTool: maven
+    image: ticket-service
+    deployment: ""
+    dependsOn: [config-server, user, notification]
+
+  - id: subcontracting
+    path: backEnd/Microservices/Subcontracting
+    jenkinsfile: backEnd/Microservices/Subcontracting/Jenkinsfile
+    buildTool: maven
+    image: subcontracting
+    deployment: ""
+    dependsOn: [config-server, user, project, offer, contract, portfolio, notification]
+
+  - id: aimodel
+    path: backEnd/Microservices/aimodel-node
+    jenkinsfile: backEnd/Microservices/aimodel-node/Jenkinsfile
+    buildTool: node
+    image: aimodel
+    deployment: ""
+    dependsOn: [eureka]
+
+  - id: api-gateway
+    path: backEnd/apiGateway
+    jenkinsfile: backEnd/apiGateway/Jenkinsfile
+    buildTool: maven
+    image: api-gateway
+    deployment: api-gateway
+    dependsOn: [config-server, keycloak-auth, user, project, offer, contract, review, planning, task]
+
+  - id: frontend
+    path: frontend/smart-freelance-app
+    jenkinsfile: frontend/smart-freelance-app/Jenkinsfile
+    buildTool: node
+    image: frontend
+    deployment: frontend
+    dependsOn: [api-gateway]
+
+excludedServices:
+  - id: vendor
+    reason: "Excluded from automation until build metadata is fixed (missing pom.xml in backEnd/Microservices/Vendor)."

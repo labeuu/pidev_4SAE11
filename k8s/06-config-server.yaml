@@ -16,6 +16,7 @@ spec:
       containers:
         - name: config-server
           image: YOUR_DOCKERHUB_USERNAME/config-server:latest
+          imagePullPolicy: IfNotPresent
           ports:
             - containerPort: 8888
           envFrom:

@@ -27,6 +27,7 @@ spec:
       containers:
         - name: keycloak-auth
           image: YOUR_DOCKERHUB_USERNAME/keycloak-auth:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8079}]
           envFrom:
             - configMapRef:  {name: app-config}
@@ -73,6 +74,7 @@ spec:
       containers:
         - name: user
           image: YOUR_DOCKERHUB_USERNAME/user:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8090}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -137,6 +139,7 @@ spec:
       containers:
         - name: project
           image: YOUR_DOCKERHUB_USERNAME/project:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8084}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -184,13 +187,14 @@ spec:
       containers:
         - name: offer
           image: YOUR_DOCKERHUB_USERNAME/offer:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8082}]
           envFrom:
             - configMapRef: {name: app-config}
             - secretRef:    {name: mysql-secret}
           env:
             - {name: SERVER_PORT, value: "8082"}
-            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/gestion_offer_db"}
+            - {name: SPRING_DATASOURCE_URL, value: "jdbc:mysql://mysql:3306/gestion_offre_db"}
           resources:
             requests: {cpu: 150m, memory: 256Mi}
             limits:   {cpu: 500m, memory: 512Mi}
@@ -231,6 +235,7 @@ spec:
       containers:
         - name: contract
           image: YOUR_DOCKERHUB_USERNAME/contract:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8083}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -278,6 +283,7 @@ spec:
       containers:
         - name: portfolio
           image: YOUR_DOCKERHUB_USERNAME/portfolio:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8086}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -326,6 +332,7 @@ spec:
       containers:
         - name: review
           image: YOUR_DOCKERHUB_USERNAME/review:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8085}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -376,6 +383,7 @@ spec:
       containers:
         - name: planning
           image: YOUR_DOCKERHUB_USERNAME/planning:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8081}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -433,6 +441,7 @@ spec:
       containers:
         - name: task
           image: YOUR_DOCKERHUB_USERNAME/task:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8091}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -480,6 +489,7 @@ spec:
       containers:
         - name: notification
           image: YOUR_DOCKERHUB_USERNAME/notification:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8087}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -534,6 +544,7 @@ spec:
       containers:
         - name: gamification
           image: YOUR_DOCKERHUB_USERNAME/gamification:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8088}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -581,6 +592,7 @@ spec:
       containers:
         - name: chat
           image: YOUR_DOCKERHUB_USERNAME/chat:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8093}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -628,6 +640,7 @@ spec:
       containers:
         - name: meeting
           image: YOUR_DOCKERHUB_USERNAME/meeting:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8101}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -684,6 +697,7 @@ spec:
       containers:
         - name: freelancia-job
           image: YOUR_DOCKERHUB_USERNAME/freelancia-job:latest
+          imagePullPolicy: IfNotPresent
           ports: [{containerPort: 8097}]
           envFrom:
             - configMapRef: {name: app-config}
@@ -713,48 +727,3 @@ spec:
   selector: {app: freelancia-job}
   ports: [{port: 8097, targetPort: 8097}]
 
----
-# ─────────────────────────────── vendor ─────────────────────────────────────
-apiVersion: apps/v1
-kind: Deployment
-metadata:
-  name: vendor
-  namespace: smart-freelance
-spec:
-  replicas: 1
-  selector:
-    matchLabels: {app: vendor}
-  template:
-    metadata:
-      labels: {app: vendor}
-    spec:
-      containers:
-        - name: vendor
-          image: YOUR_DOCKERHUB_USERNAME/vendor:latest
-          ports: [{containerPort: 8092}]
-          envFrom:
-            - configMapRef: {name: app-config}
-            - secretRef:    {name: mysql-secret}
-          env:
-            - {name: SERVER_PORT, value: "8092"}
-          resources:
-            requests: {cpu: 150m, memory: 256Mi}
-            limits:   {cpu: 500m, memory: 512Mi}
-          readinessProbe:
-            httpGet: {path: /actuator/health, port: 8092}
-            initialDelaySeconds: 45
-            periodSeconds: 10
-            failureThreshold: 6
-          livenessProbe:
-            httpGet: {path: /actuator/health, port: 8092}
-            initialDelaySeconds: 90
-            periodSeconds: 20
----
-apiVersion: v1
-kind: Service
-metadata:
-  name: vendor
-  namespace: smart-freelance
-spec:
-  selector: {app: vendor}
-  ports: [{port: 8092, targetPort: 8092}]
