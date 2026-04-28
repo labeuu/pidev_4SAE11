@@ -1,4 +1,8 @@
-def runner = load('ci/pipelines/microservicePipeline.groovy')
+def runner
+node {
+    checkout scm
+    runner = load('ci/pipelines/microservicePipeline.groovy')
+}
 runner.runMicroservicePipeline([
     serviceName: 'keycloak-auth',
     servicePath: 'backEnd/KeyCloak',
@@ -6,3 +10,4 @@ runner.runMicroservicePipeline([
     deploymentName: 'keycloak-auth',
     repoUrl: 'https://github.com/YOUR_ORG/YOUR_REPO.git'
 ])
+

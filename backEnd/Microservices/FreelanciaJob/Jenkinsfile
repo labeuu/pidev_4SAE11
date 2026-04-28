@@ -1,4 +1,8 @@
-def runner = load('ci/pipelines/microservicePipeline.groovy')
+def runner
+node {
+    checkout scm
+    runner = load('ci/pipelines/microservicePipeline.groovy')
+}
 runner.runMicroservicePipeline([
     serviceName: 'freelancia-job',
     servicePath: 'backEnd/Microservices/FreelanciaJob',
@@ -6,3 +10,4 @@ runner.runMicroservicePipeline([
     deploymentName: 'freelancia-job',
     repoUrl: 'https://github.com/YOUR_ORG/YOUR_REPO.git'
 ])
+
