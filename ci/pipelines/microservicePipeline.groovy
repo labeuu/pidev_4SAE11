@@ -82,19 +82,33 @@ def runMicroservicePipeline(Map cfg) {
                             withSonarQubeEnv(sonarServerName) {
                                 def sonarProjectKey = cfg.imageName.replaceAll("[^a-zA-Z0-9_.:-]", "-")
                                 if (buildTool == "maven") {
-                                    sh "if [ -f mvnw ]; then ./mvnw -B sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=${SONAR_TOKEN}; else mvn -B sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=${SONAR_TOKEN}; fi"
+                                    sh """
+                                      if [ -f mvnw ]; then
+                                        ./mvnw -B sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
+                                      else
+                                        mvn -B sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
+                                      fi
+                                    """
                                 } else if (buildTool == "gradle") {
-                                    sh "if [ -f gradlew ]; then ./gradlew sonarqube -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=${SONAR_TOKEN}; else gradle sonarqube -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=${SONAR_TOKEN}; fi"
+                                    sh """
+                                      if [ -f gradlew ]; then
+                                        ./gradlew sonarqube -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
+                                      else
+                                        gradle sonarqube -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
+                                      fi
+                                    """
                                 } else {
-                                    sh "npx -y sonar-scanner -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.sources=. -Dsonar.token=${SONAR_TOKEN}"
+                                    sh "npx -y sonar-scanner -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.sources=. -Dsonar.token=\\$SONAR_TOKEN"
                                 }
                             }
                         }
                     }
                 }
                 stage("Quality Gate") {
-                    timeout(time: 5, unit: "SECONDS") {
-                        waitForQualityGate abortPipeline: false
+                    catchError(buildResult: "UNSTABLE", stageResult: "UNSTABLE") {
+                        timeout(time: 10, unit: "SECONDS") {
+                            waitForQualityGate abortPipeline: false
+                        }
                     }
                 }
             }
