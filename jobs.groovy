@@ -29,6 +29,10 @@ folder('services') {
   description('Auto-generated microservice pipeline jobs')
 }
 
+folder('orchestration') {
+  description('Auto-generated orchestration pipelines')
+}
+
 services.each { svc ->
   pipelineJob("services/${svc.id}") {
     description("Auto-generated for ${svc.id}. Reads Jenkinsfile from main branch.")
