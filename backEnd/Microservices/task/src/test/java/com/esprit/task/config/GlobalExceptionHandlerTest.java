@@ -93,8 +93,8 @@ class GlobalExceptionHandlerTest {
 
         assertThat(GlobalExceptionHandler.resolveFeignClientMessage(ex))
                 .contains("Connection refused")
-                .contains("Project microservice")
-                .contains("AImodel");
+                .contains("Project and AIMODEL services")
+                .contains("microservices are running");
     }
 
     @Test

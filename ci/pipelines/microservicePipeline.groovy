@@ -102,9 +102,9 @@ def runMicroservicePipeline(Map cfg) {
                                 if (buildTool == "maven") {
                                     sh """
                                       if [ -f mvnw ]; then
-                                        ./mvnw -B sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
+                                        ./mvnw -B jacoco:report sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
                                       else
-                                        mvn -B sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
+                                        mvn -B jacoco:report sonar:sonar -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.token=\$SONAR_TOKEN
                                       fi
                                     """
                                     sonarAnalysisExecuted = true
