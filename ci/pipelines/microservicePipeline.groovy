@@ -136,7 +136,7 @@ def runMicroservicePipeline(Map cfg) {
                             return
                         }
                         try {
-                            timeout(time: 15, unit: "MINUTES") {
+                            timeout(time: 15, unit: "SECONDS") {
                                 def qualityGate = waitForQualityGate abortPipeline: false
                                 if (qualityGate?.status != "OK") {
                                     unstable("SonarQube Quality Gate status: ${qualityGate?.status}")
