@@ -1,13 +1,11 @@
-def runner
 node {
     checkout scm
-    runner = load('ci/pipelines/microservicePipeline.groovy')
-}
-runner.runMicroservicePipeline([
+    def runner = load('ci/pipelines/microservicePipeline.groovy')
+    runner.runMicroservicePipeline([
     serviceName: 'gamification',
     servicePath: 'backEnd/Microservices/gamification',
     imageName: 'gamification',
     deploymentName: 'gamification',
     repoUrl: 'https://github.com/YOUR_ORG/YOUR_REPO.git'
 ])
-
+}
