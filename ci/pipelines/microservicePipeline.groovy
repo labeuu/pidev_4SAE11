@@ -16,6 +16,18 @@ def runMicroservicePipeline(Map cfg) {
     def buildTool = ""
     def npmAvailable = false
     def sonarAnalysisExecuted = false
+    def nodeToolName = "NodeJS"
+    def nodeToolHome = ""
+
+    def withNodeEnv = { Closure body ->
+        if (nodeToolHome?.trim()) {
+            withEnv(["PATH+NODE=${nodeToolHome}/bin"]) {
+                body()
+            }
+        } else {
+            body()
+        }
+    }
 
     timestamps {
         try {
@@ -34,7 +46,15 @@ def runMicroservicePipeline(Map cfg) {
                     buildTool = "gradle"
                 } else if (fileExists("${servicePath}/package.json")) {
                     buildTool = "node"
-                    npmAvailable = (sh(script: "command -v npm >/dev/null 2>&1", returnStatus: true) == 0)
+                    try {
+                        nodeToolHome = tool(name: nodeToolName, type: "jenkins.plugins.nodejs.tools.NodeJSInstallation")
+                        echo "Using Jenkins NodeJS tool '${nodeToolName}' from ${nodeToolHome}"
+                    } catch (ignored) {
+                        echo "Jenkins NodeJS tool '${nodeToolName}' is not available for this agent. Falling back to system PATH."
+                    }
+                    withNodeEnv {
+                        npmAvailable = (sh(script: "command -v npm >/dev/null 2>&1", returnStatus: true) == 0)
+                    }
                     if (!npmAvailable) {
                         echo "npm not found on Jenkins agent. Node pre-build/test steps will be skipped; Docker build will still run."
                     }
@@ -51,8 +71,10 @@ def runMicroservicePipeline(Map cfg) {
                         sh "if [ -f gradlew ]; then chmod +x gradlew && ./gradlew clean assemble -x test; else gradle clean assemble -x test; fi"
                     } else {
                         if (npmAvailable) {
-                            sh "npm ci"
-                            sh "npm run build --if-present"
+                            withNodeEnv {
+                                sh "npm ci"
+                                sh "npm run build --if-present"
+                            }
                         } else {
                             echo "Skipping host Node build because npm is unavailable."
                         }
@@ -68,7 +90,9 @@ def runMicroservicePipeline(Map cfg) {
                         sh "if [ -f gradlew ]; then ./gradlew test; else gradle test; fi"
                     } else {
                         if (npmAvailable) {
-                            sh "npm test -- --watch=false || npm test || true"
+                            withNodeEnv {
+                                sh "npm test -- --watch=false || npm test || true"
+                            }
                         } else {
                             unstable("Skipping Node tests because npm is unavailable on Jenkins agent")
                         }
@@ -85,7 +109,9 @@ def runMicroservicePipeline(Map cfg) {
                         sh "if [ -f gradlew ]; then ./gradlew bootJar -x test || ./gradlew assemble -x test; else gradle assemble -x test; fi"
                     } else {
                         if (npmAvailable) {
-                            sh "npm pack >/dev/null 2>&1 || true"
+                            withNodeEnv {
+                                sh "npm pack >/dev/null 2>&1 || true"
+                            }
                         } else {
                             echo "Skipping npm package step because npm is unavailable."
                         }
@@ -123,7 +149,9 @@ def runMicroservicePipeline(Map cfg) {
                                     sonarAnalysisExecuted = true
                                 } else {
                                     if (npmAvailable) {
-                                        sh "npx -y sonar-scanner -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.sources=. -Dsonar.token=\\$SONAR_TOKEN"
+                                        withNodeEnv {
+                                            sh "npx -y sonar-scanner -Dsonar.projectKey=${sonarProjectKey} -Dsonar.projectName=${cfg.imageName} -Dsonar.sources=. -Dsonar.token=\\$SONAR_TOKEN"
+                                        }
                                         sonarAnalysisExecuted = true
                                     } else {
                                         unstable("Skipping Node SonarQube analysis because npm/npx is unavailable on Jenkins agent")
